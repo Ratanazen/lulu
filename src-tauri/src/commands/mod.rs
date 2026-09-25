@@ -126,3 +126,13 @@ pub fn storage_export(state: State<'_, AppState>) -> Result<String, String> {
 pub fn storage_import(json: String, state: State<'_, AppState>) -> Result<(), String> {
     state.storage.import_backup(&json)
 }
+
+#[tauri::command]
+pub fn is_autostart_enabled() -> Result<bool, String> {
+    Ok(crate::system::SystemService::is_autostart_enabled())
+}
+
+#[tauri::command]
+pub fn set_autostart_enabled(enabled: bool) -> Result<(), String> {
+    crate::system::SystemService::set_autostart_enabled(enabled)
+}

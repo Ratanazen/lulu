@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { PetView } from './components/pet/PetView';
 import { ControlCenterModal } from './components/control-center/ControlCenterModal';
 import { OnboardingModal } from './components/control-center/OnboardingModal';
@@ -17,6 +18,26 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     initialize();
+
+    // Listen to native tray events
+    let unlistenChat: (() => void) | undefined;
+    let unlistenSettings: (() => void) | undefined;
+
+    listen('open-chat', () => {
+      setChatOpen(true);
+    })
+      .then((fn) => {
+        unlistenChat = fn;
+      })
+      .catch(() => {});
+
+    listen('open-settings', () => {
+      setControlCenterOpen(true);
+    })
+      .then((fn) => {
+        unlistenSettings = fn;
+      })
+      .catch(() => {});
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Toggle Control Center via Ctrl+Shift+C / Cmd+Shift+C
@@ -46,7 +67,11 @@ export const App: React.FC = () => {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      unlistenChat?.();
+      unlistenSettings?.();
+    };
   }, [
     initialize,
     controlCenterOpen,

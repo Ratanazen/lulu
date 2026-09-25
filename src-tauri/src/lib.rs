@@ -12,7 +12,7 @@ pub mod window;
 use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 use crate::commands::*;
 use crate::state::AppState;
@@ -48,8 +48,10 @@ pub fn run() {
             // Setup System Tray
             let show_i = MenuItem::with_id(app, "show", "Show Lulu", true, None::<&str>)?;
             let hide_i = MenuItem::with_id(app, "hide", "Hide Lulu", true, None::<&str>)?;
+            let chat_i = MenuItem::with_id(app, "chat", "Open Chat", true, None::<&str>)?;
+            let settings_i = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit Lulu", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &hide_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&show_i, &hide_i, &chat_i, &settings_i, &quit_i])?;
 
             let _tray = TrayIconBuilder::new()
                 .menu(&menu)
@@ -63,6 +65,20 @@ pub fn run() {
                     "hide" => {
                         if let Some(win) = app.get_webview_window("main") {
                             let _ = win.hide();
+                        }
+                    }
+                    "chat" => {
+                        if let Some(win) = app.get_webview_window("main") {
+                            let _ = win.show();
+                            let _ = win.set_focus();
+                            let _ = win.emit("open-chat", ());
+                        }
+                    }
+                    "settings" => {
+                        if let Some(win) = app.get_webview_window("main") {
+                            let _ = win.show();
+                            let _ = win.set_focus();
+                            let _ = win.emit("open-settings", ());
                         }
                     }
                     "quit" => {
@@ -109,6 +125,8 @@ pub fn run() {
             storage_set,
             storage_export,
             storage_import,
+            is_autostart_enabled,
+            set_autostart_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");

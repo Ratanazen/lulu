@@ -1,6 +1,6 @@
 [package]
 name = "lulu"
-version = "0.2.0"
+version = "0.1.0"
 description = "Lulu — Modern Offline-First Desktop Companion"
 authors = ["Lulu Team"]
 license = "MIT"

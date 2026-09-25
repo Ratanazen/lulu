@@ -75,4 +75,48 @@ impl SystemService {
             hostname,
         })
     }
+
+    pub fn is_autostart_enabled() -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            if let Some(home) = std::env::var_os("HOME") {
+                let autostart_path = std::path::PathBuf::from(home)
+                    .join(".config")
+                    .join("autostart")
+                    .join("lulu.desktop");
+                return autostart_path.exists();
+            }
+        }
+        false
+    }
+
+    pub fn set_autostart_enabled(enabled: bool) -> Result<(), String> {
+        #[cfg(target_os = "linux")]
+        {
+            if let Some(home) = std::env::var_os("HOME") {
+                let autostart_dir = std::path::PathBuf::from(home)
+                    .join(".config")
+                    .join("autostart");
+                let autostart_file = autostart_dir.join("lulu.desktop");
+
+                if enabled {
+                    std::fs::create_dir_all(&autostart_dir).map_err(|e| e.to_string())?;
+                    let exe_path = std::env::current_exe()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_else(|_| "lulu".to_string());
+
+                    let desktop_entry = format!(
+                        "[Desktop Entry]\nType=Application\nVersion=1.0\nName=Lulu\nComment=AI Desktop Companion\nExec={}\nIcon=lulu\nTerminal=false\nCategories=Utility;\n",
+                        exe_path
+                    );
+                    std::fs::write(&autostart_file, desktop_entry).map_err(|e| e.to_string())?;
+                } else if autostart_file.exists() {
+                    std::fs::remove_file(&autostart_file).map_err(|e| e.to_string())?;
+                }
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
 }
+
