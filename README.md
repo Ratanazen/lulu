@@ -16,7 +16,25 @@ Unlike web-based overlays or simulated pets, Lulu lives in a **real transparent,
 - **Real Native OS Integration**:
   - Transparent, borderless window with click-through and native dragging.
   - Real window movement across multiple monitors, DPI scales, and negative coordinate spaces.
-  - Native System Tray integration.
+  - Native System Tray integration (Show Lulu, Hide Lulu, Open Chat, Settings, Quit).
+  - Native OS autostart on user login (XDG `.desktop`).
+- **AI Companion Subsystem**:
+  - Multi-provider LLM architecture: Local **Ollama** (`localhost:11434`), OpenAI, Google Gemini, Anthropic Claude, and Custom Endpoints.
+  - Real-time token streaming with cancel/abort controls.
+  - Offline fallback conversation engine: Lulu responds smoothly even with zero internet or API keys.
+- **Persistent Long-Term Memory**:
+  - Remembers user preferences, project details, and custom facts.
+  - Automatic prompt context injection and semantic search.
+  - JSON backup export and import for full user data sovereignty.
+- **Voice & Speech Synthesis**:
+  - Text-to-Speech (TTS) with system voice selection, pitch, rate, and volume controls.
+  - Push-to-talk Speech-to-Text (STT) voice recognition.
+  - Automatic character state sync (`LISTENING`, `THINKING`, `TALKING`).
+- **Personality Engine & Dynamic Emotions**:
+  - 10 archetypes: *Friendly Buddy*, *Cute & Playful*, *Executive Assistant*, *Witty Jester*, *Zen Mentor*, *Hype Coach*, *Study Buddy*, *Senior Dev Pair*, *Minimalist*, and *Custom Persona*.
+  - Emotion tracking (Happiness, Energy, Friendship, Focus, Playfulness) responding to chats and interactions.
+- **Desktop Tools System**:
+  - Safe native utilities: `/calc` math evaluator, `/timer` countdown/Pomodoro sprints, `/note` persistent scratchpad memos.
 - **Decoupled Movement & Animation**:
   - **Movement Engine**: Physics-driven (acceleration, deceleration, arrival detection, boundary clamping).
   - **Animation Engine**: Procedural pixel-art renderer with nearest-neighbor crisp integer scaling and 12+ mood animation states.
@@ -26,8 +44,11 @@ Unlike web-based overlays or simulated pets, Lulu lives in a **real transparent,
   - Contextual speech bubble dialogue system with 10 message pools.
 - **Modern Control Center (16 Hubs)**:
   - **Overview**: Status, coordinates, and quick care buttons.
+  - **AI & Models**: Provider selection, model discovery, temperature, and tokens.
+  - **Memory Storage**: Fact browser, keyword search, and JSON export.
+  - **Voice & Audio**: TTS voice picker, pitch/speed controls, push-to-talk.
   - **Character Studio**: Switch between Lulu, Kira, and Nori, adjust scale, and test live animations.
-  - **Behavior & Personality**: Choose behavior modes (CALM, NORMAL, PLAYFUL, FOCUSED, QUIET) and adjust trait sliders.
+  - **Behavior & Personality**: Choose behavior modes and personality archetypes.
   - **Needs & Care**: Detailed vitality breakdown and care triggers.
   - **Mini-Games Arcade**: 8 isolated games (Quick Click, Speed Reaction, Memory Match, Star Catcher, Cosmic Dodge, Pet Care, Starlight Expedition, Custom Game API).
   - **Music Reactions**: Acoustic awareness and dance simulation.
@@ -39,8 +60,6 @@ Unlike web-based overlays or simulated pets, Lulu lives in a **real transparent,
   - **Developer Tools**: Event stream inspector, live state inspector, real OS process table, and Git repo status.
   - **Lulu Doctor**: Diagnostic health suite testing native windows, display servers, storage, and overhead.
   - **Privacy & Storage**: 100% offline guarantee, SQLite migrations, JSON backup export, and recovery import.
-  - **Plugin Sandbox**: Extensible plugin ecosystem with permission manifests.
-  - **About**: Architecture and license information.
 
 ---
 
@@ -113,7 +132,7 @@ npm run tauri dev
 ### Verification & Testing
 
 ```bash
-# Run Vitest unit & integration test suite (19 tests)
+# Run Vitest unit & integration test suite (62 tests across 14 suites)
 npm run test
 
 # Run Rust backend unit tests (4 tests)
@@ -122,9 +141,34 @@ cargo test --manifest-path src-tauri/Cargo.toml
 # Run type check and frontend production build
 npm run build
 
-# Run Lulu Doctor CLI diagnostic health suite
+# Run Lulu Doctor CLI diagnostic health suite (6 checks)
 npm run doctor
 ```
+
+### Production Packaging & Standalone Desktop Binary
+
+```bash
+# Compile standalone native release executable and Debian (.deb) package
+npx tauri build --bundles deb
+
+# Run the standalone native binary directly:
+./src-tauri/target/release/lulu
+
+# Install the Debian package system-wide:
+sudo dpkg -i src-tauri/target/release/bundle/deb/Lulu_0.1.0_amd64.deb
+```
+
+---
+
+## ⌨️ Desktop Shortcuts & Controls
+
+- **`Ctrl + Shift + Space`**: Open / Close Floating Chat Window
+- **`Ctrl + Shift + L`**: Open / Close Quick Actions Dock
+- **`Ctrl + Shift + C`**: Open / Close Modern Control Center
+- **`Escape`**: Dismiss active floating overlay
+- **Right Click Lulu**: Context Menu (Chat, Quick Actions, Personality, Care, Settings, Hide, Quit)
+- **Click & Drag**: Move Lulu freely across screens and snap to screen boundaries
+- **System Tray**: Lulu icon in system tray for fast Show/Hide, Chat, Settings, and Quit
 
 ---
 
@@ -143,8 +187,10 @@ npm run doctor
 
 ## 🔒 Privacy & Security
 
-- **Zero Cloud Calls**: No network telemetry, analytics, or external calls by default.
-- **Safe Persistence**: All settings, companion history, and achievements are stored in a local SQLite database (`lulu.db`) with schema migrations.
+- **Zero Cloud Telemetry**: No network telemetry, analytics, or external calls by default.
+- **Local AI Sovereignty**: First-class support for local **Ollama** models running on `localhost:11434` — 100% offline intelligence.
+- **Offline Fallback Engine**: If no LLM or network is configured, Lulu's built-in heuristic dialogue engine continues responding seamlessly.
+- **Safe Persistence**: All settings, memories, companion history, and achievements are stored in a local SQLite database (`lulu.db`) with schema migrations.
 - **Structured Backups**: Export full snapshots as human-readable JSON files, with rollback-protected restore.
 
 ---
@@ -152,3 +198,4 @@ npm run doctor
 ## 📄 License
 
 Lulu is released under the [MIT License](LICENSE).
+
