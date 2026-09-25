@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod capabilities;
 pub mod commands;
 pub mod diagnostics;
@@ -144,6 +145,9 @@ pub fn run() {
             get_capabilities,
             get_capability_by_id,
             get_capability_diagnostics,
+            detect_ai_cli_providers,
+            execute_ai_cli,
+            get_extended_system_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");

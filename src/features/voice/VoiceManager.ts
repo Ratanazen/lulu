@@ -1,5 +1,6 @@
 import { VoiceSettings, VoiceState } from './types';
 import { StorageService } from '../../services/storageService';
+import { lipSyncController } from '../../character/LipSyncController';
 
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   enabled: true,
@@ -94,17 +95,20 @@ export class VoiceManager {
 
       utterance.onstart = () => {
         this.state.isSpeaking = true;
+        lipSyncController.startSpeechCadence();
         this.notify();
       };
 
       utterance.onend = () => {
         this.state.isSpeaking = false;
+        lipSyncController.stopSpeechCadence();
         this.notify();
         resolve();
       };
 
       utterance.onerror = (e) => {
         this.state.isSpeaking = false;
+        lipSyncController.stopSpeechCadence();
         this.state.error = e.error || 'TTS Error';
         this.notify();
         resolve();
@@ -117,6 +121,7 @@ export class VoiceManager {
   stopSpeaking(): void {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+      lipSyncController.stopSpeechCadence();
       this.state.isSpeaking = false;
       this.notify();
     }

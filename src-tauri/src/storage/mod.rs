@@ -79,6 +79,98 @@ impl StorageService {
             .map_err(|e| e.to_string())?;
         }
 
+        if v < 2 {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS characters (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT NOT NULL DEFAULT '',
+                    personality TEXT NOT NULL DEFAULT '{}',
+                    voice TEXT NOT NULL DEFAULT '{}',
+                    renderer TEXT NOT NULL DEFAULT 'pixel',
+                    model_path TEXT NOT NULL DEFAULT '',
+                    appearance TEXT NOT NULL DEFAULT '{}',
+                    expressions TEXT NOT NULL DEFAULT '[]',
+                    animations TEXT NOT NULL DEFAULT '[]',
+                    outfit TEXT NOT NULL DEFAULT 'default',
+                    accessories TEXT NOT NULL DEFAULT '[]',
+                    colors TEXT NOT NULL DEFAULT '{}',
+                    scale REAL NOT NULL DEFAULT 1.0,
+                    behavior TEXT NOT NULL DEFAULT '{}',
+                    permissions TEXT NOT NULL DEFAULT '[]',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS character_presets (
+                    id TEXT PRIMARY KEY,
+                    character_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    config_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    provider_id TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS messages (
+                    id TEXT PRIMARY KEY,
+                    conversation_id TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    tool_calls_json TEXT NOT NULL DEFAULT '[]',
+                    timestamp INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS memories (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    category TEXT NOT NULL DEFAULT 'fact',
+                    importance INTEGER NOT NULL DEFAULT 3,
+                    user_defined INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS providers (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    base_url TEXT NOT NULL DEFAULT '',
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    config_json TEXT NOT NULL DEFAULT '{}'
+                );
+                CREATE TABLE IF NOT EXISTS models (
+                    id TEXT PRIMARY KEY,
+                    provider_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    context_limit INTEGER NOT NULL DEFAULT 4096,
+                    temperature REAL NOT NULL DEFAULT 0.7,
+                    is_default INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS capability_preferences (
+                    capability_id TEXT PRIMARY KEY,
+                    user_enabled INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS notification_preferences (
+                    app_whitelist_json TEXT NOT NULL DEFAULT '[]',
+                    read_body_enabled INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS oauth_accounts (
+                    provider TEXT PRIMARY KEY,
+                    email TEXT NOT NULL,
+                    scopes TEXT NOT NULL,
+                    expires_at INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL
+                );
+                INSERT INTO schema_migrations (version, applied_at) 
+                VALUES (2, datetime('now'));",
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
         Ok(())
     }
 

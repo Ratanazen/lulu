@@ -10,10 +10,12 @@ import {
   RotateCw,
   Sparkles,
   Eye,
-  EyeOff
+  EyeOff,
+  Terminal
 } from 'lucide-react';
 import { AIProviderId, ProviderConfig } from '../../../features/ai/types';
 import { aiProviderManager } from '../../../features/ai/AIProviderManager';
+import { AiCliService, AiCliStatus, AiCliExecutionResult } from '../../../features/ai/AiCliService';
 
 export const AIChatTab: React.FC = () => {
   const [activeProvider, setActiveProvider] = useState<AIProviderId>(
@@ -25,6 +27,50 @@ export const AIChatTab: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; models?: string[] } | null>(null);
+
+  // Native AI CLI status state
+  const [cliProviders, setCliProviders] = useState<AiCliStatus[]>([]);
+  const [loadingCli, setLoadingCli] = useState(false);
+  const [executingCli, setExecutingCli] = useState<string | null>(null);
+  const [cliResult, setCliResult] = useState<{ provider: string; result: AiCliExecutionResult } | null>(null);
+
+  React.useEffect(() => {
+    loadCliProviders();
+  }, []);
+
+  const loadCliProviders = async (force = false) => {
+    setLoadingCli(true);
+    try {
+      const detected = await AiCliService.detectProviders(force);
+      setCliProviders(detected);
+    } catch (err) {
+      console.error('Failed to probe AI CLI providers:', err);
+    } finally {
+      setLoadingCli(false);
+    }
+  };
+
+  const handleTestCli = async (providerId: string) => {
+    setExecutingCli(providerId);
+    setCliResult(null);
+    try {
+      const res = await AiCliService.executeCli(providerId, ['--version']);
+      setCliResult({ provider: providerId, result: res });
+    } catch (err: any) {
+      setCliResult({
+        provider: providerId,
+        result: {
+          success: false,
+          stdout: '',
+          stderr: err?.message || String(err),
+          exitCode: -1,
+          executionTimeMs: 0,
+        },
+      });
+    } finally {
+      setExecutingCli(null);
+    }
+  };
 
   const currentConfig = configs[activeProvider];
 
@@ -301,6 +347,188 @@ export const AIChatTab: React.FC = () => {
             />
           </div>
         </div>
+      </div>
+
+      {/* Native Host AI CLI Integration */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-card, #1E293B)',
+          border: '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <Terminal size={16} color="#38BDF8" />
+              <span>Native Host AI CLI Tools</span>
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+              Authentic detection of official CLI tools directly installed on your Linux system.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => loadCliProviders(true)}
+            disabled={loadingCli}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid #38BDF8',
+              color: '#38BDF8',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: loadingCli ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <RotateCw size={13} className={loadingCli ? 'spin' : ''} />
+            <span>{loadingCli ? 'Scanning...' : 'Re-scan PATH'}</span>
+          </button>
+        </div>
+
+        {/* CLI Providers Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+          {cliProviders.map((cli) => {
+            const isInstalled = cli.status === 'INSTALLED' || cli.status === 'RUNNING';
+            return (
+              <div
+                key={cli.id}
+                style={{
+                  padding: '14px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                  border: `1px solid ${isInstalled ? 'rgba(16, 185, 129, 0.4)' : '#334155'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#F8FAFC' }}>{cli.name}</span>
+                    <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                      Binary: <code>{cli.id}</code>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontWeight: 700,
+                      backgroundColor: isInstalled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                      color: isInstalled ? '#10B981' : '#F59E0B',
+                      border: `1px solid ${isInstalled ? '#10B981' : '#F59E0B'}`,
+                    }}
+                  >
+                    {cli.status}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '11px', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {cli.executablePath ? (
+                    <div>
+                      <span style={{ color: '#94A3B8' }}>Path: </span>
+                      <code style={{ color: '#38BDF8' }}>{cli.executablePath}</code>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#94A3B8' }}>Not found in current $PATH</div>
+                  )}
+                  {cli.version && (
+                    <div>
+                      <span style={{ color: '#94A3B8' }}>Version: </span>
+                      <span>{cli.version}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginTop: 'auto', paddingTop: '6px' }}>
+                  {isInstalled ? (
+                    <button
+                      type="button"
+                      onClick={() => handleTestCli(cli.id)}
+                      disabled={executingCli === cli.id}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: '#1E293B',
+                        border: '1px solid #334155',
+                        color: '#F8FAFC',
+                        fontSize: '12px',
+                        cursor: executingCli === cli.id ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <Terminal size={12} />
+                      <span>{executingCli === cli.id ? 'Probing...' : 'Probe CLI Version'}</span>
+                    </button>
+                  ) : (
+                    <div
+                      style={{
+                        padding: '8px',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(30, 41, 59, 0.8)',
+                        fontSize: '11px',
+                        color: '#94A3B8',
+                        lineHeight: '1.4',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, color: '#E2E8F0', marginBottom: '2px' }}>Installation:</div>
+                      <code>{cli.installGuidance}</code>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* CLI Test Output Terminal */}
+        {cliResult && (
+          <div
+            style={{
+              padding: '12px',
+              borderRadius: '8px',
+              backgroundColor: '#0F172A',
+              border: '1px solid #334155',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94A3B8' }}>
+              <span>$ {cliResult.provider} --version</span>
+              <span style={{ color: cliResult.result.success ? '#10B981' : '#EF4444' }}>
+                Exit: {cliResult.result.exitCode ?? 'N/A'} ({cliResult.result.executionTimeMs}ms)
+              </span>
+            </div>
+            {cliResult.result.stdout && (
+              <pre style={{ margin: 0, color: '#10B981', whiteSpace: 'pre-wrap' }}>
+                {cliResult.result.stdout}
+              </pre>
+            )}
+            {cliResult.result.stderr && (
+              <pre style={{ margin: 0, color: '#EF4444', whiteSpace: 'pre-wrap' }}>
+                {cliResult.result.stderr}
+              </pre>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

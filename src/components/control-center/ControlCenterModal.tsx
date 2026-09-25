@@ -19,6 +19,7 @@ import { AboutTab } from './tabs/AboutTab';
 import { AIChatTab } from './tabs/AIChatTab';
 import { MemoryTab } from './tabs/MemoryTab';
 import { VoiceTab } from './tabs/VoiceTab';
+import { AgentsTab } from './tabs/AgentsTab';
 
 export const ControlCenterModal: React.FC = () => {
   const { controlCenterOpen, setControlCenterOpen, activeTab, setActiveTab } = useLuluStore();
@@ -28,6 +29,7 @@ export const ControlCenterModal: React.FC = () => {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: '🏠' },
     { id: 'ai_chat', label: 'AI & Models', icon: '🤖' },
+    { id: 'agents', label: 'AI Agents & Teams', icon: '👥' },
     { id: 'memory', label: 'Memory Storage', icon: '💾' },
     { id: 'voice', label: 'Voice & Speech', icon: '🎙️' },
     { id: 'character', label: 'Character Studio', icon: '🎨' },
@@ -51,6 +53,7 @@ export const ControlCenterModal: React.FC = () => {
     switch (activeTab) {
       case 'overview': return <OverviewTab />;
       case 'ai_chat': return <AIChatTab />;
+      case 'agents': return <AgentsTab />;
       case 'memory': return <MemoryTab />;
       case 'voice': return <VoiceTab />;
       case 'character': return <CharacterTab />;

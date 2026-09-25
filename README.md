@@ -13,6 +13,31 @@ Unlike web-based overlays or simulated pets, Lulu lives in a **real transparent,
 
 ## ✨ Core Pillars & Features
 
+- **Multi-Renderer Character Engine**:
+  - **Procedural 2D Pixel**: Retro pixel art with dynamic color palettes, auras, accessories, and viseme lip-sync.
+  - **Vector 2D Skeletal**: Dynamic bone hierarchy with smooth limb rotations and facial expressions.
+  - **WebGL / 3D VRM**: Hardware-accelerated 3D avatar adapter with runtime capability detection and automatic fallback.
+  - **Lip-Sync Engine**: Real-time viseme cadence tracking (`closed`, `small`, `medium`, `open`, `smile`) linked to speech audio.
+- **Original Anime Presets**:
+  - **Kage Shinobi**: Stealth ninja aesthetic, dark palette, disciplined persona.
+  - **Ren Cyber Ninja**: Neon cybernetic samurai with high-energy movement.
+  - **Takeshi Samurai**: Traditional katana master, bushido spirit, calm demeanor.
+  - **Aria Mage**: Celestial arcane spellcaster, cosmic violet palette.
+  - **Character Pack Validator**: Archive and manifest validator enforcing 50MB limits, allowed texture formats, and blocking executables.
+- **Native Host AI CLI Integration**:
+  - Direct host discovery for `gemini`, `codex`, `claude`, and `ollama`.
+  - Truthful status reporting (`INSTALLED` vs `NOT_INSTALLED`), path discovery, version probing, and execution streaming.
+  - Official installation guidance for missing CLI binaries.
+- **Multi-Agent Orchestrator & Workspace Boundary**:
+  - 10 Specialized Agents: *General Assistant*, *Architect Planner*, *Senior Coder*, *Code Reviewer*, *Test Engineer*, *Knowledge Researcher*, *Linux Specialist*, *DevOps & Packaging*, *Security Guardian*, and *UI/UX Designer*.
+  - Strict **Workspace Boundary Containment**: Enforces that all file modifications, script evaluations, and agent tools are restricted to a user-defined project directory, blocking directory traversals (`../`) and system escapes.
+- **Autonomous Resource Governor**:
+  - Automatic CPU/RAM safety throttling: dynamically reduces render pacing from 60 FPS to 15 FPS when host CPU usage exceeds 80% to protect gaming and compile workloads.
+- **Safe AI Tools & Confirmation Governance**:
+  - Read-only tools (`system_info`, `cpu_info`, `ram_info`, `disk_info`, `network_info`, `battery_info`, `open_application`, `open_folder`, `open_url`, `file_search`).
+  - Dangerous tools (`delete_file`, `kill_process`, `arbitrary_shell`) governed by mandatory user approval choices (`Allow Once`, `Allow Session`, `Deny`).
+- **Official Google OAuth 2.0 PKCE Architecture**:
+  - RFC 7636 Authorization Code flow with PKCE, least-privilege scopes (`openid email profile`), and zero client secret or credential scraping.
 - **Real Native OS Integration**:
   - Transparent, borderless window with click-through and native dragging.
   - Real window movement across multiple monitors, DPI scales, and negative coordinate spaces.
@@ -27,52 +52,36 @@ Unlike web-based overlays or simulated pets, Lulu lives in a **real transparent,
 - **Linux MPRIS Music & Synchronized Lyrics (.lrc)**:
   - Real-time media playback tracking via Linux MPRIS D-Bus (`org.mpris.MediaPlayer2`) and `playerctl`.
   - Automatic detection of Spotify, VLC, browser media, YouTube, and local players.
-  - Interactive playback controls: Play, Pause, Next, Previous.
   - High-precision `.lrc` lyrics parser supporting metadata (`[ti:]`, `[ar:]`, `[al:]`), multiple timestamps per line, and sub-second offsets.
   - Real-time lyrics karaoke sync displaying active lyric lines in Lulu's speech bubbles and Control Center.
-  - Dynamic companion dance animations driven by live media playback.
-- **AI Companion Subsystem**:
-  - Multi-provider LLM architecture: Local **Ollama** (`localhost:11434`), OpenAI, Google Gemini, Anthropic Claude, and Custom Endpoints.
-  - Real-time token streaming with cancel/abort controls.
-  - Offline fallback conversation engine: Lulu responds smoothly even with zero internet or API keys.
-- **Persistent Long-Term Memory**:
-  - Remembers user preferences, project details, and custom facts.
-  - Automatic prompt context injection and semantic search.
-  - JSON backup export and import for full user data sovereignty.
 - **Voice & Speech Synthesis**:
   - Text-to-Speech (TTS) with system voice selection, pitch, rate, and volume controls.
   - Push-to-talk Speech-to-Text (STT) voice recognition.
   - Automatic character state sync (`LISTENING`, `THINKING`, `TALKING`).
-- **Personality Engine & Dynamic Emotions**:
-  - 10 archetypes: *Friendly Buddy*, *Cute & Playful*, *Executive Assistant*, *Witty Jester*, *Zen Mentor*, *Hype Coach*, *Study Buddy*, *Senior Dev Pair*, *Minimalist*, and *Custom Persona*.
-  - Emotion tracking (Happiness, Energy, Friendship, Focus, Playfulness) responding to chats and interactions.
-- **Desktop Tools System**:
-  - Safe native utilities: `/calc` math evaluator, `/timer` countdown/Pomodoro sprints, `/note` persistent scratchpad memos.
-- **Decoupled Movement & Animation**:
-  - **Movement Engine**: Physics-driven (acceleration, deceleration, arrival detection, boundary clamping).
-  - **Animation Engine**: Procedural pixel-art renderer with nearest-neighbor crisp integer scaling and 12+ mood animation states.
 - **Autonomous Behavior & Vitality**:
   - 8 vital needs (Energy, Happiness, Fun, Attention, Social, Hunger, Cleanliness, Health) with gentle, non-aggressive decay.
-  - Dynamic Mood derivation engine (Calm, Happy, Curious, Playful, Focused, Tired, Sleepy, Excited, Loving, Worried).
+  - Dynamic Mood Engine with 6 continuous dimensions (Happiness, Energy, Curiosity, Affection, Boredom, Stress).
   - Contextual speech bubble dialogue system with 10 message pools.
-- **Modern Control Center (16 Hubs)**:
-  - **Overview**: Status, coordinates, and quick care buttons.
-  - **AI & Models**: Provider selection, model discovery, temperature, and tokens.
+- **Modern Control Center (19 Hubs)**:
+  - **Overview**: Status, coordinates, quick care buttons, and 6-variable mood engine.
+  - **AI & Models**: Cloud LLMs and Native Host AI CLI Tools with live status badges.
+  - **AI Agents & Teams**: 10 specialized agents, task runner, and workspace boundary manager.
   - **Memory Storage**: Fact browser, keyword search, and JSON export.
   - **Voice & Audio**: TTS voice picker, pitch/speed controls, push-to-talk.
-  - **Character Studio**: Switch between Lulu, Kira, and Nori, adjust scale, and test live animations.
+  - **Character Studio**: Anime presets, 3 rendering engines, accessories, and pack validator.
   - **Behavior & Personality**: Choose behavior modes and personality archetypes.
   - **Needs & Care**: Detailed vitality breakdown and care triggers.
   - **Mini-Games Arcade**: 8 isolated games (Quick Click, Speed Reaction, Memory Match, Star Catcher, Cosmic Dodge, Pet Care, Starlight Expedition, Custom Game API).
   - **Music Reactions**: Acoustic awareness and dance simulation.
-  - **Theme Engine**: 10 built-in themes (Lulu Light, Lulu Dark, Midnight, Soft, Glass, Mono, Forest, Ocean, Sunset, High Contrast).
-  - **Screen Map**: Interactive multi-monitor visualizer with click-to-dispatch and home position settings.
+  - **Theme Engine**: 10 built-in themes.
+  - **Screen Map**: Interactive multi-monitor visualizer with click-to-dispatch.
   - **Achievements**: XP progression, leveling, and trophies.
-  - **Performance**: Frame pacing profiles (AUTO, LOW, BALANCED, HIGH, MAX FPS) and custom FPS targets (15 to 144).
-  - **System Monitor**: Native CPU, memory, process count, uptime telemetry via Rust `sysinfo`.
-  - **Developer Tools**: Event stream inspector, live state inspector, real OS process table, and Git repo status.
+  - **Performance & FPS**: Resource Governor controls and live safety throttling.
+  - **System Monitor**: Native CPU, memory, GPU, disk, battery, process count, uptime telemetry.
+  - **Developer Tools**: Event stream inspector, live state inspector, real OS process table.
   - **Lulu Doctor**: Diagnostic health suite testing native windows, display servers, storage, and overhead.
-  - **Privacy & Storage**: 100% offline guarantee, SQLite migrations, JSON backup export, and recovery import.
+  - **Privacy & Storage**: 100% offline guarantee, Google OAuth 2.0 PKCE, and 12-permission matrix.
+  - **About Lulu**: Version, platform, and architectural credits.
 
 ---
 

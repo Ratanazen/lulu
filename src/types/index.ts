@@ -40,6 +40,33 @@ export interface PersonalityTraits {
   focus: number;        // 0-100
   energy: number;       // 0-100
   social: number;       // 0-100
+  speakingStyle?: string;
+  tone?: string;
+  favoriteTopics?: string[];
+  behaviorRules?: string[];
+  greeting?: string;
+  idleBehavior?: string;
+}
+
+export type MouthShape = 'closed' | 'small' | 'medium' | 'open' | 'smile';
+
+export type CharacterRendererType = 'pixel' | 'skeletal_2d' | 'live2d' | 'three_vrm';
+
+export interface CharacterPackManifest {
+  id: string;
+  name: string;
+  type: 'original' | 'anime' | 'user' | 'imported';
+  renderer: CharacterRendererType;
+  version: string;
+  author: string;
+  description: string;
+  license?: string;
+  entryModel?: string;
+  animations?: Record<string, string>;
+  expressions?: Record<string, string>;
+  audio?: Record<string, string>;
+  voice?: Record<string, any>;
+  permissions?: string[];
 }
 
 export interface NeedsState {
@@ -175,6 +202,16 @@ export interface CharacterProfile {
   unlocked: boolean;
   aura?: string;
   accessories?: string[];
+  renderer?: CharacterRendererType;
+  modelPath?: string;
+  category?: 'original' | 'anime' | 'user' | 'imported';
+  license?: string;
+  author?: string;
+  version?: string;
+  outfit?: string;
+  permissions?: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Behavior

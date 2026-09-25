@@ -2,7 +2,7 @@
   "application": "Lulu",
   "version": "0.1.0",
   "build_platform": "linux-x64",
-  "generated_at": "2026-09-25T11:26:41.202Z",
+  "generated_at": "2026-09-25T12:03:51.423Z",
   "total_capabilities": 20,
   "capabilities": {
     "pet.transparent_window": "supported",

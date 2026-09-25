@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLuluStore } from '../../../stores/useLuluStore';
-import { AnimationState } from '../../../types';
+import { AnimationState, CharacterProfile, CharacterRendererType } from '../../../types';
 import { StorageService } from '../../../services/storageService';
+import { ANIME_CHARACTERS } from '../../../character/animePresets';
+import { characterManager } from '../../../character/CharacterManager';
+import { CharacterPackValidator } from '../../../character/CharacterPackValidator';
 
 export const CharacterTab: React.FC = () => {
   const {
@@ -22,6 +25,32 @@ export const CharacterTab: React.FC = () => {
     'halo',
     'star_glasses',
   ]);
+
+  const [currentRenderer, setCurrentRenderer] = useState<CharacterRendererType>(
+    characterManager.getCurrentRendererType()
+  );
+
+  const [packValidationResult, setPackValidationResult] = useState<{
+    valid: boolean;
+    errors: string[];
+    parsed?: any;
+  } | null>(null);
+
+  const [manifestJsonInput, setManifestJsonInput] = useState<string>(
+    JSON.stringify(
+      {
+        id: 'custom_warrior',
+        name: 'Custom Warrior',
+        version: '1.0.0',
+        author: 'Community Creator',
+        renderer: 'skeletal_2d',
+        defaultAnimation: 'idle',
+        sprites: { idle: 'sprites/idle.png' },
+      },
+      null,
+      2
+    )
+  );
 
   useEffect(() => {
     StorageService.get<string[]>('unlocked_accessories', ['halo', 'star_glasses']).then((saved) => {
@@ -149,6 +178,217 @@ export const CharacterTab: React.FC = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* Original Anime Presets */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-card, #1E293B)',
+          border: '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '20px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '15px', color: '#F8FAFC' }}>Original Anime Presets</h4>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+              Handcrafted original anime characters with distinct visual themes, sound profiles, and personas.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+          {ANIME_CHARACTERS.map((preset: CharacterProfile) => (
+            <div
+              key={preset.id}
+              onClick={() => {
+                const matched = characters.find((c) => c.id === preset.id);
+                if (matched) {
+                  setCharacter(matched.id);
+                }
+                speak(`Summoned anime companion ${preset.displayName}! ✨`);
+              }}
+              style={{
+                padding: '12px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                border: '1px solid #334155',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                transition: 'border-color 0.2s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: preset.palette.primary,
+                  }}
+                />
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#F8FAFC' }}>{preset.displayName}</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '11px', color: '#94A3B8', lineHeight: '1.3' }}>
+                {preset.description}
+              </p>
+              <div style={{ fontSize: '10px', color: '#38BDF8', marginTop: 'auto' }}>
+                Tone: {preset.personality.tone}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Multi-Renderer Engine Configuration */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-card, #1E293B)',
+          border: '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '20px',
+        }}
+      >
+        <h4 style={{ margin: '0 0 4px', fontSize: '15px', color: '#F8FAFC' }}>Active Rendering Engine</h4>
+        <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#94A3B8' }}>
+          Select how characters are drawn on your desktop. Lulu seamlessly supports 2D pixel, 2D vector skeletal, and 3D VRM engines.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          {[
+            {
+              type: 'pixel' as CharacterRendererType,
+              name: 'Procedural 2D Pixel',
+              desc: 'Crisp retro pixel rendering with dynamic visemes and accessories.',
+              tag: 'Default • Ultra-Low CPU',
+            },
+            {
+              type: 'skeletal_2d' as CharacterRendererType,
+              name: 'Vector 2D Skeletal',
+              desc: 'Dynamic bone hierarchy with smooth limb rotations and facial expressions.',
+              tag: 'Smooth 60 FPS Vectors',
+            },
+            {
+              type: 'vrm_3d' as CharacterRendererType,
+              name: 'WebGL / 3D VRM',
+              desc: 'Hardware-accelerated 3D avatar engine with capability detection.',
+              tag: '3D • GPU Accelerated',
+            },
+          ].map((r) => {
+            const isSelected = currentRenderer === r.type;
+            return (
+              <button
+                key={r.type}
+                type="button"
+                onClick={() => {
+                  characterManager.setRenderer(r.type);
+                  setCurrentRenderer(r.type);
+                  speak(`Renderer switched to ${r.name}! 🎨`);
+                }}
+                style={{
+                  padding: '12px',
+                  borderRadius: '12px',
+                  backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'rgba(15, 23, 42, 0.6)',
+                  border: `1.5px solid ${isSelected ? '#818CF8' : '#334155'}`,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}
+              >
+                <div style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#818CF8' : '#F8FAFC' }}>
+                  {r.name}
+                </div>
+                <div style={{ fontSize: '11px', color: '#94A3B8' }}>{r.desc}</div>
+                <div style={{ fontSize: '10px', color: '#38BDF8', marginTop: 'auto' }}>{r.tag}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Character Pack Validator & Importer */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-card, #1E293B)',
+          border: '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '20px',
+        }}
+      >
+        <h4 style={{ margin: '0 0 4px', fontSize: '15px', color: '#F8FAFC' }}>Character Pack Validator</h4>
+        <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#94A3B8' }}>
+          Strict security and schema validation for user-created character packs (blocks executables, enforces 50MB limit).
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <textarea
+            rows={5}
+            value={manifestJsonInput}
+            onChange={(e) => setManifestJsonInput(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '8px',
+              backgroundColor: '#0F172A',
+              border: '1px solid #334155',
+              color: '#F8FAFC',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+            }}
+          />
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  const parsed = JSON.parse(manifestJsonInput);
+                  const result = CharacterPackValidator.validateManifest(parsed);
+                  setPackValidationResult(result);
+                } catch (err: any) {
+                  setPackValidationResult({
+                    valid: false,
+                    errors: [`JSON Syntax Error: ${err.message}`],
+                  });
+                }
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                backgroundColor: '#3B82F6',
+                color: '#FFFFFF',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              Validate Manifest
+            </button>
+            {packValidationResult && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: packValidationResult.valid ? '#10B981' : '#EF4444',
+                }}
+              >
+                {packValidationResult.valid ? '✓ Manifest schema is valid!' : '✗ Validation failed'}
+              </span>
+            )}
+          </div>
+          {packValidationResult && packValidationResult.errors.length > 0 && (
+            <div style={{ fontSize: '11px', color: '#EF4444' }}>
+              {packValidationResult.errors.map((e: string, i: number) => (
+                <div key={i}>• {e}</div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Aura & Accessories Customization */}

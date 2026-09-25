@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLuluStore } from '../../../stores/useLuluStore';
 import { PerformanceProfile } from '../../../types';
+import { resourceGovernor } from '../../../services/resourceGovernor';
 
 export const PerformanceTab: React.FC = () => {
   const { settings, updateSettings, speak } = useLuluStore();
+  const [govState, setGovState] = useState(resourceGovernor.getState());
+
+  useEffect(() => {
+    const unsub = resourceGovernor.subscribe((state) => {
+      setGovState(state);
+    });
+    return () => unsub();
+  }, []);
 
   const profiles: { id: PerformanceProfile; label: string; desc: string; fps: number }[] = [
     { id: 'AUTO', label: 'Adaptive Auto', desc: 'Dynamically adapts based on system load and power status.', fps: 60 },
@@ -127,6 +136,62 @@ export const PerformanceTab: React.FC = () => {
           />
           Disable cosmetic particle effects and reduced animation transitions
         </label>
+      </div>
+
+      {/* Autonomous Resource Governor */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-card, #1E293B)',
+          border: '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '15px', color: '#F8FAFC' }}>Autonomous Resource Governor</h4>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+              Safety monitor that prevents Lulu from competing with games or heavy compile workloads.
+            </p>
+          </div>
+          <span
+            style={{
+              fontSize: '11px',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              backgroundColor: govState.isThrottled ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+              color: govState.isThrottled ? '#F59E0B' : '#10B981',
+              border: `1px solid ${govState.isThrottled ? '#F59E0B' : '#10B981'}`,
+            }}
+          >
+            {govState.isThrottled ? '⚡ THROTTLED (15 FPS CAP)' : `✓ OPTIMAL PACING (${govState.currentEffectiveFps} FPS)`}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+          <div style={{ padding: '10px', backgroundColor: 'rgba(15, 23, 42, 0.6)', borderRadius: '8px', border: '1px solid #334155' }}>
+            <div style={{ fontSize: '11px', color: '#94A3B8' }}>Host CPU Usage</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#38BDF8' }}>
+              {govState.lastCpuCheck.toFixed(1)}%
+            </div>
+          </div>
+          <div style={{ padding: '10px', backgroundColor: 'rgba(15, 23, 42, 0.6)', borderRadius: '8px', border: '1px solid #334155' }}>
+            <div style={{ fontSize: '11px', color: '#94A3B8' }}>Host RAM Usage</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#A78BFA' }}>
+              {govState.lastMemoryCheck.toFixed(1)}%
+            </div>
+          </div>
+          <div style={{ padding: '10px', backgroundColor: 'rgba(15, 23, 42, 0.6)', borderRadius: '8px', border: '1px solid #334155' }}>
+            <div style={{ fontSize: '11px', color: '#94A3B8' }}>Safety Threshold</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: '#F8FAFC' }}>
+              80.0% CPU
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

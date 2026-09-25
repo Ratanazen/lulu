@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { PixelRenderer } from '../../animation/pixelRenderer';
+import { characterManager } from '../../character/CharacterManager';
 import { ANIMATION_DEFINITIONS } from '../../animation/definitions';
 import { useLuluStore } from '../../stores/useLuluStore';
 import { DesktopWindowService } from '../../services/desktopWindow';
@@ -96,18 +97,19 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
       const w = canvas.width;
       const h = canvas.height;
 
-      // 1. Render Lulu character pixel frame
-      PixelRenderer.renderFrame(
+      // 1. Render character frame using active capability-resolved renderer
+      const { renderer } = characterManager.getEffectiveRenderer(character);
+      renderer.render({
         ctx,
+        width: w,
+        height: h,
         animationState,
         animationFrame,
         facing,
-        character.palette,
-        w,
-        h,
-        character.aura,
-        character.accessories
-      );
+        character,
+        mouthShape: characterManager.lipSync.getShape(),
+        scale: character.scale,
+      });
 
       // 2. Update and render particle effects
       particleSystem.update(dt, w, h, time);

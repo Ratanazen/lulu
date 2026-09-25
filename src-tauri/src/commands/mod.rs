@@ -187,4 +187,23 @@ pub fn get_capability_diagnostics(app: AppHandle) -> Result<crate::capabilities:
     Ok(crate::capabilities::CapabilityManager::get_diagnostics(&app))
 }
 
+#[tauri::command]
+pub fn detect_ai_cli_providers() -> Result<Vec<crate::ai::AiCliStatus>, String> {
+    Ok(crate::ai::AiCliService::detect_all())
+}
+
+#[tauri::command]
+pub fn execute_ai_cli(
+    provider: String,
+    prompt: String,
+    workspace: Option<String>,
+) -> Result<crate::ai::AiCliExecutionResult, String> {
+    crate::ai::AiCliService::execute_cli(&provider, &[&prompt], workspace.as_deref())
+}
+
+#[tauri::command]
+pub fn get_extended_system_info() -> Result<crate::system::ExtendedSystemInfo, String> {
+    Ok(crate::system::SystemService::get_extended_info())
+}
+
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLuluStore } from '../../../stores/useLuluStore';
+import { MoodEngine } from '../../../behavior/moodEngine';
 
 export const OverviewTab: React.FC = () => {
   const {
@@ -16,6 +17,9 @@ export const OverviewTab: React.FC = () => {
     goHome,
     setActiveTab,
   } = useLuluStore();
+
+  const moodVars = MoodEngine.computeMoodVariables(needs, character.personality);
+  const guidance = MoodEngine.deriveMoodGuidance(moodVars, character.personality);
 
   const getMoodEmoji = () => {
     switch (mood) {
@@ -129,6 +133,42 @@ export const OverviewTab: React.FC = () => {
           <NeedBar label="Hunger" value={needs.hunger} color="#10B981" icon="🍏" />
           <NeedBar label="Cleanliness" value={needs.cleanliness} color="#06B6D4" icon="🫧" />
           <NeedBar label="Attention" value={needs.attention} color="#F43F5E" icon="👀" />
+        </div>
+      </div>
+
+      {/* Dynamic Mood Engine (6 Variables) */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-card, #1E293B)',
+          border: '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#F8FAFC' }}>
+              Dynamic Mood Engine
+            </h3>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+              6 emotional dimensions governing facial expressions, viseme lip-sync cadence, and vocal style.
+            </p>
+          </div>
+          <div style={{ fontSize: '11px', color: '#38BDF8', backgroundColor: 'rgba(56, 189, 248, 0.1)', padding: '4px 8px', borderRadius: '6px' }}>
+            Expression: <strong>{guidance.facialExpression}</strong> • Tone: <strong>{guidance.conversationTone}</strong>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <NeedBar label="Happiness" value={moodVars.happiness} color="#10B981" icon="😊" />
+          <NeedBar label="Energy" value={moodVars.energy} color="#F59E0B" icon="⚡" />
+          <NeedBar label="Curiosity" value={moodVars.curiosity} color="#38BDF8" icon="🔍" />
+          <NeedBar label="Affection" value={moodVars.affection} color="#EC4899" icon="💖" />
+          <NeedBar label="Boredom" value={moodVars.boredom} color="#94A3B8" icon="⏳" />
+          <NeedBar label="Stress" value={moodVars.stress} color="#EF4444" icon="⚠️" />
         </div>
       </div>
 
