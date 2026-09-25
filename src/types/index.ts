@@ -505,6 +505,9 @@ export type LuluEventType =
   | 'NOTIFICATION_CREATED'
   | 'ACHIEVEMENT_UNLOCKED'
   | 'SETTING_CHANGED'
+  | 'PLUGIN_LOADED'
+  | 'PLUGIN_UNLOADED'
+  | 'PLUGIN_STATE_CHANGED'
   | 'ERROR';
 
 export interface LuluEvent<T = any> {

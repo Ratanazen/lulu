@@ -1,25 +1,33 @@
 import React from 'react';
 import { useLuluStore } from '../../stores/useLuluStore';
-import { OverviewTab } from './tabs/OverviewTab';
-import { CharacterTab } from './tabs/CharacterTab';
-import { BehaviorTab } from './tabs/BehaviorTab';
-import { NeedsTab } from './tabs/NeedsTab';
-import { GamesTab } from './tabs/GamesTab';
-import { MusicTab } from './tabs/MusicTab';
-import { ThemesTab } from './tabs/ThemesTab';
-import { ScreenMapTab } from './tabs/ScreenMapTab';
-import { NotificationsTab } from './tabs/NotificationsTab';
-import { PerformanceTab } from './tabs/PerformanceTab';
-import { SystemTab } from './tabs/SystemTab';
-import { DeveloperTab } from './tabs/DeveloperTab';
-import { DiagnosticsTab } from './tabs/DiagnosticsTab';
-import { PrivacyStorageTab } from './tabs/PrivacyStorageTab';
-import { PluginsTab } from './tabs/PluginsTab';
-import { AboutTab } from './tabs/AboutTab';
-import { AIChatTab } from './tabs/AIChatTab';
-import { MemoryTab } from './tabs/MemoryTab';
-import { VoiceTab } from './tabs/VoiceTab';
-import { AgentsTab } from './tabs/AgentsTab';
+const OverviewTab = React.lazy(() => import('./tabs/OverviewTab').then((m) => ({ default: m.OverviewTab })));
+const CharacterTab = React.lazy(() => import('./tabs/CharacterTab').then((m) => ({ default: m.CharacterTab })));
+const BehaviorTab = React.lazy(() => import('./tabs/BehaviorTab').then((m) => ({ default: m.BehaviorTab })));
+const NeedsTab = React.lazy(() => import('./tabs/NeedsTab').then((m) => ({ default: m.NeedsTab })));
+const GamesTab = React.lazy(() => import('./tabs/GamesTab').then((m) => ({ default: m.GamesTab })));
+const MusicTab = React.lazy(() => import('./tabs/MusicTab').then((m) => ({ default: m.MusicTab })));
+const ThemesTab = React.lazy(() => import('./tabs/ThemesTab').then((m) => ({ default: m.ThemesTab })));
+const ScreenMapTab = React.lazy(() => import('./tabs/ScreenMapTab').then((m) => ({ default: m.ScreenMapTab })));
+const NotificationsTab = React.lazy(() => import('./tabs/NotificationsTab').then((m) => ({ default: m.NotificationsTab })));
+const PerformanceTab = React.lazy(() => import('./tabs/PerformanceTab').then((m) => ({ default: m.PerformanceTab })));
+const SystemTab = React.lazy(() => import('./tabs/SystemTab').then((m) => ({ default: m.SystemTab })));
+const DeveloperTab = React.lazy(() => import('./tabs/DeveloperTab').then((m) => ({ default: m.DeveloperTab })));
+const DiagnosticsTab = React.lazy(() => import('./tabs/DiagnosticsTab').then((m) => ({ default: m.DiagnosticsTab })));
+const PrivacyStorageTab = React.lazy(() => import('./tabs/PrivacyStorageTab').then((m) => ({ default: m.PrivacyStorageTab })));
+const PluginsTab = React.lazy(() => import('./tabs/PluginsTab').then((m) => ({ default: m.PluginsTab })));
+const AboutTab = React.lazy(() => import('./tabs/AboutTab').then((m) => ({ default: m.AboutTab })));
+const AIChatTab = React.lazy(() => import('./tabs/AIChatTab').then((m) => ({ default: m.AIChatTab })));
+const MemoryTab = React.lazy(() => import('./tabs/MemoryTab').then((m) => ({ default: m.MemoryTab })));
+const VoiceTab = React.lazy(() => import('./tabs/VoiceTab').then((m) => ({ default: m.VoiceTab })));
+const AgentsTab = React.lazy(() => import('./tabs/AgentsTab').then((m) => ({ default: m.AgentsTab })));
+
+const TabFallback: React.FC = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '240px', gap: '12px', color: '#94A3B8' }}>
+    <div style={{ width: '28px', height: '28px', border: '3px solid rgba(129, 140, 248, 0.2)', borderTopColor: '#818CF8', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    <span style={{ fontSize: '13px' }}>Loading Tab...</span>
+    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+  </div>
+);
 
 export const ControlCenterModal: React.FC = () => {
   const { controlCenterOpen, setControlCenterOpen, activeTab, setActiveTab } = useLuluStore();
@@ -235,7 +243,9 @@ export const ControlCenterModal: React.FC = () => {
               padding: '24px',
             }}
           >
-            {renderActiveTab()}
+            <React.Suspense fallback={<TabFallback />}>
+              {renderActiveTab()}
+            </React.Suspense>
           </div>
         </div>
       </div>
