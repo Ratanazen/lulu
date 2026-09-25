@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::process::Stdio;
+use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter};
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,18 +17,21 @@ pub struct DesktopNotificationEvent {
 pub struct NotificationService;
 
 impl NotificationService {
-    /// Spawns a background listener monitoring Linux D-Bus notifications
+    /// Spawns a dedicated background thread monitoring Linux D-Bus notifications
     pub fn start_listener(app: AppHandle) {
         #[cfg(target_os = "linux")]
         {
-            tokio::spawn(async move {
-                Self::run_dbus_monitor(app).await;
-            });
+            std::thread::Builder::new()
+                .name("dbus-notification-monitor".to_string())
+                .spawn(move || {
+                    Self::run_dbus_monitor(app);
+                })
+                .ok();
         }
     }
 
     #[cfg(target_os = "linux")]
-    async fn run_dbus_monitor(app: AppHandle) {
+    fn run_dbus_monitor(app: AppHandle) {
         let mut child = match Command::new("dbus-monitor")
             .arg("--session")
             .arg("type='method_call',interface='org.freedesktop.Notifications',member='Notify'")
@@ -46,8 +48,6 @@ impl NotificationService {
 
         if let Some(stdout) = child.stdout.take() {
             let reader = BufReader::new(stdout);
-            let mut lines = reader.lines();
-
             let mut in_notify = false;
             let mut string_idx = 0;
             let mut current_app = String::new();
@@ -55,7 +55,8 @@ impl NotificationService {
             let mut current_summary = String::new();
             let mut current_body = String::new();
 
-            while let Ok(Some(line)) = lines.next_line().await {
+            for line_res in reader.lines() {
+                let Ok(line) = line_res else { break };
                 let trimmed = line.trim();
 
                 if trimmed.contains("member=Notify") {
@@ -69,7 +70,6 @@ impl NotificationService {
                 }
 
                 if in_notify && trimmed.starts_with("string \"") {
-                    // Extract content inside string "..."
                     if let Some(first_quote) = trimmed.find('"') {
                         if let Some(last_quote) = trimmed.rfind('"') {
                             if last_quote > first_quote {
@@ -116,7 +116,7 @@ impl NotificationService {
     pub fn send_test_notification(app_name: &str, summary: &str, body: &str) -> Result<(), String> {
         #[cfg(target_os = "linux")]
         {
-            let res = std::process::Command::new("notify-send")
+            let res = Command::new("notify-send")
                 .arg(format!("[{}] {}", app_name, summary))
                 .arg(body)
                 .output();
