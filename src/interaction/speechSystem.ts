@@ -100,7 +100,7 @@ export class SpeechSystem {
   public getRandomMessage(
     category: SpeechCategory,
     mood: MoodType = 'calm',
-    durationMs: number = 4500
+    durationMs: number = 8000
   ): SpeechMessage {
     const pool = SPEECH_POOLS[category] || SPEECH_POOLS.idle;
 
@@ -148,6 +148,11 @@ export class SpeechSystem {
     return 'idle';
   }
 
+  private onExpireCallback?: () => void;
+  private remainingTimeMs: number = 8000;
+  private timerStartedAt: number = 0;
+  private isPaused: boolean = false;
+
   public setMessage(msg: SpeechMessage, onExpire?: () => void): void {
     if (this.timer) {
       clearTimeout(this.timer);
@@ -156,12 +161,38 @@ export class SpeechSystem {
 
     this.currentMessage = msg;
     this.lastMessageTime = Date.now();
+    this.onExpireCallback = onExpire;
+    this.remainingTimeMs = msg.durationMs || 8000;
+    this.timerStartedAt = Date.now();
+    this.isPaused = false;
 
     this.timer = window.setTimeout(() => {
       this.currentMessage = null;
       this.timer = null;
-      if (onExpire) onExpire();
-    }, msg.durationMs);
+      if (this.onExpireCallback) this.onExpireCallback();
+    }, this.remainingTimeMs);
+  }
+
+  public pause(): void {
+    if (this.timer && !this.isPaused) {
+      clearTimeout(this.timer);
+      this.timer = null;
+      const elapsed = Date.now() - this.timerStartedAt;
+      this.remainingTimeMs = Math.max(2500, this.remainingTimeMs - elapsed);
+      this.isPaused = true;
+    }
+  }
+
+  public resume(): void {
+    if (this.isPaused && this.currentMessage) {
+      this.isPaused = false;
+      this.timerStartedAt = Date.now();
+      this.timer = window.setTimeout(() => {
+        this.currentMessage = null;
+        this.timer = null;
+        if (this.onExpireCallback) this.onExpireCallback();
+      }, this.remainingTimeMs);
+    }
   }
 
   public getCurrentMessage(): SpeechMessage | null {
@@ -174,5 +205,6 @@ export class SpeechSystem {
       this.timer = null;
     }
     this.currentMessage = null;
+    this.isPaused = false;
   }
 }

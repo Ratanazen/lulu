@@ -8,7 +8,7 @@ import { CompactChatWindow } from '../chat/CompactChatWindow';
 import { QuickActionsMenu } from './QuickActionsMenu';
 
 export const PetView: React.FC = () => {
-  const { speechMessage, dismissSpeech, updateNeeds } = useLuluStore();
+  const { speechMessage, dismissSpeech, pauseSpeech, resumeSpeech, updateNeeds } = useLuluStore();
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
 
   // Periodic needs decay & autonomous behavior tick (every 5 seconds)
@@ -55,9 +55,15 @@ export const PetView: React.FC = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          width: '100%',
         }}
       >
-        <SpeechBubble message={speechMessage} onDismiss={dismissSpeech} />
+        <SpeechBubble
+          message={speechMessage}
+          onDismiss={dismissSpeech}
+          onMouseEnter={pauseSpeech}
+          onMouseLeave={resumeSpeech}
+        />
         <PetCanvas onContextMenu={handleContextMenu} />
       </div>
 

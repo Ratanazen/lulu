@@ -69,12 +69,19 @@ fs.writeFileSync(desktopFile, desktopEntry, 'utf8');
 fs.chmodSync(desktopFile, 0o755);
 console.log(`[PASS] Created application launcher at: ${desktopFile}`);
 
-// 4. Update desktop database
-try {
-  execSync(`update-desktop-database "${appsDir}"`, { stdio: 'inherit' });
-  console.log('[PASS] Updated desktop application database');
-} catch (e) {
-  console.warn('[WARN] Could not run update-desktop-database, launcher is still registered.');
+// 5. Sway Wayland Compositor Auto-Floating Rule
+const swayConfigDir = path.join(home, '.config', 'sway', 'config.d');
+if (fs.existsSync(swayConfigDir)) {
+  const swayLuluRule = `# Lulu Desktop AI Companion
+for_window [app_id="lulu"] floating enable, border none, sticky enable
+for_window [app_id="com.ratana.lulu"] floating enable, border none, sticky enable
+for_window [title="Lulu"] floating enable, border none, sticky enable
+`;
+  fs.writeFileSync(path.join(swayConfigDir, 'lulu.conf'), swayLuluRule, 'utf8');
+  try {
+    execSync('swaymsg reload 2>/dev/null || true');
+  } catch (e) {}
+  console.log('[PASS] Configured Sway floating and sticky window rules');
 }
 
 console.log('\n========================================');

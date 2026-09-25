@@ -147,6 +147,8 @@ interface LuluStoreState {
   interact: () => void;
   speak: (text?: string, category?: any) => void;
   dismissSpeech: () => void;
+  pauseSpeech: () => void;
+  resumeSpeech: () => void;
   moveTo: (target: Vector2D) => void;
   wander: () => void;
   goHome: () => void;
@@ -672,7 +674,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
             text,
             mood,
             priority: 2,
-            durationMs: 4000,
+            durationMs: 8000,
             category: 'idle' as const,
             dismissible: true,
             createdAt: Date.now(),
@@ -690,6 +692,14 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     dismissSpeech: () => {
       get().speechSystem.dismiss();
       set({ speechMessage: null });
+    },
+
+    pauseSpeech: () => {
+      get().speechSystem.pause();
+    },
+
+    resumeSpeech: () => {
+      get().speechSystem.resume();
     },
 
     moveTo: (target: Vector2D) => {

@@ -4,26 +4,37 @@ import { SpeechMessage } from '../../types';
 interface SpeechBubbleProps {
   message: SpeechMessage | null;
   onDismiss: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
-export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ message, onDismiss }) => {
+export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
+  message,
+  onDismiss,
+  onMouseEnter,
+  onMouseLeave,
+}) => {
   if (!message) return null;
 
   return (
     <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={{
         position: 'absolute',
-        bottom: '100%',
-        left: '50%',
-        transform: 'translateX(-50%) translateY(-10px)',
+        bottom: 'calc(100% - 22px)',
+        left: 0,
+        right: 0,
+        margin: '0 auto',
         backgroundColor: 'var(--color-bg-card, #1E293B)',
         color: 'var(--color-text, #F8FAFC)',
         border: '2px solid var(--color-primary, #818CF8)',
         borderRadius: '14px',
         padding: '8px 12px',
+        width: 'fit-content',
         maxWidth: '236px',
-        minWidth: '100px',
-        maxHeight: '110px',
+        minWidth: '80px',
+        maxHeight: '120px',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
         zIndex: 100,
         pointerEvents: 'auto',
@@ -34,18 +45,19 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ message, onDismiss }
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
         <div
           className="speech-bubble-scroll"
           style={{
             flex: 1,
-            maxHeight: '92px',
+            maxHeight: '100px',
             overflowY: 'auto',
-            fontSize: '12px',
+            fontSize: '12.5px',
             lineHeight: '1.4',
-            wordBreak: 'break-word',
-            overflowWrap: 'anywhere',
+            wordBreak: 'normal',
+            overflowWrap: 'break-word',
             whiteSpace: 'pre-wrap',
+            textAlign: 'center',
             paddingRight: message.dismissible ? '2px' : '0',
           }}
         >
@@ -63,6 +75,7 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ message, onDismiss }
               fontSize: '13px',
               lineHeight: 1,
               flexShrink: 0,
+              alignSelf: 'flex-start',
               transition: 'color 0.15s ease',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = '#F8FAFC')}
