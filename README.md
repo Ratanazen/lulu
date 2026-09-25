@@ -145,16 +145,19 @@ npm run tauri dev
 ### Verification & Testing
 
 ```bash
-# Run Vitest unit & integration test suite (74 tests across 16 suites)
+# Validate Machine-Readable Capability Matrix schema & generate build report
+npm run validate:capabilities
+
+# Run Vitest unit & integration test suite (79 tests across 17 suites)
 npm run test
 
-# Run Rust backend unit tests (4 tests)
+# Run Rust backend unit tests (6 tests)
 cargo test --manifest-path src-tauri/Cargo.toml
 
 # Run type check and frontend production build
 npm run build
 
-# Run Lulu Doctor CLI diagnostic health suite (6 checks)
+# Run Lulu Doctor CLI diagnostic health suite (7 checks)
 npm run doctor
 ```
 
