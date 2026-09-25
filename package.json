@@ -13,7 +13,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "tauri": "tauri",
     "doctor": "node scripts/doctor.mjs",
-    "validate:capabilities": "node scripts/validate-capabilities.mjs"
+    "validate:capabilities": "node scripts/validate-capabilities.mjs",
+    "install:app": "node scripts/install-desktop.mjs",
+    "build:install": "npm run build && npx tauri build --bundles deb && node scripts/install-desktop.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
