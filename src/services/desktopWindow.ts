@@ -122,4 +122,43 @@ export class DesktopWindowService {
       }
     }
   }
+
+  public static async exit(): Promise<void> {
+    const invoke = await getInvoke();
+    if (invoke) {
+      try {
+        await invoke('exit_app');
+        return;
+      } catch (e) {
+        console.warn('[DesktopWindowService] exit_app failed:', e);
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.close();
+    }
+  }
+
+  public static async isAutostartEnabled(): Promise<boolean> {
+    const invoke = await getInvoke();
+    if (invoke) {
+      try {
+        return await invoke<boolean>('is_autostart_enabled');
+      } catch (e) {
+        console.warn('[DesktopWindowService] is_autostart_enabled failed:', e);
+      }
+    }
+    return false;
+  }
+
+  public static async setAutostartEnabled(enabled: boolean): Promise<void> {
+    const invoke = await getInvoke();
+    if (invoke) {
+      try {
+        await invoke('set_autostart_enabled', { enabled });
+      } catch (e) {
+        console.warn('[DesktopWindowService] set_autostart_enabled failed:', e);
+      }
+    }
+  }
 }
+

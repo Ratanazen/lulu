@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Position, Size};
+use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, Position, Size};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,8 +49,11 @@ impl DesktopWindowService {
         let win = app
             .get_webview_window(label)
             .ok_or_else(|| format!("Window {} not found", label))?;
-        win.set_size(Size::Physical(PhysicalSize { width, height }))
-            .map_err(|e| e.to_string())
+        win.set_size(Size::Logical(LogicalSize {
+            width: width as f64,
+            height: height as f64,
+        }))
+        .map_err(|e| e.to_string())
     }
 
     pub fn set_always_on_top(app: &AppHandle, label: &str, on_top: bool) -> Result<(), String> {

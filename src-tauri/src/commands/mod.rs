@@ -136,3 +136,9 @@ pub fn is_autostart_enabled() -> Result<bool, String> {
 pub fn set_autostart_enabled(enabled: bool) -> Result<(), String> {
     crate::system::SystemService::set_autostart_enabled(enabled)
 }
+
+#[tauri::command]
+pub fn exit_app(app: AppHandle) {
+    app.exit(0);
+}
+

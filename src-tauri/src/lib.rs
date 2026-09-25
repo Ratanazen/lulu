@@ -127,6 +127,7 @@ pub fn run() {
             storage_import,
             is_autostart_enabled,
             set_autostart_enabled,
+            exit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");

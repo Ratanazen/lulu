@@ -169,27 +169,58 @@ export const ControlCenterModal: React.FC = () => {
           {/* Top close button bar */}
           <div
             style={{
-              padding: '14px 20px',
+              padding: '12px 20px',
               borderBottom: '1px solid var(--color-border, #334155)',
               display: 'flex',
-              justifyContent: 'flex-end',
+              justifyContent: 'space-between',
               alignItems: 'center',
             }}
           >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#94A3B8' }}>Desktop Shortcut:</span>
+              <kbd
+                style={{
+                  padding: '2px 6px',
+                  fontSize: '10px',
+                  fontFamily: 'monospace',
+                  color: '#818CF8',
+                  backgroundColor: 'rgba(129, 140, 248, 0.12)',
+                  border: '1px solid rgba(129, 140, 248, 0.25)',
+                  borderRadius: '4px',
+                }}
+              >
+                Ctrl+Shift+C
+              </kbd>
+            </div>
             <button
               onClick={() => setControlCenterOpen(false)}
               style={{
                 background: 'none',
                 border: 'none',
                 color: 'var(--color-text-muted, #94A3B8)',
-                fontSize: '16px',
+                fontSize: '14px',
                 cursor: 'pointer',
                 padding: '4px 8px',
                 borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
               }}
               title="Close (Esc)"
             >
-              ✕
+              <span>✕</span>
+              <kbd
+                style={{
+                  fontSize: '9px',
+                  fontFamily: 'monospace',
+                  color: '#94A3B8',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  padding: '2px 5px',
+                  borderRadius: '3px',
+                }}
+              >
+                Esc
+              </kbd>
             </button>
           </div>
 

@@ -73,12 +73,12 @@ export const CompactChatWindow: React.FC = () => {
     <div
       style={{
         position: 'fixed',
-        bottom: '80px',
-        right: '20px',
-        width: '360px',
-        maxWidth: 'calc(100vw - 40px)',
-        height: '460px',
-        maxHeight: 'calc(100vh - 120px)',
+        bottom: '12px',
+        right: '12px',
+        width: '416px',
+        maxWidth: 'calc(100vw - 24px)',
+        height: '536px',
+        maxHeight: 'calc(100vh - 24px)',
         backgroundColor: 'var(--color-bg, #0F172A)',
         border: '1px solid var(--color-border, #334155)',
         borderRadius: '20px',
@@ -132,6 +132,19 @@ export const CompactChatWindow: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <kbd
+            style={{
+              padding: '2px 5px',
+              fontSize: '9px',
+              fontFamily: 'monospace',
+              color: '#94A3B8',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '4px',
+            }}
+          >
+            Ctrl+⇧+Space
+          </kbd>
           <button
             type="button"
             onClick={clearChat}
@@ -143,10 +156,27 @@ export const CompactChatWindow: React.FC = () => {
           <button
             type="button"
             onClick={() => setChatOpen(false)}
-            title="Close chat"
-            style={iconBtnStyle}
+            title="Close chat (Esc)"
+            style={{
+              ...iconBtnStyle,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+            }}
           >
-            <X size={16} />
+            <X size={15} />
+            <kbd
+              style={{
+                fontSize: '8px',
+                fontFamily: 'monospace',
+                color: '#94A3B8',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                padding: '1px 3px',
+                borderRadius: '3px',
+              }}
+            >
+              Esc
+            </kbd>
           </button>
         </div>
       </div>
