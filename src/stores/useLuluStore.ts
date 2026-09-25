@@ -1,0 +1,589 @@
+import { create } from 'zustand';
+import {
+  AnimationState,
+  BehaviorMode,
+  CharacterProfile,
+  GameId,
+  LearnedPreferences,
+  LuluSettings,
+  MonitorInfo,
+  MoodType,
+  NeedsState,
+  SpeechMessage,
+  SystemMetrics,
+  ThemeId,
+  UserProgression,
+  Vector2D,
+} from '../types';
+import { LULU_DEFAULT_CHARACTER, OFFICIAL_CHARACTERS } from '../character';
+import { DEFAULT_NEEDS, NeedsEngine } from '../behavior/needsEngine';
+import { MoodEngine } from '../behavior/moodEngine';
+import { BehaviorEngine } from '../behavior/behaviorEngine';
+import { MovementEngine } from '../movement/movementEngine';
+import { SpeechSystem } from '../interaction/speechSystem';
+import { soundService } from '../services/soundService';
+import { eventBus } from '../services/eventBus';
+import { INITIAL_ACHIEVEMENTS, ProgressionEngine } from '../progression';
+import { ThemeEngine } from '../themes';
+import { DesktopWindowService } from '../services/desktopWindow';
+import { StorageService } from '../services/storageService';
+
+export const DEFAULT_SETTINGS: LuluSettings = {
+  theme: 'lulu-dark',
+  characterId: 'lulu',
+  characterScale: 1.0,
+  animationFps: 60,
+  renderFps: 60,
+  performanceProfile: 'BALANCED',
+  behaviorMode: 'NORMAL',
+  alwaysOnTop: true,
+  clickThrough: false,
+  soundEnabled: true,
+  masterVolume: 0.7,
+  characterVolume: 0.8,
+  gameVolume: 0.7,
+  speechBubblesEnabled: true,
+  speechFrequency: 'normal',
+  homeMonitorId: null,
+  homeX: 200,
+  homeY: 300,
+  reducedMotion: false,
+  musicReactionsEnabled: true,
+  powerSavingEnabled: true,
+  offlineMode: true,
+};
+
+export const DEFAULT_PREFERENCES: LearnedPreferences = {
+  favoriteActivity: 'idle',
+  preferredActiveHours: 'afternoon',
+  totalInteractions: 0,
+  totalPats: 0,
+  totalGamesPlayed: 0,
+  lastActiveTimestamp: Date.now(),
+  wakeCount: 1,
+};
+
+interface LuluStoreState {
+  // Systems
+  needsEngine: NeedsEngine;
+  behaviorEngine: BehaviorEngine;
+  movementEngine: MovementEngine;
+  speechSystem: SpeechSystem;
+
+  // State
+  character: CharacterProfile;
+  characters: CharacterProfile[];
+  animationState: AnimationState;
+  animationFrame: number;
+  facing: 'left' | 'right';
+  currentPosition: Vector2D;
+  targetPosition: Vector2D | null;
+  isMoving: boolean;
+  needs: NeedsState;
+  mood: MoodType;
+  speechMessage: SpeechMessage | null;
+  settings: LuluSettings;
+  preferences: LearnedPreferences;
+  progression: UserProgression;
+  monitors: MonitorInfo[];
+  systemMetrics: SystemMetrics | null;
+
+  // UI Navigation
+  controlCenterOpen: boolean;
+  activeTab: string;
+  activeGameId: GameId | null;
+  onboardingCompleted: boolean;
+
+  // Actions
+  initialize: () => Promise<void>;
+  setAnimation: (state: AnimationState) => void;
+  setFrame: (frame: number) => void;
+  updateNeeds: () => void;
+  feed: (amount?: number) => void;
+  playGame: (funAmount?: number) => void;
+  clean: () => void;
+  sleep: () => void;
+  interact: () => void;
+  speak: (text?: string, category?: any) => void;
+  dismissSpeech: () => void;
+  moveTo: (target: Vector2D) => void;
+  wander: () => void;
+  goHome: () => void;
+  perchOnTaskbar: () => void;
+  dockToEdge: (side: 'left' | 'right' | 'top' | 'bottom') => void;
+  sendToMonitor: (monitorId: string) => void;
+  updateSettings: (newSettings: Partial<LuluSettings>) => void;
+  updatePreferences: (patch: Partial<LearnedPreferences>) => void;
+  updateCharacterCustomization: (patch: Partial<CharacterProfile>) => void;
+  setTheme: (theme: ThemeId) => void;
+  setCharacter: (id: string) => void;
+  setControlCenterOpen: (open: boolean) => void;
+  setActiveTab: (tab: string) => void;
+  setActiveGame: (gameId: GameId | null) => void;
+  addXp: (amount: number) => void;
+  spendStars: (amount: number) => boolean;
+  progressAchievement: (id: string, delta?: number) => void;
+  setMonitors: (mons: MonitorInfo[]) => void;
+  setSystemMetrics: (metrics: SystemMetrics) => void;
+  toggleClickThrough: () => void;
+  completeOnboarding: () => void;
+}
+
+export const useLuluStore = create<LuluStoreState>((set, get) => {
+  const needsEngine = new NeedsEngine();
+  const behaviorEngine = new BehaviorEngine();
+  const movementEngine = new MovementEngine();
+  const speechSystem = new SpeechSystem();
+
+  return {
+    needsEngine,
+    behaviorEngine,
+    movementEngine,
+    speechSystem,
+
+    character: LULU_DEFAULT_CHARACTER,
+    characters: OFFICIAL_CHARACTERS,
+    animationState: 'idle',
+    animationFrame: 0,
+    facing: 'right',
+    currentPosition: { x: 200, y: 300 },
+    targetPosition: null,
+    isMoving: false,
+    needs: DEFAULT_NEEDS,
+    mood: 'calm',
+    speechMessage: null,
+    settings: DEFAULT_SETTINGS,
+    preferences: DEFAULT_PREFERENCES,
+    progression: {
+      xp: 0,
+      level: 1,
+      stars: 10,
+      achievements: { ...INITIAL_ACHIEVEMENTS },
+      lastDailyGreeting: null,
+      lastDailyCare: null,
+    },
+    monitors: [],
+    systemMetrics: null,
+    controlCenterOpen: false,
+    activeTab: 'overview',
+    activeGameId: null,
+    onboardingCompleted: false,
+
+    initialize: async () => {
+      // 1. Load settings & progression from SQLite storage
+      const savedSettings = await StorageService.get<LuluSettings>('settings', DEFAULT_SETTINGS);
+      const savedProg = await StorageService.get<UserProgression>('progression', {
+        xp: 0,
+        level: 1,
+        stars: 10,
+        achievements: { ...INITIAL_ACHIEVEMENTS },
+        lastDailyGreeting: null,
+        lastDailyCare: null,
+      });
+      const savedNeeds = await StorageService.get<NeedsState>('needs', DEFAULT_NEEDS);
+      const savedPrefs = await StorageService.get<LearnedPreferences>('preferences', DEFAULT_PREFERENCES);
+      const savedCustomChar = await StorageService.get<CharacterProfile | null>(
+        `custom_character_${savedSettings.characterId}`,
+        null
+      );
+      const onboardingDone = await StorageService.get<boolean>('onboarding_completed', false);
+
+      // Apply initial theme
+      ThemeEngine.applyTheme(savedSettings.theme);
+      soundService.enabled = savedSettings.soundEnabled;
+      soundService.masterVolume = savedSettings.masterVolume;
+      soundService.characterVolume = savedSettings.characterVolume;
+
+      needsEngine.setNeeds(savedNeeds);
+
+      const loadedPrefs: LearnedPreferences = {
+        ...DEFAULT_PREFERENCES,
+        ...savedPrefs,
+        wakeCount: (savedPrefs.wakeCount || 0) + 1,
+        lastActiveTimestamp: Date.now(),
+      };
+      StorageService.set('preferences', loadedPrefs);
+
+      set({
+        settings: savedSettings,
+        progression: savedProg,
+        preferences: loadedPrefs,
+        character: savedCustomChar || OFFICIAL_CHARACTERS.find((c) => c.id === savedSettings.characterId) || LULU_DEFAULT_CHARACTER,
+        needs: needsEngine.getNeeds(),
+        onboardingCompleted: onboardingDone,
+      });
+
+      // Hook up movement engine state updates
+      movementEngine['onStateChange'] = (mState) => {
+        set({
+          currentPosition: mState.currentPosition,
+          targetPosition: mState.targetPosition,
+          facing: mState.facing,
+          isMoving: mState.isMoving,
+        });
+
+        if (mState.isMoving) {
+          const run = mState.mode === 'run';
+          get().setAnimation(run ? 'run' : 'walk');
+        } else if (get().animationState === 'walk' || get().animationState === 'run') {
+          get().setAnimation('idle');
+        }
+      };
+
+      // Trigger First Launch achievement check
+      get().progressAchievement('first_launch', 1);
+
+      // Start movement tick loop
+      movementEngine.startTickLoop(60);
+
+      // Greeting speech
+      setTimeout(() => {
+        get().speak(undefined, 'greeting');
+      }, 1000);
+    },
+
+    setAnimation: (state: AnimationState) => {
+      set({ animationState: state, animationFrame: 0 });
+      eventBus.emit('ANIMATION_CHANGED', 'Character', { state });
+    },
+
+    setFrame: (frame: number) => {
+      set({ animationFrame: frame });
+    },
+
+    updateNeeds: () => {
+      const { needsEngine, character, mood, settings, behaviorEngine } = get();
+      const updatedNeeds = needsEngine.updateDecay(Date.now(), character.personality);
+      const nextMood = MoodEngine.calculateMood(updatedNeeds, character.personality);
+
+      set({ needs: updatedNeeds, mood: nextMood });
+
+      // Save to persistence periodically
+      StorageService.set('needs', updatedNeeds);
+
+      // Evaluate autonomous behavior if not currently player-controlled
+      if (!get().isMoving && get().animationState === 'idle') {
+        const nextAction = behaviorEngine.evaluateNextAction(
+          updatedNeeds,
+          character.personality,
+          nextMood,
+          settings.behaviorMode
+        );
+
+        if (nextAction === 'explore') {
+          get().wander();
+        } else if (nextAction === 'sleep') {
+          get().sleep();
+        } else if (nextAction === 'yawn') {
+          get().setAnimation('yawn');
+          soundService.play('purr', 'character');
+          setTimeout(() => {
+            if (get().animationState === 'yawn') get().setAnimation('idle');
+          }, 2400);
+        } else if (nextAction === 'read') {
+          get().setAnimation('read');
+          setTimeout(() => {
+            if (get().animationState === 'read') get().setAnimation('idle');
+          }, 3600);
+        } else if (nextAction === 'meditate') {
+          get().setAnimation('meditate');
+          soundService.play('purr', 'character');
+          setTimeout(() => {
+            if (get().animationState === 'meditate') get().setAnimation('idle');
+          }, 4000);
+        } else if (nextAction === 'react' && settings.speechBubblesEnabled) {
+          if (get().speechSystem.shouldSpeakSpontaneously(Date.now(), settings.speechFrequency)) {
+            const cat = get().speechSystem.getSuggestedSpontaneousCategory();
+            get().speak(undefined, cat);
+          }
+        }
+      }
+    },
+
+    feed: (amount = 25) => {
+      const { needsEngine, character } = get();
+      needsEngine.feed(amount);
+      const needs = needsEngine.getNeeds();
+      const mood = MoodEngine.calculateMood(needs, character.personality);
+      set({ needs, mood });
+      get().setAnimation('eat');
+      soundService.play('happy', 'character');
+      get().addXp(20);
+      get().progressAchievement('caring_friend', 1);
+      setTimeout(() => get().setAnimation('idle'), 2000);
+    },
+
+    playGame: (funAmount = 30) => {
+      const { needsEngine, character, preferences } = get();
+      needsEngine.play(funAmount);
+      const needs = needsEngine.getNeeds();
+      const mood = MoodEngine.calculateMood(needs, character.personality);
+
+      const updatedPrefs: LearnedPreferences = {
+        ...preferences,
+        totalGamesPlayed: preferences.totalGamesPlayed + 1,
+        lastActiveTimestamp: Date.now(),
+      };
+
+      set({ needs, mood, preferences: updatedPrefs });
+      StorageService.set('preferences', updatedPrefs);
+
+      get().setAnimation('playful');
+      soundService.play('jump', 'character');
+      get().addXp(35);
+      get().progressAchievement('caring_friend', 1);
+      setTimeout(() => get().setAnimation('idle'), 2500);
+    },
+
+    clean: () => {
+      const { needsEngine, character } = get();
+      needsEngine.clean();
+      const needs = needsEngine.getNeeds();
+      const mood = MoodEngine.calculateMood(needs, character.personality);
+      set({ needs, mood });
+      get().setAnimation('happy');
+      soundService.play('chirp', 'character');
+      get().addXp(15);
+      get().progressAchievement('caring_friend', 1);
+      setTimeout(() => get().setAnimation('idle'), 2000);
+    },
+
+    sleep: () => {
+      const { needsEngine, character } = get();
+      needsEngine.sleep();
+      const needs = needsEngine.getNeeds();
+      const mood = MoodEngine.calculateMood(needs, character.personality);
+      set({ needs, mood });
+      get().setAnimation('sleep');
+      soundService.play('lullaby', 'character');
+      get().addXp(15);
+      get().progressAchievement('caring_friend', 1);
+    },
+
+    interact: () => {
+      const { needsEngine, character, preferences } = get();
+      needsEngine.interact();
+      const needs = needsEngine.getNeeds();
+      const mood = MoodEngine.calculateMood(needs, character.personality);
+
+      // Circadian active hour tracking
+      const curHour = new Date().getHours();
+      const activeSlot: LearnedPreferences['preferredActiveHours'] =
+        curHour >= 5 && curHour < 12
+          ? 'morning'
+          : curHour >= 12 && curHour < 17
+          ? 'afternoon'
+          : curHour >= 17 && curHour < 22
+          ? 'evening'
+          : 'night';
+
+      const updatedPrefs: LearnedPreferences = {
+        ...preferences,
+        totalInteractions: preferences.totalInteractions + 1,
+        totalPats: preferences.totalPats + 1,
+        lastActiveTimestamp: Date.now(),
+        preferredActiveHours: activeSlot,
+      };
+
+      set({ needs, mood, preferences: updatedPrefs });
+      StorageService.set('preferences', updatedPrefs);
+
+      const playfulAnimations: AnimationState[] = ['happy', 'wave', 'jump', 'curious', 'nod'];
+      const chosen = playfulAnimations[Math.floor(Math.random() * playfulAnimations.length)];
+      get().setAnimation(chosen);
+
+      soundService.play(chosen === 'jump' ? 'jump' : 'chirp', 'character');
+      get().addXp(10);
+      get().progressAchievement('friendly_visitor', 1);
+
+      if (get().settings.speechBubblesEnabled && Math.random() > 0.4) {
+        get().speak();
+      }
+
+      setTimeout(() => {
+        if (get().animationState === chosen) {
+          get().setAnimation('idle');
+        }
+      }, 2200);
+    },
+
+    speak: (text?: string, category: any = 'idle') => {
+      const { speechSystem, mood } = get();
+      if (!get().settings.speechBubblesEnabled) return;
+
+      const msg = text
+        ? {
+            id: `msg_${Date.now()}`,
+            text,
+            mood,
+            priority: 2,
+            durationMs: 4000,
+            category: 'idle' as const,
+            dismissible: true,
+            createdAt: Date.now(),
+          }
+        : speechSystem.getRandomMessage(category, mood);
+
+      speechSystem.setMessage(msg, () => {
+        set({ speechMessage: null });
+      });
+
+      set({ speechMessage: msg });
+      soundService.play('notification', 'character');
+    },
+
+    dismissSpeech: () => {
+      get().speechSystem.dismiss();
+      set({ speechMessage: null });
+    },
+
+    moveTo: (target: Vector2D) => {
+      get().movementEngine.walkTo(target);
+      get().progressAchievement('explorer', 1);
+    },
+
+    wander: () => {
+      get().movementEngine.wander();
+      get().progressAchievement('explorer', 1);
+    },
+
+    goHome: () => {
+      const { settings, movementEngine } = get();
+      movementEngine.goHome({ x: settings.homeX, y: settings.homeY });
+    },
+
+    perchOnTaskbar: () => {
+      get().movementEngine.perchOnTaskbar();
+      get().speak("Perched cozily on the bottom bar! ✨");
+    },
+
+    dockToEdge: (side: 'left' | 'right' | 'top' | 'bottom') => {
+      get().movementEngine.dockToEdge(side);
+      get().speak(`Docking to the ${side} edge! ✨`);
+    },
+
+    sendToMonitor: (monitorId: string) => {
+      get().movementEngine.sendToMonitor(monitorId);
+      const mon = get().monitors.find((m) => m.id === monitorId);
+      get().speak(`Leaping over to ${mon?.name || 'new monitor'}! 🚀`);
+    },
+
+    updateSettings: (newSettings: Partial<LuluSettings>) => {
+      const updated = { ...get().settings, ...newSettings };
+      set({ settings: updated });
+      StorageService.set('settings', updated);
+
+      if (newSettings.theme) {
+        ThemeEngine.applyTheme(newSettings.theme);
+      }
+      if (newSettings.soundEnabled !== undefined) {
+        soundService.enabled = newSettings.soundEnabled;
+      }
+      if (newSettings.masterVolume !== undefined) {
+        soundService.masterVolume = newSettings.masterVolume;
+      }
+      if (newSettings.alwaysOnTop !== undefined) {
+        DesktopWindowService.setAlwaysOnTop(newSettings.alwaysOnTop);
+      }
+      if (newSettings.clickThrough !== undefined) {
+        DesktopWindowService.setClickThrough(newSettings.clickThrough);
+      }
+    },
+
+    updatePreferences: (patch: Partial<LearnedPreferences>) => {
+      const updated = { ...get().preferences, ...patch };
+      set({ preferences: updated });
+      StorageService.set('preferences', updated);
+    },
+
+    updateCharacterCustomization: (patch: Partial<CharacterProfile>) => {
+      const current = get().character;
+      const updated = { ...current, ...patch };
+      set({ character: updated });
+      StorageService.set(`custom_character_${updated.id}`, updated);
+    },
+
+    setTheme: (theme: ThemeId) => {
+      get().updateSettings({ theme });
+    },
+
+    setCharacter: (id: string) => {
+      const found = OFFICIAL_CHARACTERS.find((c) => c.id === id) || LULU_DEFAULT_CHARACTER;
+      set({ character: found });
+      get().updateSettings({ characterId: id });
+    },
+
+    setControlCenterOpen: (open: boolean) => {
+      set({ controlCenterOpen: open });
+      soundService.play('click', 'ui');
+    },
+
+    setActiveTab: (tab: string) => {
+      set({ activeTab: tab });
+      soundService.play('click', 'ui');
+    },
+
+    setActiveGame: (gameId: GameId | null) => {
+      set({ activeGameId: gameId });
+      if (gameId) {
+        get().progressAchievement('first_game', 1);
+        soundService.play('jump', 'game');
+      }
+    },
+
+    addXp: (amount: number) => {
+      const { progression } = get();
+      const { updated, leveledUp } = ProgressionEngine.addXp(progression, amount);
+      set({ progression: updated });
+      StorageService.set('progression', updated);
+
+      if (leveledUp) {
+        soundService.play('achievement', 'ui');
+        get().speak(`Level Up! Reached Level ${updated.level}! ✨`, 'success');
+      }
+    },
+
+    spendStars: (amount: number) => {
+      const { progression } = get();
+      if (progression.stars < amount) return false;
+      const updated = { ...progression, stars: progression.stars - amount };
+      set({ progression: updated });
+      StorageService.set('progression', updated);
+      soundService.play('achievement', 'ui');
+      return true;
+    },
+
+    progressAchievement: (id: string, delta = 1) => {
+      const { progression } = get();
+      const { updated, justUnlocked } = ProgressionEngine.updateAchievement(progression, id, delta);
+      set({ progression: updated });
+      StorageService.set('progression', updated);
+
+      if (justUnlocked) {
+        soundService.play('achievement', 'ui');
+        const ach = updated.achievements[id];
+        get().speak(`Achievement Unlocked: ${ach.title}! 🏆`, 'success');
+        eventBus.emit('ACHIEVEMENT_UNLOCKED', 'Progression', { achievement: ach });
+      }
+    },
+
+    setMonitors: (mons: MonitorInfo[]) => {
+      set({ monitors: mons });
+      get().movementEngine.setMonitors(mons);
+    },
+
+    setSystemMetrics: (metrics: SystemMetrics) => {
+      set({ systemMetrics: metrics });
+    },
+
+    toggleClickThrough: () => {
+      const current = get().settings.clickThrough;
+      get().updateSettings({ clickThrough: !current });
+    },
+
+    completeOnboarding: () => {
+      set({ onboardingCompleted: true });
+      StorageService.set('onboarding_completed', true);
+    },
+  };
+});
