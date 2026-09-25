@@ -16,6 +16,9 @@ import { DiagnosticsTab } from './tabs/DiagnosticsTab';
 import { PrivacyStorageTab } from './tabs/PrivacyStorageTab';
 import { PluginsTab } from './tabs/PluginsTab';
 import { AboutTab } from './tabs/AboutTab';
+import { AIChatTab } from './tabs/AIChatTab';
+import { MemoryTab } from './tabs/MemoryTab';
+import { VoiceTab } from './tabs/VoiceTab';
 
 export const ControlCenterModal: React.FC = () => {
   const { controlCenterOpen, setControlCenterOpen, activeTab, setActiveTab } = useLuluStore();
@@ -24,6 +27,9 @@ export const ControlCenterModal: React.FC = () => {
 
   const navItems = [
     { id: 'overview', label: 'Overview', icon: '🏠' },
+    { id: 'ai_chat', label: 'AI & Models', icon: '🤖' },
+    { id: 'memory', label: 'Memory Storage', icon: '💾' },
+    { id: 'voice', label: 'Voice & Speech', icon: '🎙️' },
     { id: 'character', label: 'Character Studio', icon: '🎨' },
     { id: 'behavior', label: 'Behavior & Personality', icon: '🧠' },
     { id: 'needs', label: 'Needs & Vitality', icon: '💖' },
@@ -44,6 +50,9 @@ export const ControlCenterModal: React.FC = () => {
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'overview': return <OverviewTab />;
+      case 'ai_chat': return <AIChatTab />;
+      case 'memory': return <MemoryTab />;
+      case 'voice': return <VoiceTab />;
       case 'character': return <CharacterTab />;
       case 'behavior': return <BehaviorTab />;
       case 'needs': return <NeedsTab />;

@@ -4,6 +4,8 @@ import { PetCanvas } from './PetCanvas';
 import { SpeechBubble } from './SpeechBubble';
 import { QuickStatusOverlay } from './QuickStatusOverlay';
 import { ContextMenu } from './ContextMenu';
+import { CompactChatWindow } from '../chat/CompactChatWindow';
+import { QuickActionsMenu } from './QuickActionsMenu';
 
 export const PetView: React.FC = () => {
   const { speechMessage, dismissSpeech, updateNeeds } = useLuluStore();
@@ -51,6 +53,12 @@ export const PetView: React.FC = () => {
 
       {/* Mini Quick Status */}
       <QuickStatusOverlay />
+
+      {/* Floating Desktop Chat Companion */}
+      <CompactChatWindow />
+
+      {/* Quick Actions Dock */}
+      <QuickActionsMenu />
 
       {/* Context Menu */}
       {contextMenuPos && (

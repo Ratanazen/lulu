@@ -12,12 +12,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
   const {
     feed,
     playGame,
-    clean,
     sleep,
     wander,
-    goHome,
     setControlCenterOpen,
     setActiveTab,
+    setChatOpen,
+    setQuickActionsOpen,
     settings,
     updateSettings,
   } = useLuluStore();
@@ -31,26 +31,44 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
     <div
       style={{
         position: 'fixed',
-        top: Math.min(y, window.innerHeight - 260),
-        left: Math.min(x, window.innerWidth - 180),
+        top: Math.min(y, window.innerHeight - 340),
+        left: Math.min(x, window.innerWidth - 190),
         zIndex: 9999,
         backgroundColor: 'var(--color-bg-card, #1E293B)',
         border: '1px solid var(--color-border, #334155)',
-        borderRadius: '12px',
+        borderRadius: '14px',
         padding: '6px',
-        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.45)',
-        minWidth: '170px',
+        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5)',
+        minWidth: '180px',
         fontSize: '12px',
         color: 'var(--color-text, #F8FAFC)',
         userSelect: 'none',
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div style={{ padding: '6px 8px', fontWeight: 600, color: 'var(--color-primary, #818CF8)', borderBottom: '1px solid var(--color-border, #334155)' }}>
-        Lulu Companion
+      <div style={{ padding: '6px 8px', fontWeight: 700, color: 'var(--color-primary, #818CF8)', borderBottom: '1px solid var(--color-border, #334155)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>Lulu AI Pet</span>
+        <span style={{ fontSize: '10px', color: '#94A3B8' }}>v0.3.0</span>
       </div>
 
       <div style={{ marginTop: '4px' }}>
+        <button
+          style={{ ...menuItemStyle, color: '#818CF8', fontWeight: 600 }}
+          onClick={() => handleAction(() => setChatOpen(true))}
+        >
+          💬 Chat with Lulu
+        </button>
+        <button
+          style={menuItemStyle}
+          onClick={() => handleAction(() => setQuickActionsOpen(true))}
+        >
+          ⚡ Quick Actions
+        </button>
+      </div>
+
+      <div style={{ height: '1px', backgroundColor: 'var(--color-border, #334155)', margin: '4px 0' }} />
+
+      <div>
         <button
           style={menuItemStyle}
           onClick={() => handleAction(() => feed(25))}
@@ -65,9 +83,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
         </button>
         <button
           style={menuItemStyle}
-          onClick={() => handleAction(() => clean())}
+          onClick={() => handleAction(() => wander())}
         >
-          ✨ Groom & Clean
+          🧭 Wander Desktop
         </button>
         <button
           style={menuItemStyle}
@@ -80,18 +98,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
       <div style={{ height: '1px', backgroundColor: 'var(--color-border, #334155)', margin: '4px 0' }} />
 
       <div>
-        <button
-          style={menuItemStyle}
-          onClick={() => handleAction(() => wander())}
-        >
-          🧭 Wander Desktop
-        </button>
-        <button
-          style={menuItemStyle}
-          onClick={() => handleAction(() => goHome())}
-        >
-          🏠 Go to Home
-        </button>
         <button
           style={menuItemStyle}
           onClick={() =>
@@ -108,11 +114,33 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
           onClick={() =>
             handleAction(() => {
               setControlCenterOpen(true);
+              setActiveTab('behavior');
+            })
+          }
+        >
+          🧠 Personality
+        </button>
+        <button
+          style={menuItemStyle}
+          onClick={() =>
+            handleAction(() => {
+              setControlCenterOpen(true);
+              setActiveTab('memory');
+            })
+          }
+        >
+          💾 Memory Viewer
+        </button>
+        <button
+          style={menuItemStyle}
+          onClick={() =>
+            handleAction(() => {
+              setControlCenterOpen(true);
               setActiveTab('overview');
             })
           }
         >
-          ⚙️ Control Center
+          ⚙️ Settings
         </button>
       </div>
 

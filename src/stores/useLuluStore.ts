@@ -27,6 +27,15 @@ import { INITIAL_ACHIEVEMENTS, ProgressionEngine } from '../progression';
 import { ThemeEngine } from '../themes';
 import { DesktopWindowService } from '../services/desktopWindow';
 import { StorageService } from '../services/storageService';
+import { ChatMessage } from '../features/ai/types';
+import { aiProviderManager } from '../features/ai/AIProviderManager';
+import { memoryManager } from '../features/memory/MemoryManager';
+import { personalityEngine } from '../features/personality/personalityEngine';
+import { PersonalityArchetype, PersonalityProfile } from '../features/personality/types';
+import { emotionEngine, EmotionMetrics, EmotionType } from '../features/emotion/emotionEngine';
+import { voiceManager } from '../features/voice/VoiceManager';
+import { VoiceState } from '../features/voice/types';
+import { toolManager } from '../features/tools/ToolManager';
 
 export const DEFAULT_SETTINGS: LuluSettings = {
   theme: 'lulu-dark',
@@ -93,6 +102,16 @@ interface LuluStoreState {
   activeTab: string;
   activeGameId: GameId | null;
   onboardingCompleted: boolean;
+  chatOpen: boolean;
+  quickActionsOpen: boolean;
+
+  // AI & Companionship
+  chatMessages: ChatMessage[];
+  isGeneratingResponse: boolean;
+  personality: PersonalityProfile;
+  emotionMetrics: EmotionMetrics;
+  currentEmotion: EmotionType;
+  voiceState: VoiceState;
 
   // Actions
   initialize: () => Promise<void>;
@@ -127,6 +146,15 @@ interface LuluStoreState {
   setSystemMetrics: (metrics: SystemMetrics) => void;
   toggleClickThrough: () => void;
   completeOnboarding: () => void;
+
+  // Chat & AI Actions
+  setChatOpen: (open: boolean) => void;
+  setQuickActionsOpen: (open: boolean) => void;
+  setPersonality: (archetype: PersonalityArchetype) => void;
+  sendChatMessage: (content: string) => Promise<void>;
+  cancelGeneration: () => void;
+  clearChat: () => void;
+  patPet: () => void;
 }
 
 export const useLuluStore = create<LuluStoreState>((set, get) => {
@@ -168,6 +196,21 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     activeTab: 'overview',
     activeGameId: null,
     onboardingCompleted: false,
+    chatOpen: false,
+    quickActionsOpen: false,
+    chatMessages: [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: "Hi there! I'm Lulu ✨ What are we working on together today?",
+        timestamp: Date.now(),
+      },
+    ],
+    isGeneratingResponse: false,
+    personality: personalityEngine.getProfile(),
+    emotionMetrics: emotionEngine.getMetrics(),
+    currentEmotion: emotionEngine.getCurrentEmotion(),
+    voiceState: voiceManager.getState(),
 
     initialize: async () => {
       // 1. Load settings & progression from SQLite storage
@@ -230,11 +273,35 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         }
       };
 
-      // Trigger First Launch achievement check
-      get().progressAchievement('first_launch', 1);
+      // Initialize AI, Memory, Personality, and Voice
+      await Promise.allSettled([
+        aiProviderManager.loadSettings(),
+        memoryManager.initialize(),
+        personalityEngine.initialize(),
+        voiceManager.initialize(),
+      ]);
 
-      // Start movement tick loop
-      movementEngine.startTickLoop(60);
+      voiceManager.onStateChange((vState) => {
+        set({ voiceState: vState });
+        if (vState.isListening) {
+          get().setAnimation('listen');
+        } else if (vState.isSpeaking) {
+          get().setAnimation('wave');
+        }
+      });
+
+      voiceManager.onTranscript((text) => {
+        if (text.trim()) {
+          get().sendChatMessage(text);
+        }
+      });
+
+      set({
+        personality: personalityEngine.getProfile(),
+        emotionMetrics: emotionEngine.getMetrics(),
+        currentEmotion: emotionEngine.getCurrentEmotion(),
+        voiceState: voiceManager.getState(),
+      });
 
       // Greeting speech
       setTimeout(() => {
@@ -584,6 +651,188 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     completeOnboarding: () => {
       set({ onboardingCompleted: true });
       StorageService.set('onboarding_completed', true);
+    },
+
+    setChatOpen: (open: boolean) => {
+      set({ chatOpen: open });
+      if (open) {
+        soundService.play('chirp', 'ui');
+      }
+    },
+
+    setQuickActionsOpen: (open: boolean) => {
+      set({ quickActionsOpen: open });
+      if (open) {
+        soundService.play('click', 'ui');
+      }
+    },
+
+    setPersonality: (archetype: PersonalityArchetype) => {
+      personalityEngine.setActiveArchetype(archetype);
+      set({ personality: personalityEngine.getProfile(archetype) });
+      soundService.play('achievement', 'ui');
+      get().speak(`Personality switched to ${personalityEngine.getProfile(archetype).name}! ✨`, 'settings');
+    },
+
+    patPet: () => {
+      const em = emotionEngine.onUserPat();
+      set({
+        emotionMetrics: emotionEngine.getMetrics(),
+        currentEmotion: em,
+        mood: emotionEngine.getMoodType(),
+      });
+      get().setAnimation(emotionEngine.getSuggestedAnimation());
+      soundService.play('happy', 'character');
+      get().addXp(5);
+      get().progressAchievement('pat_companion', 1);
+    },
+
+    cancelGeneration: () => {
+      set({ isGeneratingResponse: false });
+    },
+
+    clearChat: () => {
+      set({
+        chatMessages: [
+          {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content: "Conversation history cleared! Ready for a fresh start ✨",
+            timestamp: Date.now(),
+          },
+        ],
+      });
+      soundService.play('click', 'ui');
+    },
+
+    sendChatMessage: async (content: string) => {
+      if (!content.trim()) return;
+
+      const userMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        content: content.trim(),
+        timestamp: Date.now(),
+      };
+
+      const asstId = `asst-${Date.now()}`;
+      const asstPlaceholder: ChatMessage = {
+        id: asstId,
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+      };
+
+      set((s) => ({
+        chatMessages: [...s.chatMessages, userMsg, asstPlaceholder],
+        isGeneratingResponse: true,
+        animationState: 'listen',
+      }));
+
+      soundService.play('click', 'ui');
+
+      // Animate thinking
+      setTimeout(() => {
+        if (get().isGeneratingResponse) {
+          get().setAnimation('curious');
+        }
+      }, 350);
+
+      // Tool command shortcut checks
+      const trimmed = content.trim();
+      if (trimmed.startsWith('/calc ') || trimmed.startsWith('calc:')) {
+        const expr = trimmed.replace(/^\/calc\s+|^calc:\s*/i, '');
+        const res = await toolManager.execute('calculator', { expression: expr });
+        set((s) => ({
+          isGeneratingResponse: false,
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: res.displayMessage } : m
+          ),
+          animationState: 'happy',
+        }));
+        get().speak(res.displayMessage, 'success');
+        return;
+      }
+
+      if (trimmed.startsWith('/timer ') || trimmed.startsWith('timer:')) {
+        const parts = trimmed.replace(/^\/timer\s+|^timer:\s*/i, '').split(' ');
+        const mins = Number(parts[0]) || 25;
+        const label = parts.slice(1).join(' ') || 'Focus Session';
+        const res = await toolManager.execute('timer', { minutes: mins, label });
+        set((s) => ({
+          isGeneratingResponse: false,
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: res.displayMessage } : m
+          ),
+          animationState: 'focus',
+        }));
+        get().speak(res.displayMessage, 'success');
+        return;
+      }
+
+      if (trimmed.startsWith('/note ') || trimmed.startsWith('note:')) {
+        const noteText = trimmed.replace(/^\/note\s+|^note:\s*/i, '');
+        const res = await toolManager.execute('notes', { title: 'Quick Note', content: noteText });
+        set((s) => ({
+          isGeneratingResponse: false,
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: res.displayMessage } : m
+          ),
+          animationState: 'celebrate',
+        }));
+        get().speak(res.displayMessage, 'success');
+        return;
+      }
+
+      // Standard LLM Stream Request
+      try {
+        const memoryContext = memoryManager.buildMemoryPromptContext();
+        const systemPrompt = personalityEngine.assembleSystemPrompt(
+          memoryContext,
+          emotionEngine.getCurrentEmotion()
+        );
+
+        let streamAcc = '';
+        const fullResponse = await aiProviderManager.streamChat(
+          {
+            messages: get().chatMessages.slice(0, -1),
+            systemPrompt,
+          },
+          (token) => {
+            streamAcc += token;
+            set((s) => ({
+              chatMessages: s.chatMessages.map((m) =>
+                m.id === asstId ? { ...m, content: streamAcc } : m
+              ),
+              animationState: 'wave',
+            }));
+          }
+        );
+
+        set((s) => ({
+          isGeneratingResponse: false,
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: fullResponse } : m
+          ),
+          animationState: 'happy',
+        }));
+
+        emotionEngine.onChatResponse();
+        get().progressAchievement('first_chat', 1);
+
+        if (voiceManager.getSettings().autoSpeak) {
+          voiceManager.speak(fullResponse);
+        }
+      } catch (err: any) {
+        set((s) => ({
+          isGeneratingResponse: false,
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: `⚠️ Error: ${err.message}` } : m
+          ),
+          animationState: 'confused',
+        }));
+        emotionEngine.onError();
+      }
     },
   };
 });
