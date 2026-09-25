@@ -1,5 +1,5 @@
 import { DesktopNotification, NotificationSettings } from './types';
-import { StorageService } from '../../services/storageService';
+import { StorageService, saveNotification, getRecentNotifications } from '../../services/storageService';
 
 let tauriListen: (<T = any>(event: string, handler: (event: { payload: T }) => void) => Promise<() => void>) | null = null;
 let tauriInvoke: (<T = any>(cmd: string, args?: Record<string, unknown>) => Promise<T>) | null = null;
@@ -45,9 +45,24 @@ export class NotificationManager {
     this.reactionHandler = onReaction;
 
     // Load persisted settings
-    const saved = StorageService.get<NotificationSettings>('notification_settings', this.settings);
+    const saved = await StorageService.get<NotificationSettings>('notification_settings', this.settings);
     if (saved) {
       this.settings = { ...this.settings, ...saved };
+    }
+    
+    // Load persisted history
+    try {
+      const records = await getRecentNotifications(100);
+      this.history = records.map(r => ({
+        id: r.id,
+        appName: r.app_name,
+        summary: r.title,
+        body: r.body,
+        appIcon: r.icon,
+        timestamp: r.received_at
+      }));
+    } catch (e) {
+      console.warn('[NotificationManager] Failed to load notification history:', e);
     }
 
     // Register Tauri event listener
@@ -120,11 +135,20 @@ export class NotificationManager {
       return;
     }
 
-    // Store in history (max 30)
+    // Store in history (capped at 30)
     this.history.unshift(raw);
     if (this.history.length > 30) {
       this.history.pop();
     }
+    
+    // Persist
+    saveNotification(
+      raw.id || `notif_${Date.now()}`,
+      raw.appName,
+      raw.summary || '',
+      raw.body || '',
+      raw.appIcon || ''
+    ).catch(e => console.warn('[NotificationManager] Failed to save notification:', e));
 
     // App name identification
     const identified = this.identifyApp(raw.appName);

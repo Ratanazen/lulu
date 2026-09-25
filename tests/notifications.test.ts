@@ -6,9 +6,13 @@ describe('NotificationManager', () => {
   let reactionMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
     nm = new NotificationManager();
     reactionMock = vi.fn();
     await nm.initialize(reactionMock);
+    nm.clearHistory();
   });
 
   it('identifies known desktop applications and assigns correct icons', () => {

@@ -84,12 +84,11 @@ export class OpenAIProvider implements AIProvider {
     };
   }
 
-  async streamChat(
+  async *chatStream(
     request: ChatRequest,
     config: ProviderConfig,
-    onToken: (token: string) => void,
     signal?: AbortSignal
-  ): Promise<string> {
+  ): AsyncGenerator<string> {
     const messages = [];
     if (request.systemPrompt) {
       messages.push({ role: 'system', content: request.systemPrompt });
@@ -122,10 +121,9 @@ export class OpenAIProvider implements AIProvider {
     }
 
     const reader = res.body?.getReader();
-    if (!reader) throw new Error('ReadableStream not supported.');
+    if (!reader) return;
 
     const decoder = new TextDecoder('utf-8');
-    let fullText = '';
     let buffer = '';
 
     while (true) {
@@ -146,15 +144,12 @@ export class OpenAIProvider implements AIProvider {
           const parsed = JSON.parse(dataStr);
           const delta = parsed.choices?.[0]?.delta?.content || '';
           if (delta) {
-            fullText += delta;
-            onToken(delta);
+            yield delta;
           }
         } catch {
           // ignore partial chunks
         }
       }
     }
-
-    return fullText;
   }
 }

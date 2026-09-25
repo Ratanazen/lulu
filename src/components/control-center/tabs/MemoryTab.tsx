@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Database, 
   Plus, 
@@ -15,7 +15,7 @@ import { MemoryCategory, MemoryItem } from '../../../features/memory/types';
 import { memoryManager } from '../../../features/memory/MemoryManager';
 
 export const MemoryTab: React.FC = () => {
-  const [memories, setMemories] = useState<MemoryItem[]>(memoryManager.getAll());
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
@@ -27,11 +27,16 @@ export const MemoryTab: React.FC = () => {
   const [newImportance, setNewImportance] = useState(3);
   const [notification, setNotification] = useState<string | null>(null);
 
-  const refreshMemories = () => {
+  const refreshMemories = async () => {
+    await memoryManager.initialize();
     setMemories(memoryManager.getAll());
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  useEffect(() => {
+    refreshMemories();
+  }, []);
+
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKey.trim() || !newValue.trim()) return;
 
@@ -39,20 +44,20 @@ export const MemoryTab: React.FC = () => {
     setNewKey('');
     setNewValue('');
     setIsAdding(false);
-    refreshMemories();
+    await refreshMemories();
     showNotification('Memory stored safely in persistent local storage!');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     memoryManager.forget(id);
-    refreshMemories();
+    await refreshMemories();
     showNotification('Memory erased.');
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (confirm('Are you sure you want to erase all stored memories? This cannot be undone.')) {
       memoryManager.clearAll();
-      refreshMemories();
+      await refreshMemories();
       showNotification('All memories cleared.');
     }
   };

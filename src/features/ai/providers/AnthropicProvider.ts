@@ -99,12 +99,11 @@ export class AnthropicProvider implements AIProvider {
     };
   }
 
-  async streamChat(
+  async *chatStream(
     request: ChatRequest,
     config: ProviderConfig,
-    onToken: (token: string) => void,
     signal?: AbortSignal
-  ): Promise<string> {
+  ): AsyncGenerator<string> {
     if (!config.apiKey) throw new Error('Anthropic API key is missing.');
     const model = request.model || config.selectedModel || 'claude-3-5-sonnet-20241022';
 
@@ -142,10 +141,9 @@ export class AnthropicProvider implements AIProvider {
     }
 
     const reader = res.body?.getReader();
-    if (!reader) throw new Error('ReadableStream not supported.');
+    if (!reader) return;
 
     const decoder = new TextDecoder('utf-8');
-    let fullText = '';
     let buffer = '';
 
     while (true) {
@@ -165,8 +163,7 @@ export class AnthropicProvider implements AIProvider {
           if (parsed.type === 'content_block_delta') {
             const chunk = parsed.delta?.text || '';
             if (chunk) {
-              fullText += chunk;
-              onToken(chunk);
+              yield chunk;
             }
           }
         } catch {
@@ -174,7 +171,5 @@ export class AnthropicProvider implements AIProvider {
         }
       }
     }
-
-    return fullText;
   }
 }

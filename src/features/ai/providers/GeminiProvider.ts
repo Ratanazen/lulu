@@ -79,12 +79,11 @@ export class GeminiProvider implements AIProvider {
     };
   }
 
-  async streamChat(
+  async *chatStream(
     request: ChatRequest,
     config: ProviderConfig,
-    onToken: (token: string) => void,
     signal?: AbortSignal
-  ): Promise<string> {
+  ): AsyncGenerator<string> {
     if (!config.apiKey) throw new Error('Gemini API key is missing.');
     const model = this.getModel(config, request);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${config.apiKey}`;
@@ -121,10 +120,9 @@ export class GeminiProvider implements AIProvider {
     }
 
     const reader = res.body?.getReader();
-    if (!reader) throw new Error('ReadableStream not supported.');
+    if (!reader) return;
 
     const decoder = new TextDecoder('utf-8');
-    let fullText = '';
     let buffer = '';
 
     while (true) {
@@ -143,15 +141,12 @@ export class GeminiProvider implements AIProvider {
           const parsed = JSON.parse(jsonStr);
           const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
           if (chunk) {
-            fullText += chunk;
-            onToken(chunk);
+            yield chunk;
           }
         } catch {
           // ignore chunk
         }
       }
     }
-
-    return fullText;
   }
 }

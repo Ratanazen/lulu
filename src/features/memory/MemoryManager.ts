@@ -1,5 +1,5 @@
 import { MemoryCategory, MemoryItem, ConversationSession } from './types';
-import { StorageService } from '../../services/storageService';
+import { StorageService, getMemories, saveMemory, deleteMemory } from '../../services/storageService';
 
 export class MemoryManager {
   private memories: Map<string, MemoryItem> = new Map();
@@ -7,10 +7,19 @@ export class MemoryManager {
   private activeSessionId: string = 'session-default';
 
   async initialize(): Promise<void> {
-    const savedMemories = await StorageService.get<MemoryItem[]>('lulu_long_term_memories', []);
+    const savedMemories = await getMemories();
     this.memories.clear();
     for (const item of savedMemories) {
-      this.memories.set(item.id, item);
+      this.memories.set(item.id, {
+        id: item.id,
+        key: item.title,
+        value: item.content,
+        category: item.category as MemoryCategory,
+        importance: item.importance,
+        pinned: item.user_defined,
+        createdAt: new Date(item.created_at).getTime(),
+        updatedAt: new Date(item.created_at).getTime(),
+      });
     }
 
     const savedSessions = await StorageService.get<ConversationSession[]>('lulu_chat_sessions', [
@@ -29,7 +38,7 @@ export class MemoryManager {
   }
 
   private async persist(): Promise<void> {
-    await StorageService.set('lulu_long_term_memories', Array.from(this.memories.values()));
+    // Only saving sessions here, memories are saved individually
     await StorageService.set('lulu_chat_sessions', Array.from(this.sessions.values()));
   }
 
@@ -42,7 +51,6 @@ export class MemoryManager {
     importance: number = 3,
     pinned: boolean = false
   ): MemoryItem {
-    // Check if an existing memory matches key
     let existing: MemoryItem | undefined;
     for (const item of this.memories.values()) {
       if (item.key.toLowerCase() === key.toLowerCase()) {
@@ -64,16 +72,30 @@ export class MemoryManager {
     };
 
     this.memories.set(item.id, item);
-    this.persist().catch(console.error);
+    saveMemory(item.id, item.key, item.value, item.category, item.importance, item.pinned ?? false).catch(console.error);
     return item;
   }
 
   forget(id: string): boolean {
     const deleted = this.memories.delete(id);
     if (deleted) {
-      this.persist().catch(console.error);
+      deleteMemory(id).catch(console.error);
     }
     return deleted;
+  }
+
+  async searchMemories(query: string): Promise<MemoryItem[]> {
+    const results = await getMemories(query);
+    return results.map(item => ({
+      id: item.id,
+      key: item.title,
+      value: item.content,
+      category: item.category as MemoryCategory,
+      importance: item.importance,
+      pinned: item.user_defined,
+      createdAt: new Date(item.created_at).getTime(),
+      updatedAt: new Date(item.created_at).getTime(),
+    }));
   }
 
   search(query: string): MemoryItem[] {
@@ -97,8 +119,10 @@ export class MemoryManager {
   }
 
   clearAll(): void {
+    for (const key of this.memories.keys()) {
+      deleteMemory(key).catch(console.error);
+    }
     this.memories.clear();
-    this.persist().catch(console.error);
   }
 
   // Convert memories into concise system prompt context

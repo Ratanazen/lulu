@@ -4,19 +4,22 @@ import { IGameInstance, GameStats } from '../../../games/core/gameInterface';
 import { GameId } from '../../../types';
 import { useLuluStore } from '../../../stores/useLuluStore';
 import { soundService } from '../../../services/soundService';
-import { StorageService } from '../../../services/storageService';
+import { getGameScores, saveGameRecord } from '../../../services/storageService';
 
 export const GamesTab: React.FC = () => {
   const { activeGameId, setActiveGame, addXp, progressAchievement } = useLuluStore();
   const [gameInstance, setGameInstance] = useState<IGameInstance | null>(null);
   const [stats, setStats] = useState<GameStats | null>(null);
   const [highScores, setHighScores] = useState<Record<string, number>>({});
+  const [newHighScore, setNewHighScore] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Load high scores from SQLite storage
   useEffect(() => {
-    StorageService.get<Record<string, number>>('game_highscores', {}).then((scores) => {
-      if (scores) setHighScores(scores);
+    getGameScores().then((scores) => {
+      const scoresMap: Record<string, number> = {};
+      scores.forEach(s => { scoresMap[s.game_id] = s.high_score; });
+      setHighScores(scoresMap);
     });
   }, []);
 
@@ -27,12 +30,14 @@ export const GamesTab: React.FC = () => {
         gameInstance.dispose();
         setGameInstance(null);
         setStats(null);
+        setNewHighScore(false);
       }
       return;
     }
 
     const instance = createGameInstance(activeGameId);
     setGameInstance(instance);
+    setNewHighScore(false);
 
     return () => {
       instance.dispose();
@@ -56,12 +61,13 @@ export const GamesTab: React.FC = () => {
 
       // Save high score if record broken
       if (activeGameId) {
+        saveGameRecord(activeGameId, finalStats.score).catch(console.error);
+        
         setHighScores((prev) => {
           const prevBest = prev[activeGameId] || 0;
           if (finalStats.score > prevBest) {
-            const updated = { ...prev, [activeGameId]: finalStats.score };
-            StorageService.set('game_highscores', updated);
-            return updated;
+            setNewHighScore(true);
+            return { ...prev, [activeGameId]: finalStats.score };
           }
           return prev;
         });
@@ -204,8 +210,21 @@ export const GamesTab: React.FC = () => {
           <div>
             Score: <strong style={{ color: 'var(--color-primary, #818CF8)' }}>{stats?.score || 0}</strong>
           </div>
-          <div>
-            High Score: <strong>{stats?.highScore || 0}</strong>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {newHighScore && (
+              <span style={{ 
+                color: '#FBBF24', 
+                fontSize: '11px', 
+                fontWeight: 800,
+                backgroundColor: 'rgba(251, 191, 36, 0.15)',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                animation: 'pulse 1.5s infinite'
+              }}>
+                NEW HIGH SCORE!
+              </span>
+            )}
+            <span>Personal Best: <strong>{stats?.highScore || highScores[activeGameId] || 0}</strong></span>
           </div>
         </div>
       </div>

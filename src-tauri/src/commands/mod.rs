@@ -8,6 +8,7 @@ use crate::process::{ProcessItem, ProcessService};
 use crate::state::AppState;
 use crate::system::SystemMetrics;
 use crate::window::{DesktopWindowService, WindowPosition, WindowSize};
+use crate::storage::{ConversationRecord, MessageRecord, MemoryRecord, GameHighScore, NotificationRecord, AchievementRecord};
 
 #[tauri::command]
 pub fn get_monitors(app: AppHandle) -> Result<Vec<MonitorInfo>, String> {
@@ -204,6 +205,92 @@ pub fn execute_ai_cli(
 #[tauri::command]
 pub fn get_extended_system_info() -> Result<crate::system::ExtendedSystemInfo, String> {
     Ok(crate::system::SystemService::get_extended_info())
+}#[tauri::command]
+pub fn storage_get_all_settings(state: State<'_, AppState>) -> Result<Vec<(String, String)>, String> {
+    state.storage.get_all_settings()
 }
 
+#[tauri::command]
+pub fn storage_set_setting(key: String, value: String, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.set_setting(&key, &value)
+}
 
+#[tauri::command]
+pub fn storage_get_setting(key: String, state: State<'_, AppState>) -> Result<Option<String>, String> {
+    state.storage.get_setting(&key)
+}
+
+#[tauri::command]
+pub fn storage_set_settings_bulk(settings: Vec<(String, String)>, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.set_settings_bulk(&settings)
+}
+
+#[tauri::command]
+pub fn storage_get_conversations(limit: usize, offset: usize, state: State<'_, AppState>) -> Result<Vec<ConversationRecord>, String> {
+    state.storage.get_conversations(limit, offset)
+}
+
+#[tauri::command]
+pub fn storage_create_conversation(id: String, title: String, provider_id: String, model: String, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.create_conversation(&id, &title, &provider_id, &model)
+}
+
+#[tauri::command]
+pub fn storage_delete_conversation(id: String, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.delete_conversation(&id)
+}
+
+#[tauri::command]
+pub fn storage_get_messages(conversation_id: String, limit: usize, state: State<'_, AppState>) -> Result<Vec<MessageRecord>, String> {
+    state.storage.get_messages(&conversation_id, limit)
+}
+
+#[tauri::command]
+pub fn storage_save_message(id: String, conversation_id: String, role: String, content: String, tool_calls_json: String, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.save_message(&id, &conversation_id, &role, &content, &tool_calls_json)
+}
+
+#[tauri::command]
+pub fn storage_get_memories(search: Option<String>, category: Option<String>, state: State<'_, AppState>) -> Result<Vec<MemoryRecord>, String> {
+    state.storage.get_memories(search.as_deref(), category.as_deref())
+}
+
+#[tauri::command]
+pub fn storage_save_memory(id: String, title: String, content: String, category: String, importance: i32, user_defined: bool, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.save_memory(&id, &title, &content, &category, importance, user_defined)
+}
+
+#[tauri::command]
+pub fn storage_delete_memory(id: String, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.delete_memory(&id)
+}
+
+#[tauri::command]
+pub fn storage_get_game_scores(state: State<'_, AppState>) -> Result<Vec<GameHighScore>, String> {
+    state.storage.get_game_high_scores()
+}
+
+#[tauri::command]
+pub fn storage_save_game_record(game_id: String, score: i64, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.save_game_record(&game_id, score)
+}
+
+#[tauri::command]
+pub fn storage_get_notifications(limit: usize, state: State<'_, AppState>) -> Result<Vec<NotificationRecord>, String> {
+    state.storage.get_recent_notifications(limit)
+}
+
+#[tauri::command]
+pub fn storage_save_notification(id: String, app_name: String, title: String, body: String, icon: String, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.save_notification(&id, &app_name, &title, &body, &icon)
+}
+
+#[tauri::command]
+pub fn storage_get_achievements(state: State<'_, AppState>) -> Result<Vec<AchievementRecord>, String> {
+    state.storage.get_achievements()
+}
+
+#[tauri::command]
+pub fn storage_unlock_achievement(id: String, progress: i64, state: State<'_, AppState>) -> Result<(), String> {
+    state.storage.unlock_achievement(&id, progress)
+}

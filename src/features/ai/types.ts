@@ -54,12 +54,11 @@ export interface AIProvider {
 
   chat(request: ChatRequest, config: ProviderConfig): Promise<ChatResponse>;
 
-  streamChat(
+  chatStream(
     request: ChatRequest,
     config: ProviderConfig,
-    onToken: (token: string) => void,
     signal?: AbortSignal
-  ): Promise<string>;
+  ): AsyncGenerator<string>;
 
   testConnection(config: ProviderConfig): Promise<{ success: boolean; message: string; models?: string[] }>;
 }

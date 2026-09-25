@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { notificationManager } from '../../../features/notifications/NotificationManager';
-import { NotificationSettings } from '../../../features/notifications/types';
+import { NotificationSettings, DesktopNotification } from '../../../features/notifications/types';
+import { getRecentNotifications } from '../../../services/storageService';
 import { Bell, Shield, Send, CheckCircle2, AlertCircle, Eye, EyeOff, Radio } from 'lucide-react';
 
 export const NotificationsTab: React.FC = () => {
@@ -9,8 +10,20 @@ export const NotificationsTab: React.FC = () => {
   const [testSummary, setTestSummary] = useState('New message from Team Lead');
   const [testBody, setTestBody] = useState('Hey, let us review the release notes today!');
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [history, setHistory] = useState<DesktopNotification[]>(notificationManager.getHistory());
 
-  const history = notificationManager.getHistory();
+  useEffect(() => {
+    getRecentNotifications(100).then((records) => {
+      setHistory(records.map(r => ({
+        id: r.id,
+        appName: r.app_name,
+        summary: r.title,
+        body: r.body,
+        appIcon: r.icon,
+        timestamp: r.received_at
+      })));
+    });
+  }, []);
 
   const handleUpdate = (updates: Partial<NotificationSettings>) => {
     const next = { ...settings, ...updates };

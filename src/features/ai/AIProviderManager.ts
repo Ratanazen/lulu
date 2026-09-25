@@ -5,6 +5,8 @@ import { AnthropicProvider } from './providers/AnthropicProvider';
 import { OllamaProvider } from './providers/OllamaProvider';
 import { CustomProvider } from './providers/CustomProvider';
 import { StorageService } from '../../services/storageService';
+import { personalityEngine } from '../personality/personalityEngine';
+import { memoryManager } from '../memory/MemoryManager';
 
 export const DEFAULT_PROVIDER_CONFIGS: Record<AIProviderId, ProviderConfig> = {
   ollama: {
@@ -165,8 +167,15 @@ export class AIProviderManager {
     const provider = this.getProvider(this.activeProviderId);
     const config = this.getConfig(this.activeProviderId);
 
+    const memoryContext = memoryManager.buildMemoryPromptContext(5);
+    const systemPrompt = personalityEngine.assembleSystemPrompt(memoryContext);
+    const enhancedRequest: ChatRequest = {
+      ...request,
+      systemPrompt,
+    };
+
     if (!provider || this.activeProviderId === 'offline') {
-      const lastUserMsg = request.messages.filter((m) => m.role === 'user').pop();
+      const lastUserMsg = enhancedRequest.messages.filter((m) => m.role === 'user').pop();
       const content = this.generateOfflineResponse(lastUserMsg?.content || '');
       return {
         message: {
@@ -180,10 +189,10 @@ export class AIProviderManager {
     }
 
     try {
-      return await provider.chat(request, config);
+      return await provider.chat(enhancedRequest, config);
     } catch (err: any) {
       console.warn(`[AIProviderManager] Primary provider failed: ${err.message}. Falling back to offline engine.`);
-      const lastUserMsg = request.messages.filter((m) => m.role === 'user').pop();
+      const lastUserMsg = enhancedRequest.messages.filter((m) => m.role === 'user').pop();
       const content = `${this.generateOfflineResponse(lastUserMsg?.content || '')}\n\n*(Provider note: ${err.message})*`;
       return {
         message: {
@@ -197,41 +206,59 @@ export class AIProviderManager {
     }
   }
 
+  async *chatStream(
+    request: ChatRequest,
+    signal?: AbortSignal
+  ): AsyncGenerator<string> {
+    const provider = this.getProvider(this.activeProviderId);
+    const config = this.getConfig(this.activeProviderId);
+
+    const memoryContext = memoryManager.buildMemoryPromptContext(5);
+    const systemPrompt = personalityEngine.assembleSystemPrompt(memoryContext);
+    const enhancedRequest: ChatRequest = {
+      ...request,
+      systemPrompt,
+    };
+
+    if (!provider || this.activeProviderId === 'offline') {
+      const lastUserMsg = enhancedRequest.messages.filter((m) => m.role === 'user').pop();
+      const content = this.generateOfflineResponse(lastUserMsg?.content || '');
+      // Simulate soft streaming tokens
+      for (const word of content.split(' ')) {
+        if (signal?.aborted) break;
+        yield word + ' ';
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      return;
+    }
+
+    try {
+      yield* provider.chatStream(enhancedRequest, config, signal);
+    } catch (err: any) {
+      if (signal?.aborted) throw err;
+      console.warn(`[AIProviderManager] Streaming failed: ${err.message}. Emitting fallback response.`);
+      const lastUserMsg = enhancedRequest.messages.filter((m) => m.role === 'user').pop();
+      const fallbackText = `⚠️ **Connection issue with ${config.name}**: ${err.message}\n\nHere is what I can tell you offline:\n${this.generateOfflineResponse(lastUserMsg?.content || '')}`;
+
+      for (const word of fallbackText.split(' ')) {
+        if (signal?.aborted) break;
+        yield word + ' ';
+        await new Promise((r) => setTimeout(r, 20));
+      }
+    }
+  }
+
   async streamChat(
     request: ChatRequest,
     onToken: (token: string) => void,
     signal?: AbortSignal
   ): Promise<string> {
-    const provider = this.getProvider(this.activeProviderId);
-    const config = this.getConfig(this.activeProviderId);
-
-    if (!provider || this.activeProviderId === 'offline') {
-      const lastUserMsg = request.messages.filter((m) => m.role === 'user').pop();
-      const content = this.generateOfflineResponse(lastUserMsg?.content || '');
-      // Simulate soft streaming tokens
-      for (const word of content.split(' ')) {
-        if (signal?.aborted) break;
-        onToken(word + ' ');
-        await new Promise((r) => setTimeout(r, 25));
-      }
-      return content;
+    let full = '';
+    for await (const token of this.chatStream(request, signal)) {
+      full += token;
+      onToken(token);
     }
-
-    try {
-      return await provider.streamChat(request, config, onToken, signal);
-    } catch (err: any) {
-      if (signal?.aborted) throw err;
-      console.warn(`[AIProviderManager] Streaming failed: ${err.message}. Emitting fallback response.`);
-      const lastUserMsg = request.messages.filter((m) => m.role === 'user').pop();
-      const fallbackText = `⚠️ **Connection issue with ${config.name}**: ${err.message}\n\nHere is what I can tell you offline:\n${this.generateOfflineResponse(lastUserMsg?.content || '')}`;
-
-      for (const word of fallbackText.split(' ')) {
-        if (signal?.aborted) break;
-        onToken(word + ' ');
-        await new Promise((r) => setTimeout(r, 20));
-      }
-      return fallbackText;
-    }
+    return full;
   }
 }
 

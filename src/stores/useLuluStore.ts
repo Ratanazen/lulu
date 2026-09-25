@@ -23,11 +23,14 @@ import { BehaviorEngine } from '../behavior/behaviorEngine';
 import { MovementEngine } from '../movement/movementEngine';
 import { SpeechSystem } from '../interaction/speechSystem';
 import { soundService } from '../services/soundService';
+import { particleSystem } from '../animation/particleSystem';
 import { eventBus } from '../services/eventBus';
+import { AgentManager } from '../features/agents/AgentManager';
 import { INITIAL_ACHIEVEMENTS, ProgressionEngine } from '../progression';
+import { StreakTracker } from '../progression/streakTracker';
 import { ThemeEngine } from '../themes';
 import { DesktopWindowService } from '../services/desktopWindow';
-import { StorageService } from '../services/storageService';
+import { StorageService, getAllSettings, setSettingsBulk } from '../services/storageService';
 import { ChatMessage } from '../features/ai/types';
 import { aiProviderManager } from '../features/ai/AIProviderManager';
 import { memoryManager } from '../features/memory/MemoryManager';
@@ -175,6 +178,11 @@ interface LuluStoreState {
   clearChat: () => void;
   patPet: () => void;
   syncAgentState: (agentState: 'thinking' | 'working' | 'waiting' | 'success' | 'error' | 'cancelled') => void;
+
+  // Hydration & Persistence
+  isHydrated: boolean;
+  hydrate: () => Promise<void>;
+  persistState: () => void;
 }
 
 export const useLuluStore = create<LuluStoreState>((set, get) => {
@@ -241,6 +249,80 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
 
     // Machine-Readable Capabilities
     capabilities: [],
+
+    isHydrated: false,
+
+    hydrate: async () => {
+      const allSettings = await getAllSettings();
+      const settingsMap = new Map(allSettings);
+
+      const theme = settingsMap.get('theme') as ThemeId;
+      if (theme) get().setTheme(theme);
+
+      const activeCharacterId = settingsMap.get('activeCharacterId');
+      if (activeCharacterId) get().setCharacter(activeCharacterId);
+
+      const behaviorMode = settingsMap.get('behaviorMode') as BehaviorMode;
+      if (behaviorMode) get().updateSettings({ behaviorMode });
+
+      const performanceProfile = settingsMap.get('performanceProfile');
+      if (performanceProfile) get().updateSettings({ performanceProfile: performanceProfile as any });
+
+      const audioMutedStr = settingsMap.get('audioMuted');
+      if (audioMutedStr) get().updateSettings({ soundEnabled: audioMutedStr !== 'true' });
+
+      const alwaysOnTopStr = settingsMap.get('alwaysOnTop');
+      if (alwaysOnTopStr) get().updateSettings({ alwaysOnTop: alwaysOnTopStr === 'true' });
+
+      const onboardingCompletedStr = settingsMap.get('onboardingCompleted');
+      if (onboardingCompletedStr === 'true') get().completeOnboarding();
+
+      const petPositionStr = settingsMap.get('pet_position');
+      if (petPositionStr) {
+        try {
+          const pos = JSON.parse(petPositionStr);
+          if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+            set({ currentPosition: pos });
+          }
+        } catch {}
+      }
+
+      const needsStateStr = settingsMap.get('needs_state');
+      if (needsStateStr) {
+        try {
+          const needsState = JSON.parse(needsStateStr);
+          get().needsEngine.setNeeds(needsState);
+          set({ needs: needsState });
+        } catch {}
+      }
+
+      const progressionStr = settingsMap.get('progression_state');
+      if (progressionStr) {
+        try {
+          const progState = JSON.parse(progressionStr);
+          set({ progression: progState });
+        } catch {}
+      }
+
+      set({ isHydrated: true });
+    },
+
+    persistState: () => {
+      const state = get();
+      const settingsToSave: [string, string][] = [
+        ['theme', state.settings.theme],
+        ['activeCharacterId', state.settings.characterId],
+        ['behaviorMode', state.settings.behaviorMode],
+        ['performanceProfile', state.settings.performanceProfile],
+        ['audioMuted', String(!state.settings.soundEnabled)],
+        ['alwaysOnTop', String(state.settings.alwaysOnTop)],
+        ['onboardingCompleted', String(state.onboardingCompleted)],
+        ['needs_state', JSON.stringify(state.needs)],
+        ['progression_state', JSON.stringify(state.progression)],
+        ['pet_position', JSON.stringify(state.currentPosition)],
+      ];
+      setSettingsBulk(settingsToSave);
+    },
 
     initialize: async () => {
       // 1. Load settings & progression from SQLite storage
@@ -342,7 +424,8 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       if (CapabilityService.isFeatureUsable(notifCap, true)) {
         notificationManager.initialize((reaction) => {
           get().setAnimation('surprised');
-          soundService.play('achievement', 'ui');
+          soundService.play('notification', 'notification');
+          particleSystem.spawnSurprise(120, 100);
           get().speak(reaction, 'achievement');
           set({ notificationCount: get().notificationCount + 1 });
           setTimeout(() => {
@@ -365,6 +448,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
           if (mState === 'MUSIC_PLAYING') {
             if (get().settings.musicReactionsEnabled) {
               get().setAnimation('dance');
+              particleSystem.spawnMusicNotes(120, 120, 3);
             }
           } else if (mState === 'MUSIC_STOPPED' || mState === 'MUSIC_PAUSED') {
             if (get().animationState === 'dance') {
@@ -382,6 +466,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         });
         if (curr && curr.text && get().musicState === 'MUSIC_PLAYING') {
           get().speak(`♪ ${curr.text}`, 'game');
+          particleSystem.spawnMusicNotes(120, 120, 2);
         }
       });
 
@@ -389,6 +474,23 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       setTimeout(() => {
         get().speak(undefined, 'greeting');
       }, 1000);
+
+      await get().hydrate();
+
+      // 8.4 Daily Streak Evaluation
+      StreakTracker.checkAndUpdateStreak().then((streakRes) => {
+        if (streakRes.isNewDay) {
+          if (streakRes.bonusXp > 0) {
+            get().addXp(streakRes.bonusXp);
+          }
+          if (streakRes.milestoneReached) {
+            setTimeout(() => {
+              get().speak(streakRes.milestoneReached!, 'success');
+              particleSystem.spawnLevelUp(120, 120);
+            }, 3000);
+          }
+        }
+      }).catch((e) => console.warn('[StreakTracker] Failed to evaluate daily streak:', e));
     },
 
     setAnimation: (state: AnimationState) => {
@@ -456,7 +558,8 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       const mood = MoodEngine.calculateMood(needs, character.personality);
       set({ needs, mood });
       get().setAnimation('eat');
-      soundService.play('happy', 'character');
+      soundService.play('feed', 'character');
+      particleSystem.spawnHeart(120, 120);
       get().addXp(20);
       get().progressAchievement('caring_friend', 1);
       setTimeout(() => get().setAnimation('idle'), 2000);
@@ -479,6 +582,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
 
       get().setAnimation('playful');
       soundService.play('jump', 'character');
+      particleSystem.spawnSparkles(120, 120, '#FBBF24', 8);
       get().addXp(35);
       get().progressAchievement('caring_friend', 1);
       setTimeout(() => get().setAnimation('idle'), 2500);
@@ -492,6 +596,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       set({ needs, mood });
       get().setAnimation('happy');
       soundService.play('chirp', 'character');
+      particleSystem.spawnSparkles(120, 120, '#93C5FD', 8);
       get().addXp(15);
       get().progressAchievement('caring_friend', 1);
       setTimeout(() => get().setAnimation('idle'), 2000);
@@ -505,6 +610,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       set({ needs, mood });
       get().setAnimation('sleep');
       soundService.play('lullaby', 'character');
+      particleSystem.spawnSleepZzz(120, 110);
       get().addXp(15);
       get().progressAchievement('caring_friend', 1);
     },
@@ -720,7 +826,8 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       StorageService.set('progression', updated);
 
       if (leveledUp) {
-        soundService.play('achievement', 'ui');
+        soundService.play('level_up', 'ui');
+        particleSystem.spawnLevelUp(120, 120);
         get().speak(`Level Up! Reached Level ${updated.level}! ✨`, 'success');
       }
     },
@@ -743,9 +850,11 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
 
       if (justUnlocked) {
         soundService.play('achievement', 'ui');
+        particleSystem.spawnConfetti(120, 120, 25);
         const ach = updated.achievements[id];
         get().speak(`Achievement Unlocked: ${ach.title}! 🏆`, 'success');
         eventBus.emit('ACHIEVEMENT_UNLOCKED', 'Progression', { achievement: ach });
+        get().setAnimation('celebrate');
       }
     },
 
@@ -899,6 +1008,62 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         return;
       }
 
+      if (trimmed.startsWith('/search ') || trimmed.startsWith('search:')) {
+        const query = trimmed.replace(/^\/search\s+|^search:\s*/i, '');
+        const matches = memoryManager.search(query);
+        let reply = '';
+        if (matches.length === 0) {
+          reply = `🔍 No memories found matching "${query}".`;
+        } else {
+          reply = `🔍 Found ${matches.length} memory result(s) for "${query}":\n\n` +
+            matches.map((m, i) => `${i + 1}. **${m.key}** [${m.category}]: ${m.value}`).join('\n');
+        }
+        set((s) => ({
+          isGeneratingResponse: false,
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: reply } : m
+          ),
+          animationState: 'curious',
+        }));
+        soundService.play('chat_receive', 'ui');
+        return;
+      }
+
+      if (trimmed.startsWith('/agent ') || trimmed.startsWith('agent:')) {
+        const agentPrompt = trimmed.replace(/^\/agent\s+|^agent:\s*/i, '');
+        const manager = AgentManager.getInstance();
+        const task = manager.createTask(agentPrompt);
+        set((s) => ({
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: `🤖 **Task Queued** [${task.id}]\nAssigned Agent: **${task.agentId}**\n*Executing task...*` } : m
+          ),
+          animationState: 'read',
+        }));
+
+        try {
+          const executed = await manager.executeTask(task.id, aiProviderManager);
+          const resultText = `✅ **Agent Task Completed** [${executed.id}]\nAgent: **${executed.agentId}**\n\n${executed.steps.map(st => `• **${st.title}**: ${st.status === 'completed' ? 'Done' : st.status}`).join('\n')}`;
+          set((s) => ({
+            isGeneratingResponse: false,
+            chatMessages: s.chatMessages.map((m) =>
+              m.id === asstId ? { ...m, content: resultText } : m
+            ),
+            animationState: 'celebrate',
+          }));
+          soundService.play('achievement', 'ui');
+        } catch (err: any) {
+          set((s) => ({
+            isGeneratingResponse: false,
+            chatMessages: s.chatMessages.map((m) =>
+              m.id === asstId ? { ...m, content: `❌ **Agent Error**: ${err.message}` } : m
+            ),
+            animationState: 'dizzy',
+          }));
+          soundService.play('error', 'ui');
+        }
+        return;
+      }
+
       // Standard LLM Stream Request
       try {
         const memoryContext = memoryManager.buildMemoryPromptContext();
@@ -908,35 +1073,36 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         );
 
         let streamAcc = '';
-        const fullResponse = await aiProviderManager.streamChat(
-          {
-            messages: get().chatMessages.slice(0, -1),
-            systemPrompt,
-          },
-          (token) => {
-            streamAcc += token;
-            set((s) => ({
-              chatMessages: s.chatMessages.map((m) =>
-                m.id === asstId ? { ...m, content: streamAcc } : m
-              ),
-              animationState: 'wave',
-            }));
-          }
-        );
+        
+        const stream = aiProviderManager.chatStream({
+          messages: get().chatMessages.slice(0, -1),
+          systemPrompt,
+        });
+
+        for await (const token of stream) {
+          streamAcc += token;
+          set((s) => ({
+            chatMessages: s.chatMessages.map((m) =>
+              m.id === asstId ? { ...m, content: streamAcc } : m
+            ),
+            animationState: 'wave',
+          }));
+        }
 
         set((s) => ({
           isGeneratingResponse: false,
           chatMessages: s.chatMessages.map((m) =>
-            m.id === asstId ? { ...m, content: fullResponse } : m
+            m.id === asstId ? { ...m, content: streamAcc } : m
           ),
           animationState: 'happy',
         }));
 
+        soundService.play('chat_receive', 'ui');
         emotionEngine.onChatResponse();
         get().progressAchievement('first_chat', 1);
 
         if (voiceManager.getSettings().autoSpeak) {
-          voiceManager.speak(fullResponse);
+          voiceManager.speak(streamAcc);
         }
       } catch (err: any) {
         set((s) => ({
@@ -975,4 +1141,13 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       return CapabilityService.computeEffectiveState(cap, userEnabled);
     },
   };
+});
+
+let saveTimeout: any = null;
+useLuluStore.subscribe((state) => {
+  if (!state.isHydrated) return;
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    state.persistState();
+  }, 2000);
 });

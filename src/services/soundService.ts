@@ -10,7 +10,12 @@ export type SoundEffect =
   | 'game_over'
   | 'morning_chime'
   | 'lullaby'
-  | 'notification';
+  | 'notification'
+  | 'level_up'
+  | 'feed'
+  | 'chat_receive'
+  | 'timer_done'
+  | 'error';
 
 class SoundService {
   private ctx: AudioContext | null = null;
@@ -157,7 +162,7 @@ class SoundService {
           break;
 
         case 'notification':
-        default:
+        case 'chat_receive':
           osc.type = 'sine';
           osc.frequency.setValueAtTime(659.25, now); // E5
           osc.frequency.setValueAtTime(880, now + 0.08); // A5
@@ -166,6 +171,55 @@ class SoundService {
           osc.start(now);
           osc.stop(now + 0.2);
           break;
+
+        case 'level_up':
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);    // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.07);  // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.14); // G5
+          osc.frequency.setValueAtTime(1046.5, now + 0.21); // C6
+          osc.frequency.setValueAtTime(1318.5, now + 0.28); // E6
+          gain.gain.setValueAtTime(finalVol * 0.45, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.5);
+          osc.start(now);
+          osc.stop(now + 0.5);
+          break;
+
+        case 'feed':
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);    // A4
+          osc.frequency.setValueAtTime(523.25, now + 0.06); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.12); // E5
+          gain.gain.setValueAtTime(finalVol * 0.3, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+          osc.start(now);
+          osc.stop(now + 0.18);
+          break;
+
+        case 'timer_done':
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.setValueAtTime(880, now + 0.1);
+          osc.frequency.setValueAtTime(0, now + 0.15);
+          osc.frequency.setValueAtTime(880, now + 0.2);
+          osc.frequency.setValueAtTime(880, now + 0.3);
+          gain.gain.setValueAtTime(finalVol * 0.25, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+          break;
+
+        case 'error':
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(100, now + 0.3);
+          gain.gain.setValueAtTime(finalVol * 0.2, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
+          break;
+
+        default:
       }
     } catch {
       // Audio playback fails gracefully

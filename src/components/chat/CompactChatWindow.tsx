@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useLuluStore } from '../../stores/useLuluStore';
 import { voiceManager } from '../../features/voice/VoiceManager';
+import { getConversations, getMessages, saveMessage, createConversation } from '../../services/storageService';
+import { Plus } from 'lucide-react';
 
 export const CompactChatWindow: React.FC = () => {
   const {
@@ -30,7 +32,96 @@ export const CompactChatWindow: React.FC = () => {
 
   const [input, setInput] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [providerStatus, setProviderStatus] = useState<'connected' | 'offline' | 'checking'>('checking');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const savedMessageIds = useRef<Set<string>>(new Set());
+  const initialLoadDone = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const checkStatus = async () => {
+      try {
+        const { aiProviderManager } = await import('../../features/ai/AIProviderManager');
+        const activeId = aiProviderManager.getActiveProviderId();
+        const provider = aiProviderManager.getProvider(activeId);
+        if (provider && activeId !== 'offline') {
+          const config = aiProviderManager.getConfig(activeId);
+          const res = await provider.testConnection(config);
+          if (mounted) setProviderStatus(res.success ? 'connected' : 'offline');
+        } else {
+          if (mounted) setProviderStatus('offline');
+        }
+      } catch (e) {
+        if (mounted) setProviderStatus('offline');
+      }
+    };
+
+    if (chatOpen) {
+      checkStatus();
+      const interval = setInterval(checkStatus, 15000);
+      return () => {
+        mounted = false;
+        clearInterval(interval);
+      };
+    }
+  }, [chatOpen]);
+
+  useEffect(() => {
+    if (initialLoadDone.current) return;
+    initialLoadDone.current = true;
+    
+    getConversations(1).then((convs) => {
+      if (convs.length > 0) {
+        const last = convs[0];
+        setCurrentConversationId(last.id);
+        getMessages(last.id, 50).then(msgs => {
+          if (msgs.length > 0) {
+            const formatted = msgs.map(m => ({
+              id: m.id,
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+              timestamp: m.timestamp
+            })).sort((a, b) => a.timestamp - b.timestamp);
+            useLuluStore.setState({ chatMessages: formatted });
+            formatted.forEach(m => savedMessageIds.current.add(m.id));
+          }
+        });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!currentConversationId) return;
+    
+    chatMessages.forEach(msg => {
+      if (savedMessageIds.current.has(msg.id)) return;
+      
+      if (msg.role === 'user') {
+        saveMessage(msg.id, currentConversationId, msg.role, msg.content);
+        savedMessageIds.current.add(msg.id);
+      } else if (msg.role === 'assistant' && !isGeneratingResponse && msg.content) {
+        saveMessage(msg.id, currentConversationId, msg.role, msg.content);
+        savedMessageIds.current.add(msg.id);
+      }
+    });
+  }, [chatMessages, isGeneratingResponse, currentConversationId]);
+
+  const handleNewConversation = async () => {
+    const newId = `conv-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    await createConversation(newId, 'New Conversation', 'local', 'default');
+    setCurrentConversationId(newId);
+    savedMessageIds.current.clear();
+    const welcomeMsg = {
+      id: `msg-${Date.now()}`,
+      role: 'assistant' as const,
+      content: "Hi there! I'm Lulu ✨ What are we working on together today?",
+      timestamp: Date.now(),
+    };
+    useLuluStore.setState({ chatMessages: [welcomeMsg] });
+    saveMessage(welcomeMsg.id, newId, welcomeMsg.role, welcomeMsg.content);
+    savedMessageIds.current.add(welcomeMsg.id);
+  };
 
   useEffect(() => {
     if (chatOpen) {
@@ -40,11 +131,19 @@ export const CompactChatWindow: React.FC = () => {
 
   if (!chatOpen) return null;
 
-  const handleSend = (e?: React.FormEvent) => {
+  const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isGeneratingResponse) return;
     const text = input;
     setInput('');
+    
+    let convId = currentConversationId;
+    if (!convId) {
+      convId = `conv-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      await createConversation(convId, 'New Conversation', 'local', 'default');
+      setCurrentConversationId(convId);
+    }
+    
     sendChatMessage(text);
   };
 
@@ -145,6 +244,14 @@ export const CompactChatWindow: React.FC = () => {
           >
             Ctrl+⇧+Space
           </kbd>
+          <button
+            type="button"
+            onClick={handleNewConversation}
+            title="New Conversation"
+            style={iconBtnStyle}
+          >
+            <Plus size={14} />
+          </button>
           <button
             type="button"
             onClick={clearChat}

@@ -94,12 +94,11 @@ export class OllamaProvider implements AIProvider {
     }
   }
 
-  async streamChat(
+  async *chatStream(
     request: ChatRequest,
     config: ProviderConfig,
-    onToken: (token: string) => void,
     signal?: AbortSignal
-  ): Promise<string> {
+  ): AsyncGenerator<string> {
     const url = `${this.getBaseUrl(config)}/api/chat`;
     const model = request.model || config.selectedModel || 'llama3.2:latest';
 
@@ -135,37 +134,27 @@ export class OllamaProvider implements AIProvider {
       }
 
       const reader = res.body?.getReader();
-      if (!reader) throw new Error('ReadableStream not supported.');
+      if (!reader) return;
 
       const decoder = new TextDecoder('utf-8');
-      let fullText = '';
-      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n').filter(Boolean)) {
           try {
-            const parsed = JSON.parse(trimmed);
+            const parsed = JSON.parse(line);
             const token = parsed.message?.content || '';
             if (token) {
-              fullText += token;
-              onToken(token);
+              yield token;
             }
           } catch {
-            // ignore chunk
+            // ignore invalid json line
           }
         }
       }
-
-      return fullText;
     } catch (err: any) {
       if (err.name === 'AbortError') throw err;
       if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
