@@ -2,8 +2,38 @@ import { CharacterProfile } from '../types';
 
 export const LULU_DEFAULT_CHARACTER: CharacterProfile = {
   id: 'lulu',
+  character_id: 'LULU-0001',
+  name: 'Lulu',
   displayName: 'Lulu',
   description: 'A curious celestial desktop companion with glowing starlight ears and an affectionate heart.',
+  scenario: 'Lives on your desktop to accompany your workflow, play, and assist with tasks.',
+  first_message: 'Hello! I am Lulu, your desktop companion. Ready to explore!',
+  traits: ['friendly', 'curious', 'playful', 'celestial'],
+  tags: ['original', 'desktop-pet', 'starter', 'mascot'],
+  visibility: 'public',
+  voice_provider: 'local_tts',
+  temperature: 0.7,
+  transform: {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: 1.0,
+  },
+  collider: {
+    width: 120,
+    height: 120,
+    depth: 40,
+    centerX: 0,
+    centerY: 0,
+    centerZ: 0,
+  },
+  camera: {
+    mode: 'close',
+    distance: 2.5,
+    fov: 45,
+    target: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 2.5 },
+    zoom: 1.0,
+  },
   personality: {
     curiosity: 85,
     friendliness: 90,
@@ -23,12 +53,45 @@ export const LULU_DEFAULT_CHARACTER: CharacterProfile = {
     glow: '#E0E7FF',      // Soft starlight white
   },
   unlocked: true,
+  category: 'original',
+  author: 'Lulu Core Team',
+  version: '1.0.0',
 };
 
 export const KIRA_STAR_CHARACTER: CharacterProfile = {
   id: 'kira',
+  character_id: 'LULU-0002',
+  name: 'Kira',
   displayName: 'Kira',
   description: 'An energetic little star spirit who loves dashing across screens and cheering you on.',
+  scenario: 'Bounces across active windows cheering you through productive coding and study sessions.',
+  first_message: 'Kira is here! Let us do something super exciting today!',
+  traits: ['energetic', 'playful', 'star-spirit'],
+  tags: ['original', 'speedy', 'cheerful'],
+  visibility: 'public',
+  voice_provider: 'local_tts',
+  temperature: 0.8,
+  transform: {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: 0.9,
+  },
+  collider: {
+    width: 100,
+    height: 100,
+    depth: 30,
+    centerX: 0,
+    centerY: 0,
+    centerZ: 0,
+  },
+  camera: {
+    mode: 'close',
+    distance: 2.2,
+    fov: 50,
+    target: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 2.2 },
+    zoom: 1.0,
+  },
   personality: {
     curiosity: 95,
     friendliness: 80,
@@ -48,12 +111,45 @@ export const KIRA_STAR_CHARACTER: CharacterProfile = {
     glow: '#FFFBEB',      // Warm starlight
   },
   unlocked: true,
+  category: 'original',
+  author: 'Lulu Core Team',
+  version: '1.0.0',
 };
 
 export const NORI_MOSS_CHARACTER: CharacterProfile = {
   id: 'nori',
+  character_id: 'LULU-0003',
+  name: 'Nori',
   displayName: 'Nori',
   description: 'A tranquil moss creature that moves gently, prefers quiet focus, and loves naps.',
+  scenario: 'A cozy desktop pet that sits quietly beside your editor while you write code.',
+  first_message: 'Zzz... Oh, hi there. Let us have a gentle, calm day.',
+  traits: ['calm', 'peaceful', 'moss-spirit'],
+  tags: ['original', 'tranquil', 'cozy'],
+  visibility: 'public',
+  voice_provider: 'local_tts',
+  temperature: 0.5,
+  transform: {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: 1.1,
+  },
+  collider: {
+    width: 130,
+    height: 110,
+    depth: 40,
+    centerX: 0,
+    centerY: 0,
+    centerZ: 0,
+  },
+  camera: {
+    mode: 'far',
+    distance: 3.0,
+    fov: 40,
+    target: { x: 0, y: 0, z: 0 },
+    position: { x: 0, y: 0, z: 3.0 },
+    zoom: 1.0,
+  },
   personality: {
     curiosity: 50,
     friendliness: 85,
@@ -73,6 +169,9 @@ export const NORI_MOSS_CHARACTER: CharacterProfile = {
     glow: '#ECFDF5',      // Soft mint
   },
   unlocked: true,
+  category: 'original',
+  author: 'Lulu Core Team',
+  version: '1.0.0',
 };
 
 export const OFFICIAL_CHARACTERS: CharacterProfile[] = [

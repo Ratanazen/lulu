@@ -207,21 +207,70 @@ export interface ColorPalette {
   glow: string;
 }
 
+export type CharacterVisibility = 'private' | 'local_only' | 'shared' | 'public';
+
+export interface Vector3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface CharacterTransform {
+  position: Vector3D;
+  rotation: Vector3D;
+  scale: number;
+}
+
+export interface CharacterCollider {
+  width: number;
+  height: number;
+  depth: number;
+  centerX: number;
+  centerY: number;
+  centerZ: number;
+}
+
+export interface CharacterCamera {
+  mode: 'far' | 'close' | 'custom';
+  distance: number;
+  fov: number;
+  target: Vector3D;
+  position: Vector3D;
+  zoom: number;
+}
+
 export interface CharacterProfile {
   id: string;
+  character_id?: string; // Unique ID in format LULU-XXXX (e.g. LULU-0001)
+  name?: string;
   displayName: string;
   description: string;
   personality: PersonalityTraits;
+  scenario?: string;
+  first_message?: string;
+  traits?: string[];
+  tags?: string[];
+  voice?: string;
+  language?: string;
+  voice_provider?: 'piper' | 'espeak-ng' | 'local_tts' | 'mock';
+  temperature?: number;
   scale: number;
   defaultPosition: Vector2D;
   palette: ColorPalette;
   unlocked: boolean;
+  is_favorite?: boolean;
   aura?: string;
   accessories?: string[];
   renderer?: CharacterRendererType;
   modelPath?: string;
   spriteSheetConfig?: CharacterSpriteSheetConfig;
   category?: 'original' | 'anime' | 'user' | 'imported';
+  visibility?: CharacterVisibility;
+  transform?: CharacterTransform;
+  collider?: CharacterCollider;
+  camera?: CharacterCamera;
+  expressions?: Record<string, string>;
+  animations?: Record<string, any>;
   license?: string;
   author?: string;
   version?: string;

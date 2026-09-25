@@ -103,10 +103,10 @@ export class CharacterManager {
   }
 
   public removeCharacter(id: string): boolean {
-    if (this.activeCharacter.id === id) {
+    if (this.activeCharacter.id === id || this.activeCharacter.character_id === id) {
       return false; // Cannot delete currently active character without switching
     }
-    const idx = this.characterRoster.findIndex((c) => c.id === id);
+    const idx = this.characterRoster.findIndex((c) => c.id === id || c.character_id === id);
     if (idx >= 0) {
       this.characterRoster.splice(idx, 1);
       this.saveCustomRoster();
@@ -130,6 +130,176 @@ export class CharacterManager {
     if (found) {
       this.activeCharacter = found;
     }
+  }
+
+  public getCharacterByLuluId(luluId: string): CharacterProfile | undefined {
+    const cleanId = luluId.trim().toUpperCase();
+    return this.characterRoster.find(
+      (c) => (c.character_id && c.character_id.toUpperCase() === cleanId) || c.id.toUpperCase() === cleanId
+    );
+  }
+
+  public searchCharacters(params: {
+    query?: string;
+    category?: string;
+    renderer?: string;
+    favoriteOnly?: boolean;
+    visibility?: string;
+  }): CharacterProfile[] {
+    let result = [...this.characterRoster];
+
+    if (params.query && params.query.trim() !== '') {
+      const q = params.query.toLowerCase().trim();
+      result = result.filter(
+        (c) =>
+          c.displayName.toLowerCase().includes(q) ||
+          c.id.toLowerCase().includes(q) ||
+          (c.character_id && c.character_id.toLowerCase().includes(q)) ||
+          (c.author && c.author.toLowerCase().includes(q)) ||
+          (c.tags && c.tags.some((t) => t.toLowerCase().includes(q))) ||
+          c.description.toLowerCase().includes(q)
+      );
+    }
+
+    if (params.category && params.category !== 'all') {
+      if (params.category === 'favorites') {
+        result = result.filter((c) => c.is_favorite);
+      } else if (params.category === 'installed' || params.category === 'my_characters') {
+        result = result.filter((c) => c.category === 'original' || c.category === 'user');
+      } else {
+        result = result.filter((c) => c.category === params.category);
+      }
+    }
+
+    if (params.renderer && params.renderer !== 'all') {
+      result = result.filter((c) => (c.renderer || 'pixel') === params.renderer);
+    }
+
+    if (params.favoriteOnly) {
+      result = result.filter((c) => c.is_favorite);
+    }
+
+    return result;
+  }
+
+  public toggleFavorite(id: string): boolean {
+    const char = this.characterRoster.find((c) => c.id === id || c.character_id === id);
+    if (char) {
+      char.is_favorite = !char.is_favorite;
+      this.saveCustomRoster();
+      return !!char.is_favorite;
+    }
+    return false;
+  }
+
+  public exportCharacterPack(char: CharacterProfile): string {
+    const manifest = {
+      format_version: 1,
+      character_id: char.character_id || `LULU-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      name: char.displayName,
+      description: char.description,
+      renderer: char.renderer || 'pixel',
+      version: char.version || '1.0.0',
+      author: char.author || 'Lulu Creator',
+      license: char.license || 'Original Creative Commons',
+      personality: char.personality,
+      scenario: char.scenario || '',
+      first_message: char.first_message || '',
+      traits: char.traits || [],
+      tags: char.tags || [],
+      palette: char.palette,
+      scale: char.scale,
+      transform: char.transform,
+      collider: char.collider,
+      camera: char.camera,
+      voice: char.voice,
+      voice_provider: char.voice_provider,
+      temperature: char.temperature,
+      visibility: char.visibility || 'private',
+      created_at: char.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    return JSON.stringify(manifest, null, 2);
+  }
+
+  public importCharacterPack(manifestJson: string): { success: boolean; character?: CharacterProfile; error?: string } {
+    try {
+      const parsed = JSON.parse(manifestJson);
+      if (!parsed.name) {
+        return { success: false, error: 'Character pack manifest missing required "name" field.' };
+      }
+
+      const id = parsed.id || parsed.character_id?.toLowerCase().replace(/[^a-z0-9_]/g, '_') || `custom_${Date.now()}`;
+      const luluId = parsed.character_id || `LULU-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      const newChar: CharacterProfile = {
+        id,
+        character_id: luluId,
+        name: parsed.name,
+        displayName: parsed.displayName || parsed.name,
+        description: parsed.description || 'Imported custom companion pack.',
+        category: 'user',
+        renderer: parsed.renderer || 'pixel',
+        scale: parsed.scale || 1.0,
+        defaultPosition: { x: 300, y: 300 },
+        palette: parsed.palette || {
+          primary: '#6366F1',
+          secondary: '#A5B4FC',
+          accent: '#F59E0B',
+          shadow: '#1E1B4B',
+          glow: '#C7D2FE',
+        },
+        personality: parsed.personality || {
+          curiosity: 80,
+          friendliness: 85,
+          playfulness: 75,
+          calmness: 70,
+          focus: 75,
+          energy: 80,
+          social: 75,
+        },
+        scenario: parsed.scenario,
+        first_message: parsed.first_message,
+        traits: parsed.traits || ['imported', 'companion'],
+        tags: parsed.tags || ['custom'],
+        transform: parsed.transform,
+        collider: parsed.collider,
+        camera: parsed.camera,
+        visibility: parsed.visibility || 'private',
+        unlocked: true,
+        author: parsed.author || 'Community Creator',
+        version: parsed.version || '1.0.0',
+        license: parsed.license || 'User Pack License',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      this.addCharacter(newChar);
+      return { success: true, character: newChar };
+    } catch (err: any) {
+      return { success: false, error: `Failed to parse manifest: ${err.message}` };
+    }
+  }
+
+  public bulkDelete(ids: string[]): number {
+    let deletedCount = 0;
+    for (const id of ids) {
+      if (this.removeCharacter(id)) {
+        deletedCount++;
+      }
+    }
+    return deletedCount;
+  }
+
+  public bulkExport(ids: string[]): string {
+    const selected = this.characterRoster.filter((c) => ids.includes(c.id) || (c.character_id && ids.includes(c.character_id)));
+    const pack = {
+      export_version: 1,
+      exported_at: new Date().toISOString(),
+      count: selected.length,
+      characters: selected.map((c) => JSON.parse(this.exportCharacterPack(c))),
+    };
+    return JSON.stringify(pack, null, 2);
   }
 
   private async saveCustomRoster(): Promise<void> {

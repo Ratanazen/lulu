@@ -171,6 +171,119 @@ impl StorageService {
             .map_err(|e| e.to_string())?;
         }
 
+        if v < 3 {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    auth_type TEXT NOT NULL DEFAULT 'local',
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS character_assets (
+                    id TEXT PRIMARY KEY,
+                    character_id TEXT NOT NULL,
+                    asset_type TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    hash TEXT NOT NULL DEFAULT ''
+                );
+                CREATE TABLE IF NOT EXISTS character_animations (
+                    id TEXT PRIMARY KEY,
+                    character_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    config_json TEXT NOT NULL DEFAULT '{}',
+                    duration REAL NOT NULL DEFAULT 1.0
+                );
+                CREATE TABLE IF NOT EXISTS character_expressions (
+                    id TEXT PRIMARY KEY,
+                    character_id TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    config_json TEXT NOT NULL DEFAULT '{}'
+                );
+                CREATE TABLE IF NOT EXISTS character_voices (
+                    id TEXT PRIMARY KEY,
+                    character_id TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    voice_id TEXT NOT NULL,
+                    config_json TEXT NOT NULL DEFAULT '{}'
+                );
+                CREATE TABLE IF NOT EXISTS agents (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    system_prompt TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 1
+                );
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    agent_id TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    input TEXT NOT NULL,
+                    output TEXT NOT NULL DEFAULT '',
+                    created_at INTEGER NOT NULL,
+                    completed_at INTEGER
+                );
+                CREATE TABLE IF NOT EXISTS permissions (
+                    id TEXT PRIMARY KEY,
+                    category TEXT NOT NULL,
+                    granted INTEGER NOT NULL DEFAULT 0,
+                    scope TEXT NOT NULL DEFAULT '',
+                    updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS capabilities (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    details_json TEXT NOT NULL DEFAULT '{}'
+                );
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id TEXT PRIMARY KEY,
+                    app_name TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL DEFAULT '',
+                    icon TEXT NOT NULL DEFAULT '',
+                    received_at INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS music (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    artist TEXT NOT NULL DEFAULT '',
+                    album TEXT NOT NULL DEFAULT '',
+                    duration REAL NOT NULL DEFAULT 0.0,
+                    lrc_path TEXT NOT NULL DEFAULT '',
+                    played_at INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS games (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    high_score INTEGER NOT NULL DEFAULT 0,
+                    plays_count INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS workspace_profiles (
+                    id TEXT PRIMARY KEY,
+                    root_path TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    active INTEGER NOT NULL DEFAULT 1,
+                    config_json TEXT NOT NULL DEFAULT '{}'
+                );
+                CREATE TABLE IF NOT EXISTS logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    level TEXT NOT NULL,
+                    module TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                INSERT INTO schema_migrations (version, applied_at) 
+                VALUES (3, datetime('now'));",
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
         Ok(())
     }
 
@@ -310,5 +423,25 @@ mod tests {
         let storage2 = StorageService::new(Path::new(":memory:")).expect("Init second db");
         storage2.import_backup(&backup_json).unwrap();
         assert_eq!(storage2.get_kv("character_mood").unwrap(), Some("happy".to_string()));
+    }
+
+    #[test]
+    fn test_migration_v3_creates_all_tables() {
+        let storage = StorageService::new(Path::new(":memory:")).expect("Init in-memory db");
+        let conn = storage.conn.lock().unwrap();
+
+        let required_tables = vec![
+            "users", "settings", "characters", "character_assets", "character_animations",
+            "character_expressions", "character_voices", "character_presets", "agents",
+            "providers", "models", "tasks", "conversations", "messages", "memories",
+            "permissions", "capabilities", "notifications", "music", "games",
+            "workspace_profiles", "logs",
+        ];
+
+        for table in required_tables {
+            let query = format!("SELECT count(*) FROM {}", table);
+            let count: Result<i64, _> = conn.query_row(&query, [], |row| row.get(0));
+            assert!(count.is_ok(), "Table {} should exist and be queryable", table);
+        }
     }
 }

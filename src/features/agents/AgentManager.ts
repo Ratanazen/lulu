@@ -144,6 +144,11 @@ export class AgentManager {
     onUpdate?.({ ...task });
 
     try {
+      const { useLuluStore } = await import('../../stores/useLuluStore');
+      useLuluStore.getState().syncAgentState('thinking');
+    } catch {}
+
+    try {
       const agent = this.agents.get(task.agentId)!;
 
       // Step 1: Formulation / Planning
@@ -153,6 +158,11 @@ export class AgentManager {
         task.steps[0].detail = `${agent.name} is inspecting workspace and constraints at ${task.workspaceRoot}`;
         onUpdate?.({ ...task });
       }
+
+      try {
+        const { useLuluStore } = await import('../../stores/useLuluStore');
+        useLuluStore.getState().syncAgentState('working');
+      } catch {}
 
       // If AI provider is available, query agent
       let responseText = '';
@@ -189,12 +199,24 @@ export class AgentManager {
       task.output = responseText;
       task.status = 'completed';
       task.completedAt = Date.now();
+
+      try {
+        const { useLuluStore } = await import('../../stores/useLuluStore');
+        useLuluStore.getState().syncAgentState('success');
+      } catch {}
+
       onUpdate?.({ ...task });
       return { ...task };
     } catch (err: any) {
       task.status = 'failed';
       task.error = err?.message || String(err);
       task.completedAt = Date.now();
+
+      try {
+        const { useLuluStore } = await import('../../stores/useLuluStore');
+        useLuluStore.getState().syncAgentState('error');
+      } catch {}
+
       onUpdate?.({ ...task });
       return { ...task };
     } finally {

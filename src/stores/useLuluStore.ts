@@ -16,6 +16,7 @@ import {
   Vector2D,
 } from '../types';
 import { LULU_DEFAULT_CHARACTER, OFFICIAL_CHARACTERS } from '../character';
+import { characterManager } from '../character/CharacterManager';
 import { DEFAULT_NEEDS, NeedsEngine } from '../behavior/needsEngine';
 import { MoodEngine } from '../behavior/moodEngine';
 import { BehaviorEngine } from '../behavior/behaviorEngine';
@@ -173,6 +174,7 @@ interface LuluStoreState {
   cancelGeneration: () => void;
   clearChat: () => void;
   patPet: () => void;
+  syncAgentState: (agentState: 'thinking' | 'working' | 'waiting' | 'success' | 'error' | 'cancelled') => void;
 }
 
 export const useLuluStore = create<LuluStoreState>((set, get) => {
@@ -188,7 +190,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     speechSystem,
 
     character: LULU_DEFAULT_CHARACTER,
-    characters: OFFICIAL_CHARACTERS,
+    characters: characterManager.getRoster(),
     animationState: 'idle',
     animationFrame: 0,
     facing: 'right',
@@ -655,9 +657,42 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     },
 
     setCharacter: (id: string) => {
-      const found = OFFICIAL_CHARACTERS.find((c) => c.id === id) || LULU_DEFAULT_CHARACTER;
-      set({ character: found });
-      get().updateSettings({ characterId: id });
+      const roster = characterManager.getRoster();
+      const found = roster.find((c) => c.id === id || c.character_id === id) ||
+                    OFFICIAL_CHARACTERS.find((c) => c.id === id) ||
+                    LULU_DEFAULT_CHARACTER;
+      set({ character: found, characters: roster });
+      characterManager.setActiveCharacter(found);
+      get().updateSettings({ characterId: found.id });
+    },
+
+    syncAgentState: (agentState: 'thinking' | 'working' | 'waiting' | 'success' | 'error' | 'cancelled') => {
+      switch (agentState) {
+        case 'thinking':
+          get().setAnimation('curious');
+          set({ mood: 'curious' });
+          break;
+        case 'working':
+          get().setAnimation('read');
+          set({ mood: 'focused' });
+          break;
+        case 'waiting':
+          get().setAnimation('idle');
+          set({ mood: 'playful' });
+          break;
+        case 'success':
+          get().setAnimation('celebrate');
+          set({ mood: 'excited' });
+          break;
+        case 'error':
+          get().setAnimation('dizzy');
+          set({ mood: 'tired' });
+          break;
+        case 'cancelled':
+          get().setAnimation('sit');
+          set({ mood: 'calm' });
+          break;
+      }
     },
 
     setControlCenterOpen: (open: boolean) => {
