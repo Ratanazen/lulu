@@ -118,5 +118,68 @@ impl SystemService {
         }
         Ok(())
     }
+
+    pub fn get_linux_desktop_info() -> LinuxDesktopInfo {
+        let de = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_| "Unknown".to_string());
+        let session_type = std::env::var("XDG_SESSION_TYPE")
+            .unwrap_or_else(|_| {
+                if std::env::var_os("WAYLAND_DISPLAY").is_some() {
+                    "wayland".to_string()
+                } else {
+                    "x11".to_string()
+                }
+            });
+
+        let is_sway = std::env::var_os("SWAYSOCK").is_some() || de.to_lowercase().contains("sway");
+        let is_hyprland = std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() || de.to_lowercase().contains("hyprland");
+
+        let wm = if is_sway {
+            "Sway".to_string()
+        } else if is_hyprland {
+            "Hyprland".to_string()
+        } else {
+            de.clone()
+        };
+
+        let mut active_workspaces = Vec::new();
+        if is_sway {
+            if let Ok(out) = std::process::Command::new("swaymsg")
+                .arg("-t")
+                .arg("get_workspaces")
+                .output()
+            {
+                if let Ok(json_str) = String::from_utf8(out.stdout) {
+                    if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(&json_str) {
+                        for ws in parsed {
+                            if let Some(name) = ws.get("name").and_then(|n| n.as_str()) {
+                                active_workspaces.push(name.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        LinuxDesktopInfo {
+            desktop_environment: de,
+            window_manager: wm,
+            session_type,
+            is_sway,
+            is_hyprland,
+            active_workspaces,
+        }
+    }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinuxDesktopInfo {
+    pub desktop_environment: String,
+    pub window_manager: String,
+    pub session_type: String,
+    pub is_sway: bool,
+    pub is_hyprland: bool,
+    pub active_workspaces: Vec<String>,
+}
+
 

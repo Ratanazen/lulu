@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLuluStore } from '../../../stores/useLuluStore';
-import { MonitorService } from '../../../services/monitorService';
+import { MonitorService, LinuxDesktopInfo } from '../../../services/monitorService';
 import { MonitorInfo } from '../../../types';
 
 export const ScreenMapTab: React.FC = () => {
@@ -18,12 +18,17 @@ export const ScreenMapTab: React.FC = () => {
   } = useLuluStore();
 
   const [loading, setLoading] = useState(false);
+  const [desktopInfo, setDesktopInfo] = useState<LinuxDesktopInfo | null>(null);
 
   const refreshMonitors = async () => {
     setLoading(true);
     try {
       const mons = await MonitorService.getMonitors();
       setMonitors(mons);
+      const info = await MonitorService.getLinuxDesktopInfo();
+      if (info) {
+        setDesktopInfo(info);
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +96,61 @@ export const ScreenMapTab: React.FC = () => {
           {loading ? 'Refreshing...' : '🔄 Refresh Displays'}
         </button>
       </div>
+
+      {/* Linux Desktop & Window Manager Awareness */}
+      {desktopInfo && (
+        <div
+          style={{
+            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid rgba(129, 140, 248, 0.25)',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '20px' }}>🐧</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#F8FAFC' }}>
+                Linux Native Environment
+              </div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                DE: <strong style={{ color: '#E2E8F0' }}>{desktopInfo.desktopEnvironment}</strong> • WM:{' '}
+                <strong style={{ color: '#E2E8F0' }}>{desktopInfo.windowManager}</strong> • Session:{' '}
+                <strong style={{ color: '#38BDF8' }}>{desktopInfo.sessionType.toUpperCase()}</strong>
+              </div>
+            </div>
+          </div>
+
+          {desktopInfo.activeWorkspaces.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#94A3B8' }}>Workspaces:</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {desktopInfo.activeWorkspaces.map((ws) => (
+                  <span
+                    key={ws}
+                    style={{
+                      padding: '2px 8px',
+                      backgroundColor: 'rgba(129, 140, 248, 0.2)',
+                      border: '1px solid #818CF8',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#C7D2FE',
+                    }}
+                  >
+                    {ws}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Screen Map Canvas Area */}
       <div

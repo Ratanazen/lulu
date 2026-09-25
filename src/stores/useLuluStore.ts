@@ -36,6 +36,10 @@ import { emotionEngine, EmotionMetrics, EmotionType } from '../features/emotion/
 import { voiceManager } from '../features/voice/VoiceManager';
 import { VoiceState } from '../features/voice/types';
 import { toolManager } from '../features/tools/ToolManager';
+import { MediaStatus, MusicState } from '../features/music/types';
+import { musicEngine } from '../features/music/MusicEngine';
+import { lyricsSyncManager } from '../features/lyrics/LyricsSync';
+import { notificationManager } from '../features/notifications/NotificationManager';
 
 export const DEFAULT_SETTINGS: LuluSettings = {
   theme: 'lulu-dark',
@@ -112,6 +116,13 @@ interface LuluStoreState {
   emotionMetrics: EmotionMetrics;
   currentEmotion: EmotionType;
   voiceState: VoiceState;
+
+  // Media, Lyrics & Notifications
+  mediaStatus: MediaStatus;
+  musicState: MusicState;
+  currentLyric: string;
+  nextLyric: string;
+  notificationCount: number;
 
   // Actions
   initialize: () => Promise<void>;
@@ -212,6 +223,13 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     currentEmotion: emotionEngine.getCurrentEmotion(),
     voiceState: voiceManager.getState(),
 
+    // Media, Lyrics & Notifications initial state
+    mediaStatus: musicEngine.getStatus(),
+    musicState: musicEngine.getState(),
+    currentLyric: '',
+    nextLyric: '',
+    notificationCount: 0,
+
     initialize: async () => {
       // 1. Load settings & progression from SQLite storage
       const savedSettings = await StorageService.get<LuluSettings>('settings', DEFAULT_SETTINGS);
@@ -301,6 +319,48 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         emotionMetrics: emotionEngine.getMetrics(),
         currentEmotion: emotionEngine.getCurrentEmotion(),
         voiceState: voiceManager.getState(),
+      });
+
+      // Initialize Notification Listener
+      notificationManager.initialize((reaction) => {
+        get().setAnimation('surprised');
+        soundService.play('achievement', 'ui');
+        get().speak(reaction, 'achievement');
+        set({ notificationCount: get().notificationCount + 1 });
+        setTimeout(() => {
+          if (get().animationState === 'surprised') {
+            get().setAnimation('happy');
+            setTimeout(() => {
+              if (get().animationState === 'happy') get().setAnimation('idle');
+            }, 3000);
+          }
+        }, 2000);
+      });
+
+      // Initialize MPRIS Music Engine
+      musicEngine.start();
+      musicEngine.onStatusChange((status, mState) => {
+        set({ mediaStatus: status, musicState: mState });
+        if (mState === 'MUSIC_PLAYING') {
+          if (get().settings.musicReactionsEnabled) {
+            get().setAnimation('dance');
+          }
+        } else if (mState === 'MUSIC_STOPPED' || mState === 'MUSIC_PAUSED') {
+          if (get().animationState === 'dance') {
+            get().setAnimation('idle');
+          }
+        }
+      });
+
+      // Synchronized Lyrics listener
+      lyricsSyncManager.onLyricChange((curr, next) => {
+        set({
+          currentLyric: curr?.text || '',
+          nextLyric: next?.text || '',
+        });
+        if (curr && curr.text && get().musicState === 'MUSIC_PLAYING') {
+          get().speak(`♪ ${curr.text}`, 'game');
+        }
       });
 
       // Greeting speech

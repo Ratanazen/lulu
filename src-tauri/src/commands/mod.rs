@@ -142,3 +142,34 @@ pub fn exit_app(app: AppHandle) {
     app.exit(0);
 }
 
+#[tauri::command]
+pub fn get_media_status() -> Result<crate::music::MediaStatus, String> {
+    Ok(crate::music::MusicService::get_media_status())
+}
+
+#[tauri::command]
+pub fn media_control(action: String) -> Result<(), String> {
+    crate::music::MusicService::media_control(&action)
+}
+
+#[tauri::command]
+pub fn list_local_lyrics() -> Result<Vec<crate::lyrics::LyricsFileInfo>, String> {
+    crate::lyrics::LyricsService::list_local_lyrics()
+}
+
+#[tauri::command]
+pub fn load_lrc_content(path: String) -> Result<String, String> {
+    crate::lyrics::LyricsService::load_lrc_content(&path)
+}
+
+#[tauri::command]
+pub fn send_test_notification(app_name: String, summary: String, body: String) -> Result<(), String> {
+    crate::notifications::NotificationService::send_test_notification(&app_name, &summary, &body)
+}
+
+#[tauri::command]
+pub fn get_linux_desktop_info() -> Result<crate::system::LinuxDesktopInfo, String> {
+    Ok(crate::system::SystemService::get_linux_desktop_info())
+}
+
+

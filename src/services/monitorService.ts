@@ -90,4 +90,25 @@ export class MonitorService {
     }
     return monitors.find((m) => m.primary) || monitors[0] || null;
   }
+
+  public static async getLinuxDesktopInfo(): Promise<LinuxDesktopInfo | null> {
+    const invoke = await getInvoke();
+    if (invoke) {
+      try {
+        return await invoke<LinuxDesktopInfo>('get_linux_desktop_info');
+      } catch (e) {
+        console.warn('[MonitorService] get_linux_desktop_info failed:', e);
+      }
+    }
+    return null;
+  }
+}
+
+export interface LinuxDesktopInfo {
+  desktopEnvironment: string;
+  windowManager: string;
+  sessionType: string;
+  isSway: boolean;
+  isHyprland: boolean;
+  activeWorkspaces: string[];
 }

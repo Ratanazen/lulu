@@ -1,8 +1,11 @@
 pub mod commands;
 pub mod diagnostics;
 pub mod git;
+pub mod lyrics;
 pub mod monitors;
 pub mod movement;
+pub mod music;
+pub mod notifications;
 pub mod process;
 pub mod state;
 pub mod storage;
@@ -102,6 +105,9 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            // Start background desktop notification listener
+            crate::notifications::NotificationService::start_listener(app.handle().clone());
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -128,6 +134,12 @@ pub fn run() {
             is_autostart_enabled,
             set_autostart_enabled,
             exit_app,
+            get_media_status,
+            media_control,
+            list_local_lyrics,
+            load_lrc_content,
+            send_test_notification,
+            get_linux_desktop_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");

@@ -18,6 +18,19 @@ Unlike web-based overlays or simulated pets, Lulu lives in a **real transparent,
   - Real window movement across multiple monitors, DPI scales, and negative coordinate spaces.
   - Native System Tray integration (Show Lulu, Hide Lulu, Open Chat, Settings, Quit).
   - Native OS autostart on user login (XDG `.desktop`).
+  - Native Linux Desktop Awareness: Wayland / X11 session detection, Sway / Hyprland tiling WM detection, and active workspace tracking.
+- **Linux Native Notifications Subsystem**:
+  - Background D-Bus listener monitoring `org.freedesktop.Notifications`.
+  - Deterministic originating application identification (Telegram ✈️, Discord 🎮, Slack 💼, Email ✉️, Browser 🌐, VS Code 💻, Terminal 🖥️, Music 🎵).
+  - Strict privacy protection: `Read Notification Content` is disabled by default, ensuring message bodies remain private.
+  - Whitelist filtering and native test notification generation via `notify-send`.
+- **Linux MPRIS Music & Synchronized Lyrics (.lrc)**:
+  - Real-time media playback tracking via Linux MPRIS D-Bus (`org.mpris.MediaPlayer2`) and `playerctl`.
+  - Automatic detection of Spotify, VLC, browser media, YouTube, and local players.
+  - Interactive playback controls: Play, Pause, Next, Previous.
+  - High-precision `.lrc` lyrics parser supporting metadata (`[ti:]`, `[ar:]`, `[al:]`), multiple timestamps per line, and sub-second offsets.
+  - Real-time lyrics karaoke sync displaying active lyric lines in Lulu's speech bubbles and Control Center.
+  - Dynamic companion dance animations driven by live media playback.
 - **AI Companion Subsystem**:
   - Multi-provider LLM architecture: Local **Ollama** (`localhost:11434`), OpenAI, Google Gemini, Anthropic Claude, and Custom Endpoints.
   - Real-time token streaming with cancel/abort controls.
@@ -132,7 +145,7 @@ npm run tauri dev
 ### Verification & Testing
 
 ```bash
-# Run Vitest unit & integration test suite (62 tests across 14 suites)
+# Run Vitest unit & integration test suite (74 tests across 16 suites)
 npm run test
 
 # Run Rust backend unit tests (4 tests)
