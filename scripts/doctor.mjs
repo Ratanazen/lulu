@@ -113,6 +113,39 @@ if (fs.existsSync(gamesPath)) {
   });
 }
 
+// 7. Check Machine-Readable Capability Matrix Registry
+const capPath = path.resolve('docs/capabilities.json');
+if (fs.existsSync(capPath)) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(capPath, 'utf8'));
+    if (raw.schema_version >= 1 && Array.isArray(raw.capabilities) && raw.capabilities.length > 0) {
+      checks.push({
+        name: 'Capability Matrix Registry',
+        status: 'PASS',
+        message: `Schema v${raw.schema_version} verified with ${raw.capabilities.length} machine-readable capabilities`,
+      });
+    } else {
+      checks.push({
+        name: 'Capability Matrix Registry',
+        status: 'WARN',
+        message: 'docs/capabilities.json schema version or array invalid',
+      });
+    }
+  } catch (e) {
+    checks.push({
+      name: 'Capability Matrix Registry',
+      status: 'FAIL',
+      message: `Invalid capabilities.json: ${e.message}`,
+    });
+  }
+} else {
+  checks.push({
+    name: 'Capability Matrix Registry',
+    status: 'FAIL',
+    message: 'docs/capabilities.json missing',
+  });
+}
+
 // Print Results
 let passCount = 0;
 let warnCount = 0;

@@ -1,3 +1,4 @@
+pub mod capabilities;
 pub mod commands;
 pub mod diagnostics;
 pub mod git;
@@ -140,6 +141,9 @@ pub fn run() {
             load_lrc_content,
             send_test_notification,
             get_linux_desktop_info,
+            get_capabilities,
+            get_capability_by_id,
+            get_capability_diagnostics,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");

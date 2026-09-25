@@ -1,0 +1,364 @@
+{
+  "schema_version": 1,
+  "application": "Lulu",
+  "platforms": {
+    "linux": {
+      "window_systems": [
+        "wayland",
+        "x11"
+      ],
+      "desktop_environments": [
+        "gnome",
+        "kde",
+        "xfce",
+        "cinnamon",
+        "sway",
+        "hyprland",
+        "other"
+      ]
+    },
+    "windows": {
+      "window_systems": [
+        "win32",
+        "dwm"
+      ],
+      "desktop_environments": [
+        "explorer"
+      ]
+    },
+    "macos": {
+      "window_systems": [
+        "quartz"
+      ],
+      "desktop_environments": [
+        "aqua"
+      ]
+    }
+  },
+  "capabilities": [
+    {
+      "id": "pet.transparent_window",
+      "name": "Transparent Pet Window",
+      "category": "pet",
+      "platforms": {
+        "linux": {
+          "wayland": "supported",
+          "x11": "supported"
+        },
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": false,
+      "status": "supported",
+      "fallback": "normal_window",
+      "privacy": "local_only"
+    },
+    {
+      "id": "pet.always_on_top",
+      "name": "Always On Top",
+      "category": "window",
+      "platforms": {
+        "linux": {
+          "wayland": "partial",
+          "x11": "supported"
+        },
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": false,
+      "status": "partial",
+      "fallback": "normal_window",
+      "privacy": "local_only"
+    },
+    {
+      "id": "pet.multi_monitor",
+      "name": "Multi Monitor",
+      "category": "display",
+      "platforms": {
+        "linux": {
+          "wayland": "supported",
+          "x11": "supported"
+        },
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "supported",
+      "fallback": "primary_monitor",
+      "privacy": "local_only"
+    },
+    {
+      "id": "notifications.dbus",
+      "name": "Linux Desktop Notifications",
+      "category": "notifications",
+      "platforms": {
+        "linux": {
+          "wayland": "supported",
+          "x11": "supported"
+        },
+        "windows": "unsupported",
+        "macos": "unsupported"
+      },
+      "requires": [
+        "dbus"
+      ],
+      "optional": true,
+      "status": "supported",
+      "fallback": "disabled",
+      "privacy": "user_controlled"
+    },
+    {
+      "id": "notifications.message_content",
+      "name": "Notification Message Content",
+      "category": "notifications",
+      "platforms": {
+        "linux": {
+          "wayland": "supported",
+          "x11": "supported"
+        },
+        "windows": "unsupported",
+        "macos": "unsupported"
+      },
+      "requires": [
+        "dbus",
+        "explicit_user_opt_in"
+      ],
+      "optional": true,
+      "status": "disabled",
+      "fallback": "app_name_only",
+      "privacy": "user_controlled"
+    },
+    {
+      "id": "music.mpris",
+      "name": "MPRIS Music Detection",
+      "category": "music",
+      "platforms": {
+        "linux": {
+          "wayland": "supported",
+          "x11": "supported"
+        },
+        "windows": "unsupported",
+        "macos": "unsupported"
+      },
+      "requires": [
+        "dbus",
+        "mpris"
+      ],
+      "optional": true,
+      "status": "supported",
+      "fallback": "music_metadata_unavailable",
+      "privacy": "local_only"
+    },
+    {
+      "id": "lyrics.lrc",
+      "name": "Local LRC Lyrics",
+      "category": "lyrics",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "supported",
+      "fallback": "lyrics_unavailable",
+      "privacy": "local_only"
+    },
+    {
+      "id": "ai.ollama",
+      "name": "Ollama Local AI",
+      "category": "ai",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [
+        "ollama"
+      ],
+      "optional": true,
+      "status": "requires_dependency",
+      "fallback": "ai_offline",
+      "privacy": "local_only"
+    },
+    {
+      "id": "voice.tts",
+      "name": "Text To Speech",
+      "category": "voice",
+      "platforms": {
+        "linux": "partial",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "partial",
+      "fallback": "text_only",
+      "privacy": "user_controlled"
+    },
+    {
+      "id": "voice.stt",
+      "name": "Speech To Text",
+      "category": "voice",
+      "platforms": {
+        "linux": "partial",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [
+        "microphone_permission"
+      ],
+      "optional": true,
+      "status": "requires_permission",
+      "fallback": "text_input_only",
+      "privacy": "requires_permission"
+    },
+    {
+      "id": "context.screen",
+      "name": "Screen Context",
+      "category": "context",
+      "platforms": {
+        "linux": "partial",
+        "windows": "partial",
+        "macos": "partial"
+      },
+      "requires": [
+        "screen_capture_permission"
+      ],
+      "optional": true,
+      "status": "requires_permission",
+      "fallback": "disabled",
+      "privacy": "requires_permission"
+    },
+    {
+      "id": "context.clipboard",
+      "name": "Clipboard Context",
+      "category": "context",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [
+        "clipboard_read_permission"
+      ],
+      "optional": true,
+      "status": "requires_permission",
+      "fallback": "disabled",
+      "privacy": "requires_permission"
+    },
+    {
+      "id": "tools.shell",
+      "name": "Shell Execution",
+      "category": "tools",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [
+        "explicit_user_confirmation"
+      ],
+      "optional": true,
+      "status": "requires_permission",
+      "fallback": "disabled",
+      "privacy": "requires_permission"
+    },
+    {
+      "id": "tools.calculator",
+      "name": "Safe Math Calculator",
+      "category": "tools",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "supported",
+      "fallback": "disabled",
+      "privacy": "local_only"
+    },
+    {
+      "id": "tools.timer",
+      "name": "Focus Sprint Timer",
+      "category": "tools",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "supported",
+      "fallback": "disabled",
+      "privacy": "local_only"
+    },
+    {
+      "id": "tools.notes",
+      "name": "Scratchpad Notes",
+      "category": "tools",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "supported",
+      "fallback": "disabled",
+      "privacy": "local_only"
+    },
+    {
+      "id": "storage.sqlite",
+      "name": "Offline SQLite Persistence",
+      "category": "storage",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": false,
+      "status": "supported",
+      "fallback": "in_memory_storage",
+      "privacy": "local_only"
+    },
+    {
+      "id": "system.autostart",
+      "name": "Login Autostart",
+      "category": "system",
+      "platforms": {
+        "linux": {
+          "wayland": "supported",
+          "x11": "supported"
+        },
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "supported",
+      "fallback": "manual_launch",
+      "privacy": "local_only"
+    },
+    {
+      "id": "system.metrics",
+      "name": "Native Hardware Telemetry",
+      "category": "system",
+      "platforms": {
+        "linux": "supported",
+        "windows": "supported",
+        "macos": "supported"
+      },
+      "requires": [],
+      "optional": true,
+      "status": "supported",
+      "fallback": "disabled",
+      "privacy": "local_only"
+    }
+  ]
+}

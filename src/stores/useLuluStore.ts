@@ -40,6 +40,7 @@ import { MediaStatus, MusicState } from '../features/music/types';
 import { musicEngine } from '../features/music/MusicEngine';
 import { lyricsSyncManager } from '../features/lyrics/LyricsSync';
 import { notificationManager } from '../features/notifications/NotificationManager';
+import { CapabilityService, RuntimeCapability, EffectiveCapability } from '../services/capabilityService';
 
 export const DEFAULT_SETTINGS: LuluSettings = {
   theme: 'lulu-dark',
@@ -123,6 +124,12 @@ interface LuluStoreState {
   currentLyric: string;
   nextLyric: string;
   notificationCount: number;
+
+  // Machine-Readable Capabilities
+  capabilities: RuntimeCapability[];
+  refreshCapabilities: () => Promise<void>;
+  isCapabilitySupported: (id: string) => boolean;
+  getEffectiveCapability: (id: string, userEnabled?: boolean) => EffectiveCapability;
 
   // Actions
   initialize: () => Promise<void>;
@@ -230,6 +237,9 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     nextLyric: '',
     notificationCount: 0,
 
+    // Machine-Readable Capabilities
+    capabilities: [],
+
     initialize: async () => {
       // 1. Load settings & progression from SQLite storage
       const savedSettings = await StorageService.get<LuluSettings>('settings', DEFAULT_SETTINGS);
@@ -321,36 +331,46 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         voiceState: voiceManager.getState(),
       });
 
-      // Initialize Notification Listener
-      notificationManager.initialize((reaction) => {
-        get().setAnimation('surprised');
-        soundService.play('achievement', 'ui');
-        get().speak(reaction, 'achievement');
-        set({ notificationCount: get().notificationCount + 1 });
-        setTimeout(() => {
-          if (get().animationState === 'surprised') {
-            get().setAnimation('happy');
-            setTimeout(() => {
-              if (get().animationState === 'happy') get().setAnimation('idle');
-            }, 3000);
-          }
-        }, 2000);
-      });
+      // Load Authoritative Runtime Capabilities
+      const caps = await CapabilityService.getCapabilities();
+      set({ capabilities: caps });
 
-      // Initialize MPRIS Music Engine
-      musicEngine.start();
-      musicEngine.onStatusChange((status, mState) => {
-        set({ mediaStatus: status, musicState: mState });
-        if (mState === 'MUSIC_PLAYING') {
-          if (get().settings.musicReactionsEnabled) {
-            get().setAnimation('dance');
+      // Feature-Gated Notification Listener
+      const notifCap = caps.find((c) => c.id === 'notifications.dbus');
+      if (CapabilityService.isFeatureUsable(notifCap, true)) {
+        notificationManager.initialize((reaction) => {
+          get().setAnimation('surprised');
+          soundService.play('achievement', 'ui');
+          get().speak(reaction, 'achievement');
+          set({ notificationCount: get().notificationCount + 1 });
+          setTimeout(() => {
+            if (get().animationState === 'surprised') {
+              get().setAnimation('happy');
+              setTimeout(() => {
+                if (get().animationState === 'happy') get().setAnimation('idle');
+              }, 3000);
+            }
+          }, 2000);
+        });
+      }
+
+      // Feature-Gated MPRIS Music Engine
+      const mprisCap = caps.find((c) => c.id === 'music.mpris');
+      if (CapabilityService.isFeatureUsable(mprisCap, true)) {
+        musicEngine.start();
+        musicEngine.onStatusChange((status, mState) => {
+          set({ mediaStatus: status, musicState: mState });
+          if (mState === 'MUSIC_PLAYING') {
+            if (get().settings.musicReactionsEnabled) {
+              get().setAnimation('dance');
+            }
+          } else if (mState === 'MUSIC_STOPPED' || mState === 'MUSIC_PAUSED') {
+            if (get().animationState === 'dance') {
+              get().setAnimation('idle');
+            }
           }
-        } else if (mState === 'MUSIC_STOPPED' || mState === 'MUSIC_PAUSED') {
-          if (get().animationState === 'dance') {
-            get().setAnimation('idle');
-          }
-        }
-      });
+        });
+      }
 
       // Synchronized Lyrics listener
       lyricsSyncManager.onLyricChange((curr, next) => {
@@ -893,6 +913,31 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         }));
         emotionEngine.onError();
       }
+    },
+
+    refreshCapabilities: async () => {
+      const caps = await CapabilityService.getCapabilities();
+      set({ capabilities: caps });
+    },
+
+    isCapabilitySupported: (id: string) => {
+      const cap = get().capabilities.find((c) => c.id === id);
+      return cap ? cap.status === 'supported' || cap.status === 'partial' : false;
+    },
+
+    getEffectiveCapability: (id: string, userEnabled: boolean = true) => {
+      const cap = get().capabilities.find((c) => c.id === id);
+      if (!cap) {
+        return {
+          capability: id,
+          availability: 'unsupported' as const,
+          userEnabled,
+          effectiveState: 'unavailable' as const,
+          fallback: 'disabled',
+          reason: 'Capability not recognized in registry',
+        };
+      }
+      return CapabilityService.computeEffectiveState(cap, userEnabled);
     },
   };
 });

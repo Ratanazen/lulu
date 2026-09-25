@@ -172,4 +172,19 @@ pub fn get_linux_desktop_info() -> Result<crate::system::LinuxDesktopInfo, Strin
     Ok(crate::system::SystemService::get_linux_desktop_info())
 }
 
+#[tauri::command]
+pub fn get_capabilities(app: AppHandle) -> Result<Vec<crate::capabilities::RuntimeCapability>, String> {
+    Ok(crate::capabilities::CapabilityManager::detect_capabilities(&app))
+}
+
+#[tauri::command]
+pub fn get_capability_by_id(app: AppHandle, id: String) -> Result<Option<crate::capabilities::RuntimeCapability>, String> {
+    Ok(crate::capabilities::CapabilityManager::get_capability(&id, &app))
+}
+
+#[tauri::command]
+pub fn get_capability_diagnostics(app: AppHandle) -> Result<crate::capabilities::CapabilityDiagnosticsReport, String> {
+    Ok(crate::capabilities::CapabilityManager::get_diagnostics(&app))
+}
+
 

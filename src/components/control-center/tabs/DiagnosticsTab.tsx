@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DiagnosticResult } from '../../../types';
+import { CapabilityService, CapabilityDiagnosticsReport } from '../../../services/capabilityService';
 
 let tauriInvoke: (<T = any>(cmd: string, args?: Record<string, unknown>) => Promise<T>) | null = null;
 
@@ -17,6 +18,8 @@ async function getInvoke() {
 export const DiagnosticsTab: React.FC = () => {
   const [results, setResults] = useState<DiagnosticResult[]>([]);
   const [running, setRunning] = useState(false);
+  const [capReport, setCapReport] = useState<CapabilityDiagnosticsReport | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const runDoctor = async () => {
     setRunning(true);
@@ -70,9 +73,33 @@ export const DiagnosticsTab: React.FC = () => {
     setRunning(false);
   };
 
+  const fetchReport = async () => {
+    const rep = await CapabilityService.getDiagnosticsReport();
+    setCapReport(rep);
+  };
+
   useEffect(() => {
     runDoctor();
+    fetchReport();
   }, []);
+
+  const handleCopyDiagnostics = () => {
+    if (!capReport) return;
+    navigator.clipboard.writeText(JSON.stringify(capReport, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportDiagnostics = () => {
+    if (!capReport) return;
+    const blob = new Blob([JSON.stringify(capReport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lulu-diagnostics-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const passCount = results.filter((r) => r.status === 'PASS').length;
   const warnCount = results.filter((r) => r.status === 'WARN').length;
@@ -188,6 +215,171 @@ export const DiagnosticsTab: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Runtime Environment & Capabilities Diagnostics (Section 62.11) */}
+      {capReport && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-bg-card, #1E293B)',
+            border: '1px solid var(--color-border, #334155)',
+            borderRadius: '16px',
+            padding: '18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '10px',
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '15px', color: '#F8FAFC' }}>
+                🖥️ Runtime Environment & Capabilities
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted, #94A3B8)' }}>
+                Clean system telemetry (guaranteed zero API keys, passwords, or private content)
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleCopyDiagnostics}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: copied
+                    ? 'rgba(52, 211, 153, 0.2)'
+                    : 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid var(--color-border, #334155)',
+                  borderRadius: '8px',
+                  color: copied ? '#34D399' : 'var(--color-text, #F8FAFC)',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                {copied ? '✓ Copied!' : '📋 Copy Diagnostics'}
+              </button>
+              <button
+                onClick={handleExportDiagnostics}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid #818CF8',
+                  borderRadius: '8px',
+                  color: '#818CF8',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                💾 Export Diagnostics
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '12px',
+              backgroundColor: '#0F172A',
+              padding: '14px',
+              borderRadius: '12px',
+              border: '1px solid #334155',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>OS & Architecture</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#F8FAFC' }}>
+                {capReport.os} ({capReport.architecture})
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Window System</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#38BDF8' }}>
+                {capReport.windowSystem.toUpperCase()}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Desktop & Window Manager</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#F8FAFC' }}>
+                {capReport.windowManager} ({capReport.desktopEnvironment})
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>D-Bus Subsystem</div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: capReport.dbusAvailable ? '#34D399' : '#F87171',
+                }}
+              >
+                {capReport.dbusAvailable ? '✓ Available' : '✕ Unavailable'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>MPRIS Media Player</div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: capReport.mprisAvailable ? '#34D399' : '#FBBF24',
+                }}
+              >
+                {capReport.mprisAvailable ? '✓ Available' : '○ Not Detected'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Desktop Notification Service</div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: capReport.notificationServiceAvailable ? '#34D399' : '#F87171',
+                }}
+              >
+                {capReport.notificationServiceAvailable ? '✓ Available' : '✕ Unavailable'}
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Ollama Local AI</div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: capReport.ollamaAvailable ? '#34D399' : '#94A3B8',
+                }}
+              >
+                {capReport.ollamaAvailable ? '✓ Running (:11434)' : '○ Standby / Offline'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Voice TTS & STT Engine</div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: capReport.ttsAvailable ? '#34D399' : '#FBBF24',
+                }}
+              >
+                {capReport.ttsAvailable ? '✓ Synthesis Ready' : '~ Text Only'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>Monitors Detected</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#F8FAFC' }}>
+                {capReport.monitorCount} {capReport.monitorCount > 1 ? 'Displays' : 'Display'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
