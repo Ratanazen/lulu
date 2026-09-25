@@ -50,7 +50,23 @@ export interface PersonalityTraits {
 
 export type MouthShape = 'closed' | 'small' | 'medium' | 'open' | 'smile';
 
-export type CharacterRendererType = 'pixel' | 'skeletal_2d' | 'live2d' | 'three_vrm';
+export type CharacterRendererType = 'pixel' | 'skeletal_2d' | 'live2d' | 'three_vrm' | 'spritesheet';
+
+export interface SpriteSheetActionConfig {
+  fileUrl: string;
+  frameCount: number;
+  fps: number;
+  frameWidth: number;
+  frameHeight: number;
+  orientation?: 'horizontal' | 'vertical';
+  loop?: boolean;
+}
+
+export interface CharacterSpriteSheetConfig {
+  actions: Record<string, SpriteSheetActionConfig>;
+  spriteSize?: { width: number; height: number };
+  offset?: { x: number; y: number };
+}
 
 export interface CharacterPackManifest {
   id: string;
@@ -204,6 +220,7 @@ export interface CharacterProfile {
   accessories?: string[];
   renderer?: CharacterRendererType;
   modelPath?: string;
+  spriteSheetConfig?: CharacterSpriteSheetConfig;
   category?: 'original' | 'anime' | 'user' | 'imported';
   license?: string;
   author?: string;

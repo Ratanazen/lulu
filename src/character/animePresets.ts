@@ -145,6 +145,42 @@ export const ANIME_CHARACTERS: CharacterProfile[] = [
     author: 'Lulu Core Team',
     version: '1.0.0',
   },
+  {
+    id: 'nexus_bot',
+    displayName: 'Nexus (Cyber Alien Coder)',
+    description: 'An original alien micro-bot who escaped the Silicon Nebula to pair-program on your desktop. Fueled by clean Rust code, algorithms, and terminal energy.',
+    category: 'original',
+    renderer: 'skeletal_2d',
+    personality: {
+      curiosity: 98,
+      friendliness: 90,
+      playfulness: 85,
+      calmness: 80,
+      focus: 99,
+      energy: 95,
+      social: 75,
+      speakingStyle: 'tech-savvy, analytical, playful, concise',
+      tone: 'cheerful cyber-companion',
+      greeting: '01001000 01101001! System initialized. Ready to pair-program with Codex CLI!',
+      idleBehavior: 'typing on holographic terminal or scanning compiler output',
+      favoriteTopics: ['rust', 'typescript', 'algorithms', 'linux kernels', 'cybernetics', 'debugging'],
+    },
+    scale: 1.0,
+    defaultPosition: { x: 300, y: 320 },
+    palette: {
+      primary: '#06B6D4',   // Neon Cyan chassis
+      secondary: '#10B981', // Cyber Emerald trim
+      accent: '#F59E0B',    // Amber Status LED
+      shadow: '#0F172A',    // Midnight Carbon
+      glow: '#38BDF8',      // Hologram Visor Glow
+    },
+    aura: 'rgba(6, 182, 212, 0.35)',
+    accessories: ['antenna_led', 'hologram_visor'],
+    unlocked: true,
+    license: 'Original Creative Commons',
+    author: 'Lulu Core Team',
+    version: '1.0.0',
+  },
 ];
 
 export const ANIME_PRESETS = ANIME_CHARACTERS;

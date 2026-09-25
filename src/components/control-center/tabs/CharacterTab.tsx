@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLuluStore } from '../../../stores/useLuluStore';
 import { AnimationState, CharacterProfile, CharacterRendererType } from '../../../types';
 import { StorageService } from '../../../services/storageService';
@@ -51,6 +51,41 @@ export const CharacterTab: React.FC = () => {
       2
     )
   );
+
+  const stageCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [stageAction, setStageAction] = useState<AnimationState>('idle');
+  const [stagePlaying, setStagePlaying] = useState<boolean>(true);
+  const [stageFrame, setStageFrame] = useState<number>(0);
+
+  useEffect(() => {
+    let animId: number;
+    const renderStage = () => {
+      const canvas = stageCanvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const { renderer } = characterManager.getEffectiveRenderer(character, currentRenderer);
+          renderer.render({
+            ctx,
+            width: canvas.width,
+            height: canvas.height,
+            animationState: stageAction,
+            animationFrame: stageFrame,
+            facing: 'right',
+            character,
+            mouthShape: 'smile',
+            scale: 1.5,
+          });
+        }
+      }
+      if (stagePlaying) {
+        setStageFrame((prev) => (prev + 0.3) % 60);
+      }
+      animId = requestAnimationFrame(renderStage);
+    };
+    animId = requestAnimationFrame(renderStage);
+    return () => cancelAnimationFrame(animId);
+  }, [character, currentRenderer, stageAction, stagePlaying, stageFrame]);
 
   useEffect(() => {
     StorageService.get<string[]>('unlocked_accessories', ['halo', 'star_glasses']).then((saved) => {
@@ -257,7 +292,7 @@ export const CharacterTab: React.FC = () => {
           Select how characters are drawn on your desktop. Lulu seamlessly supports 2D pixel, 2D vector skeletal, and 3D VRM engines.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
           {[
             {
               type: 'pixel' as CharacterRendererType,
@@ -276,6 +311,12 @@ export const CharacterTab: React.FC = () => {
               name: 'WebGL / 3D VRM',
               desc: 'Hardware-accelerated 3D avatar engine with capability detection.',
               tag: '3D • GPU Accelerated',
+            },
+            {
+              type: 'spritesheet' as CharacterRendererType,
+              name: 'Universal Sprite Sheet',
+              desc: 'Pre-rendered horizontal/vertical strips with frame pacing.',
+              tag: 'Custom Sheets • 2D',
             },
           ].map((r) => {
             const isSelected = currentRenderer === r.type;
@@ -611,7 +652,7 @@ export const CharacterTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Animation Tester */}
+      {/* Interactive Live Preview Stage */}
       <div
         style={{
           backgroundColor: 'var(--color-bg-card, #1E293B)',
@@ -620,26 +661,250 @@ export const CharacterTab: React.FC = () => {
           padding: '20px',
         }}
       >
-        <h4 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Live Animation Tester (18 States)</h4>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {animationStates.map((st) => (
-            <button
-              key={st}
-              onClick={() => setAnimation(st)}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🎬 Character Live Preview Stage</span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                  color: '#818CF8',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                }}
+              >
+                {character.displayName} • {character.renderer || 'pixel'}
+              </span>
+            </h4>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--color-text-muted, #94A3B8)' }}>
+              Scrub animations frame-by-frame, test motion pacing, and inspect sprite bounding bounds in real time.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setAnimation(stageAction)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(99, 102, 241, 0.15)',
+              border: '1px solid var(--color-primary, #6366F1)',
+              color: 'var(--color-primary, #818CF8)',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ⚡ Sync Action to Desktop
+          </button>
+        </div>
+
+        {/* Live Stage Canvas Viewport */}
+        <div
+          style={{
+            position: 'relative',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px) 0 0 / 16px 16px, #0B0F19',
+            border: '1px solid var(--color-border, #334155)',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '16px',
+            minHeight: '260px',
+            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)',
+          }}
+        >
+          <canvas
+            ref={stageCanvasRef}
+            width={320}
+            height={240}
+            style={{
+              display: 'block',
+              imageRendering: 'pixelated',
+              filter: 'drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4))',
+            }}
+          />
+
+          {/* HUD Overlay Info */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '12px',
+              left: '12px',
+              display: 'flex',
+              gap: '6px',
+              pointerEvents: 'none',
+            }}
+          >
+            <span
               style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid var(--color-border, #334155)',
-                color: 'var(--color-text, #F8FAFC)',
-                fontSize: '12px',
-                cursor: 'pointer',
-                textTransform: 'capitalize',
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                color: '#38BDF8',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
               }}
             >
-              {st}
-            </button>
-          ))}
+              Action: {stageAction}
+            </span>
+            <span
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                color: '#10B981',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+              }}
+            >
+              Frame: {Math.floor(stageFrame)}/60
+            </span>
+          </div>
+
+          <div
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              pointerEvents: 'none',
+            }}
+          >
+            <span
+              style={{
+                backgroundColor: 'rgba(0,0,0,0.65)',
+                color: '#A855F7',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+              }}
+            >
+              Scale: 1.5x
+            </span>
+          </div>
+        </div>
+
+        {/* Transport & Frame Scrubber Controls */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            padding: '10px 16px',
+            borderRadius: '10px',
+            marginBottom: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+          }}
+        >
+          <button
+            onClick={() => setStagePlaying((prev) => !prev)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              backgroundColor: stagePlaying ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+              border: `1px solid ${stagePlaying ? '#EF4444' : '#10B981'}`,
+              color: stagePlaying ? '#F87171' : '#34D399',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              minWidth: '85px',
+            }}
+          >
+            {stagePlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+
+          <button
+            onClick={() => {
+              setStageFrame(0);
+              setStagePlaying(true);
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid var(--color-border, #334155)',
+              color: 'var(--color-text, #F8FAFC)',
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+          >
+            ⏮ Reset
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #94A3B8)', minWidth: '40px' }}>
+              Scrub:
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={60}
+              step={1}
+              value={Math.floor(stageFrame)}
+              onChange={(e) => {
+                setStagePlaying(false);
+                setStageFrame(Number(e.target.value));
+              }}
+              style={{
+                flex: 1,
+                accentColor: 'var(--color-primary, #6366F1)',
+                cursor: 'pointer',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: 'var(--color-text, #F8FAFC)',
+                minWidth: '50px',
+                textAlign: 'right',
+              }}
+            >
+              {Math.floor(stageFrame)} / 60
+            </span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-muted, #94A3B8)', display: 'block', marginBottom: '8px' }}>
+            Select Animation Action to Test:
+          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {animationStates.map((st) => {
+              const isActive = stageAction === st;
+              return (
+                <button
+                  key={st}
+                  onClick={() => {
+                    setStageAction(st);
+                    setAnimation(st);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: isActive ? 'var(--color-primary, #6366F1)' : 'rgba(255, 255, 255, 0.06)',
+                    border: `1px solid ${isActive ? 'var(--color-primary, #6366F1)' : 'var(--color-border, #334155)'}`,
+                    color: isActive ? '#FFFFFF' : 'var(--color-text, #F8FAFC)',
+                    fontSize: '12px',
+                    fontWeight: isActive ? 600 : 400,
+                    cursor: 'pointer',
+                    textTransform: 'capitalize',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {st}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

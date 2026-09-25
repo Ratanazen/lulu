@@ -3,6 +3,7 @@ import { ICharacterRenderer, CharacterRendererCapability } from './renderers/ICh
 import { PixelRendererAdapter } from './renderers/PixelRendererAdapter';
 import { Skeletal2DRenderer } from './renderers/Skeletal2DRenderer';
 import { ThreeVRMAdapter } from './renderers/ThreeVRMAdapter';
+import { SpriteSheetRendererAdapter } from './renderers/SpriteSheetRendererAdapter';
 import { lipSyncController, LipSyncController } from './LipSyncController';
 import { OFFICIAL_CHARACTERS } from './index';
 import { ANIME_CHARACTERS } from './animePresets';
@@ -20,6 +21,7 @@ export class CharacterManager {
     this.registerRenderer(new PixelRendererAdapter());
     this.registerRenderer(new Skeletal2DRenderer());
     this.registerRenderer(new ThreeVRMAdapter());
+    this.registerRenderer(new SpriteSheetRendererAdapter());
 
     // Merge default and anime characters
     this.characterRoster = [...OFFICIAL_CHARACTERS, ...ANIME_CHARACTERS];
@@ -53,12 +55,12 @@ export class CharacterManager {
   /**
    * Resolves the appropriate renderer for a character, checking capability
    */
-  public getEffectiveRenderer(char: CharacterProfile): {
+  public getEffectiveRenderer(char: CharacterProfile, overrideType?: CharacterRendererType): {
     renderer: ICharacterRenderer;
     capability: CharacterRendererCapability;
     usedFallback: boolean;
   } {
-    const requestedType = char.renderer || 'pixel';
+    const requestedType = overrideType || char.renderer || this.currentRendererType || 'pixel';
     const target = this.renderers.get(requestedType);
 
     if (target) {

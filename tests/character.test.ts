@@ -101,6 +101,7 @@ describe('Multi-Renderer Character Engine & Anime Character Platform', () => {
     expect(ids).toContain('ren_cyber_ninja');
     expect(ids).toContain('takeshi_samurai');
     expect(ids).toContain('aria_celestial_mage');
+    expect(ids).toContain('nexus_bot');
 
     for (const c of ANIME_CHARACTERS) {
       expect(c.category).toBe('original');
