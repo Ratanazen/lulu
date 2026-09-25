@@ -4,8 +4,18 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "start": "node scripts/run-app.mjs",
+    "run": "node scripts/run-app.mjs",
+    "app": "node scripts/run-app.mjs",
+    "run:bin": "/home/reny/.local/bin/lulu",
+    "run:dev": "npm run build && npx tauri dev",
+    "dev:desktop": "npm run build && npx tauri dev",
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:app": "npm run build && npx tauri build",
+    "build:full": "npm run build && npx tauri build --bundles deb && node scripts/install-desktop.mjs",
+    "build:install": "npm run build && npx tauri build --bundles deb && node scripts/install-desktop.mjs",
+    "install:app": "node scripts/install-desktop.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -13,9 +23,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "tauri": "tauri",
     "doctor": "node scripts/doctor.mjs",
-    "validate:capabilities": "node scripts/validate-capabilities.mjs",
-    "install:app": "node scripts/install-desktop.mjs",
-    "build:install": "npm run build && npx tauri build --bundles deb && node scripts/install-desktop.mjs"
+    "validate:capabilities": "node scripts/validate-capabilities.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",

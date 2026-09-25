@@ -30,6 +30,13 @@ if (!fs.existsSync(srcBinary)) {
   process.exit(1);
 }
 
+if (fs.existsSync(targetBinary)) {
+  try {
+    fs.unlinkSync(targetBinary);
+  } catch (e) {
+    // Ignore error if unlink not possible
+  }
+}
 fs.copyFileSync(srcBinary, targetBinary);
 fs.chmodSync(targetBinary, 0o755);
 console.log(`[PASS] Installed binary to: ${targetBinary}`);
