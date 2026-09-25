@@ -206,6 +206,9 @@ impl CapabilityManager {
                 if monitor_count <= 1 {
                     reason = Some("Single display active".to_string());
                 }
+            } else if cap.status == "disabled" {
+                status = "disabled".to_string();
+                reason = Some("Disabled by default for user privacy".to_string());
             } else if cap.requires.iter().any(|r| r.contains("permission") || r.contains("opt_in") || r.contains("confirmation")) {
                 status = "requires_permission".to_string();
                 reason = Some("Requires explicit user permission or opt-in".to_string());

@@ -251,6 +251,23 @@
       "privacy": "requires_permission"
     },
     {
+      "id": "context.browser",
+      "name": "Browser Page Context",
+      "category": "context",
+      "platforms": {
+        "linux": "unsupported",
+        "windows": "unsupported",
+        "macos": "unsupported"
+      },
+      "requires": [
+        "browser_extension_permission"
+      ],
+      "optional": true,
+      "status": "disabled",
+      "fallback": "disabled",
+      "privacy": "requires_permission"
+    },
+    {
       "id": "tools.shell",
       "name": "Shell Execution",
       "category": "tools",
