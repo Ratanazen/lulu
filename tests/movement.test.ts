@@ -75,8 +75,8 @@ describe('MovementEngine', () => {
     const state = engine.getState();
     expect(state.isMoving).toBe(true);
     expect(state.targetPosition).toBeDefined();
-    // In mockMonitors, workAreaHeight is 1040, windowSize height is 260
-    expect(state.targetPosition!.y).toBe(1040 - 260);
+    // In mockMonitors, workAreaHeight is 1040, windowSize height is 320
+    expect(state.targetPosition!.y).toBe(1040 - 320);
   });
 
   it('docks cleanly to display edges', () => {
@@ -90,8 +90,8 @@ describe('MovementEngine', () => {
     expect(engine.getState().targetPosition!.y).toBe(0);
 
     engine.dockToEdge('right');
-    // 1920 - 240 window width = 1680
-    expect(engine.getState().targetPosition!.x).toBe(1680);
+    // 1920 - 260 window width = 1660
+    expect(engine.getState().targetPosition!.x).toBe(1660);
   });
 
   it('dispatches to designated monitor in multi-monitor setups', () => {

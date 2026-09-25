@@ -33,7 +33,7 @@ export const App: React.FC = () => {
     } else if (quickActionsOpen) {
       DesktopWindowService.setSize(360, 420);
     } else {
-      DesktopWindowService.setSize(240, 260);
+      DesktopWindowService.setSize(260, 320);
     }
   }, [controlCenterOpen, chatOpen, quickActionsOpen]);
 

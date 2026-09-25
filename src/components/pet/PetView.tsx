@@ -39,14 +39,24 @@ export const PetView: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
+        paddingBottom: '14px',
         position: 'relative',
         overflow: 'visible',
         backgroundColor: 'transparent',
+        boxSizing: 'border-box',
       }}
     >
-      {/* Speech Bubble */}
-      <div style={{ position: 'relative' }}>
+      {/* Speech Bubble + Mascot */}
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <SpeechBubble message={speechMessage} onDismiss={dismissSpeech} />
         <PetCanvas onContextMenu={handleContextMenu} />
       </div>

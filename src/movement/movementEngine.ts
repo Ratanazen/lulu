@@ -25,7 +25,7 @@ export class MovementEngine {
 
   private config: MovementConfig = { ...DEFAULT_MOVEMENT_CONFIG };
   private monitors: MonitorInfo[] = [];
-  private windowSize = { width: 240, height: 260 };
+  private windowSize = { width: 260, height: 320 };
   private lastTickTime: number = performance.now();
   private timerId: number | null = null;
   private onStateChange?: (state: MovementState) => void;

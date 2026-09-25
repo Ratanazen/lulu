@@ -18,7 +18,7 @@ async function getInvoke() {
 
 export class DesktopWindowService {
   private static mockPos: WindowPosition = { x: 100, y: 100 };
-  private static mockSize: WindowSize = { width: 240, height: 260 };
+  private static mockSize: WindowSize = { width: 260, height: 320 };
 
   public static async getPosition(label: string = 'main'): Promise<WindowPosition> {
     const invoke = await getInvoke();
