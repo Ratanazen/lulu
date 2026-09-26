@@ -29,7 +29,7 @@ import { AgentManager } from '../features/agents/AgentManager';
 import { INITIAL_ACHIEVEMENTS, ProgressionEngine } from '../progression';
 import { StreakTracker } from '../progression/streakTracker';
 import { ThemeEngine } from '../themes';
-import { DesktopWindowService } from '../services/desktopWindow';
+import { DesktopWindowService, WindowMode } from '../services/desktopWindow';
 import { StorageService, getAllSettings, setSettingsBulk, getAchievements, unlockAchievement } from '../services/storageService';
 import { ChatMessage } from '../features/ai/types';
 
@@ -197,6 +197,7 @@ interface LuluStoreState {
   toggleWidgetMode: () => void;
 
   // Hydration & Persistence
+  hydrationStatus: 'loading' | 'ready' | 'error';
   isHydrated: boolean;
   hydrate: () => Promise<void>;
   persistState: () => void;
@@ -272,6 +273,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     // Machine-Readable Capabilities
     capabilities: [],
 
+    hydrationStatus: 'loading',
     isHydrated: false,
 
     hydrate: async () => {
@@ -347,7 +349,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         console.warn('Hydrating achievements failed', e);
       }
 
-      set({ isHydrated: true });
+      set({ isHydrated: true, hydrationStatus: 'ready' });
     },
 
     persistState: () => {
@@ -519,6 +521,11 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       }, 1000);
 
       await get().hydrate();
+
+      // Authoritative Initial Window Mode Clamping & Sync
+      const initialMode: WindowMode = onboardingDone ? 'mascot' : 'onboarding';
+      await DesktopWindowService.setMode(initialMode);
+      set({ hydrationStatus: 'ready', isHydrated: true });
 
       // 8.4 Daily Streak Evaluation
       StreakTracker.checkAndUpdateStreak().then((streakRes) => {
@@ -1120,6 +1127,21 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
           }));
           soundService.play('error', 'ui');
         }
+        return;
+      }
+
+      // Fallback for unknown slash commands
+      if (trimmed.startsWith('/')) {
+        const cmdName = trimmed.split(/\s+/)[0];
+        const helpMessage = `❓ Unknown command "${cmdName}".\n\n**Available Commands:**\n• \`/calc <expression>\` — Calculate math expressions\n• \`/timer <minutes> [label]\` — Start a focus countdown\n• \`/note <text>\` — Save a quick note to memory\n• \`/search <query>\` — Search persistent memories\n• \`/agent <task>\` — Dispatch multi-step AI agent task`;
+        set((s) => ({
+          isGeneratingResponse: false,
+          chatMessages: s.chatMessages.map((m) =>
+            m.id === asstId ? { ...m, content: helpMessage } : m
+          ),
+          animationState: 'curious',
+        }));
+        soundService.play('chat_receive', 'ui');
         return;
       }
 

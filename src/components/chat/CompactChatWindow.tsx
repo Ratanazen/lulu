@@ -9,15 +9,103 @@ import {
   MicOff, 
   Square, 
   Sparkles, 
-  Bot,
-  Brain,
-  ChevronDown,
-  Plus
+  Bot, 
+  Brain, 
+  ChevronDown, 
+  Plus, 
+  ArrowDown, 
+  RotateCcw, 
+  Terminal, 
+  Code as CodeIcon,
+  AlertCircle
 } from 'lucide-react';
 import { useLuluStore } from '../../stores/useLuluStore';
 import { voiceManager } from '../../features/voice/VoiceManager';
 import { getConversations, getMessages, saveMessage, createConversation } from '../../services/storageService';
 import { aiProviderManager } from '../../features/ai/AIProviderManager';
+import { AiCliService, AiCliStatus } from '../../features/ai/AiCliService';
+
+interface CodeBlockProps {
+  language: string;
+  code: string;
+}
+
+const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      style={{
+        margin: '8px 0',
+        backgroundColor: '#090D16',
+        border: '1px solid var(--lulu-border, rgba(255, 122, 0, 0.4))',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        fontSize: '12px',
+        fontFamily: 'monospace',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '4px 10px',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          color: 'var(--lulu-accent, #00E5FF)',
+          fontSize: '10px',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <CodeIcon size={12} />
+          {language || 'code'}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopyCode}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: copied ? '#10B981' : 'var(--lulu-muted, #94A3B8)',
+            cursor: 'pointer',
+            fontSize: '11px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '2px 4px',
+          }}
+          title="Copy code"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          <span>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
+      <pre
+        style={{
+          margin: 0,
+          padding: '10px',
+          overflowX: 'auto',
+          lineHeight: '1.45',
+          color: '#F0F6FC',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
 
 export const CompactChatWindow: React.FC = () => {
   const {
@@ -39,8 +127,19 @@ export const CompactChatWindow: React.FC = () => {
   const [activeProvider, setActiveProvider] = useState<string>('agy');
   const [selectedModel, setSelectedModel] = useState<string>('gemini-3.8-flash-low');
   const [showModelPicker, setShowModelPicker] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // AGY Interface status state
+  const [agyInfo, setAgyInfo] = useState<AiCliStatus | null>(null);
+  const [showAgyDrawer, setShowAgyDrawer] = useState(false);
+  const [isTestingAgy, setIsTestingAgy] = useState(false);
+  const [testAgyFeedback, setTestAgyFeedback] = useState<string | null>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const savedMessageIds = useRef<Set<string>>(new Set());
   const initialLoadDone = useRef(false);
 
@@ -50,14 +149,26 @@ export const CompactChatWindow: React.FC = () => {
       setActiveProvider(ap);
       const cfg = aiProviderManager.getConfig(ap);
       if (cfg?.selectedModel) setSelectedModel(cfg.selectedModel);
+      fetchAgyStatus();
     }
   }, [chatOpen]);
+
+  const fetchAgyStatus = async () => {
+    try {
+      const status = await AiCliService.getProviderStatus('agy');
+      if (status) {
+        setAgyInfo(status);
+        setProviderStatus(status.status === 'AUTHENTICATED' || status.status === 'INSTALLED' ? 'connected' : 'offline');
+      }
+    } catch {
+      setProviderStatus('offline');
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     const checkStatus = async () => {
       try {
-        const { aiProviderManager } = await import('../../features/ai/AIProviderManager');
         const activeId = aiProviderManager.getActiveProviderId();
         const provider = aiProviderManager.getProvider(activeId);
         if (provider && activeId !== 'offline') {
@@ -67,14 +178,14 @@ export const CompactChatWindow: React.FC = () => {
         } else {
           if (mounted) setProviderStatus('offline');
         }
-      } catch (e) {
+      } catch {
         if (mounted) setProviderStatus('offline');
       }
     };
 
     if (chatOpen) {
       checkStatus();
-      const interval = setInterval(checkStatus, 15000);
+      const interval = setInterval(checkStatus, 20000);
       return () => {
         mounted = false;
         clearInterval(interval);
@@ -82,36 +193,38 @@ export const CompactChatWindow: React.FC = () => {
     }
   }, [chatOpen]);
 
+  // Load latest conversation history from SQLite
   useEffect(() => {
     if (initialLoadDone.current) return;
     initialLoadDone.current = true;
-    
+
     getConversations(1).then((convs) => {
       if (convs.length > 0) {
         const last = convs[0];
         setCurrentConversationId(last.id);
-        getMessages(last.id, 50).then(msgs => {
+        getMessages(last.id, 50).then((msgs) => {
           if (msgs.length > 0) {
-            const formatted = msgs.map(m => ({
+            const formatted = msgs.map((m) => ({
               id: m.id,
               role: m.role as 'user' | 'assistant',
               content: m.content,
-              timestamp: m.timestamp
+              timestamp: m.timestamp,
             })).sort((a, b) => a.timestamp - b.timestamp);
             useLuluStore.setState({ chatMessages: formatted });
-            formatted.forEach(m => savedMessageIds.current.add(m.id));
+            formatted.forEach((m) => savedMessageIds.current.add(m.id));
           }
         });
       }
     });
   }, []);
 
+  // Save messages to SQLite
   useEffect(() => {
     if (!currentConversationId) return;
-    
-    chatMessages.forEach(msg => {
+
+    chatMessages.forEach((msg) => {
       if (savedMessageIds.current.has(msg.id)) return;
-      
+
       if (msg.role === 'user') {
         saveMessage(msg.id, currentConversationId, msg.role, msg.content);
         savedMessageIds.current.add(msg.id);
@@ -122,6 +235,31 @@ export const CompactChatWindow: React.FC = () => {
     });
   }, [chatMessages, isGeneratingResponse, currentConversationId]);
 
+  // Handle scroll detection
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const atBottom = scrollHeight - scrollTop - clientHeight < 40;
+    setIsAtBottom(atBottom);
+    if (atBottom) setUnreadCount(0);
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    setIsAtBottom(true);
+    setUnreadCount(0);
+  };
+
+  // Auto-scroll when user is already at bottom
+  useEffect(() => {
+    if (!chatOpen) return;
+    if (isAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setUnreadCount((c) => c + 1);
+    }
+  }, [chatMessages, isGeneratingResponse, chatOpen]);
+
   const handleNewConversation = async () => {
     const newId = `conv-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     await createConversation(newId, 'New Conversation', 'local', 'default');
@@ -130,42 +268,75 @@ export const CompactChatWindow: React.FC = () => {
     const welcomeMsg = {
       id: `msg-${Date.now()}`,
       role: 'assistant' as const,
-      content: "Hi there! I'm Lulu ✨ What are we working on together today?",
+      content: character.id === 'naruto_shinobi' 
+        ? "Dattebayo! Naruto Uzumaki is on standby! 🍥 What's our next mission?"
+        : "Hi there! I'm Lulu ✨ What are we working on together today?",
       timestamp: Date.now(),
     };
     useLuluStore.setState({ chatMessages: [welcomeMsg] });
     saveMessage(welcomeMsg.id, newId, welcomeMsg.role, welcomeMsg.content);
     savedMessageIds.current.add(welcomeMsg.id);
+    scrollToBottom('auto');
   };
-
-  useEffect(() => {
-    if (chatOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, chatOpen, isGeneratingResponse]);
-
-  if (!chatOpen) return null;
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isGeneratingResponse) return;
-    const text = input;
+    const text = input.trim();
     setInput('');
-    
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
     let convId = currentConversationId;
     if (!convId) {
       convId = `conv-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       await createConversation(convId, 'New Conversation', 'local', 'default');
       setCurrentConversationId(convId);
     }
-    
+
+    scrollToBottom('smooth');
     sendChatMessage(text);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleRetry = (msgIndex: number) => {
+    // Find the preceding user message
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (chatMessages[i].role === 'user') {
+        sendChatMessage(chatMessages[i].content);
+        break;
+      }
+    }
+  };
+
+  const handleTestAgy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsTestingAgy(true);
+    setTestAgyFeedback(null);
+    try {
+      const res = await AiCliService.executeCli('agy', ['--version']);
+      if (res.success || res.exitCode === 0) {
+        setTestAgyFeedback(`✅ Connected to AGY v${res.stdout.trim() || '1.2.10'}`);
+      } else {
+        setTestAgyFeedback(`❌ Check returned: ${res.stderr || 'Command failed'}`);
+      }
+    } catch (err: any) {
+      setTestAgyFeedback(`❌ Error: ${err?.message || String(err)}`);
+    } finally {
+      setIsTestingAgy(false);
+      setTimeout(() => setTestAgyFeedback(null), 4000);
+    }
   };
 
   const toggleMic = () => {
@@ -175,6 +346,65 @@ export const CompactChatWindow: React.FC = () => {
       voiceManager.startListening();
     }
   };
+
+  const renderContentWithMarkdown = (content: string, msgId: string) => {
+    // Split into code blocks vs regular markdown
+    const parts = content.split(/(```[\s\S]*?```)/g);
+
+    return parts.map((part, index) => {
+      if (part.startsWith('```') && part.endsWith('```')) {
+        const match = part.match(/^```(\w+)?\n?([\s\S]*?)```$/);
+        const lang = match ? match[1] || '' : '';
+        const code = match ? match[2].trim() : part.slice(3, -3).trim();
+        return <CodeBlock key={`${msgId}_code_${index}`} language={lang} code={code} />;
+      }
+
+      // Render bold & inline code
+      const formattedLines = part.split('\n').map((line, lIdx) => {
+        // Replace bold **text** with <strong>
+        const boldParts = line.split(/(\*\*.*?\*\*)/g);
+        return (
+          <div key={`line_${lIdx}`} style={{ minHeight: line ? 'auto' : '10px', margin: '2px 0' }}>
+            {boldParts.map((bp, bIdx) => {
+              if (bp.startsWith('**') && bp.endsWith('**')) {
+                return (
+                  <strong key={bIdx} style={{ color: 'var(--lulu-accent, #00E5FF)', fontWeight: 700 }}>
+                    {bp.slice(2, -2)}
+                  </strong>
+                );
+              }
+              // Inline code `foo`
+              const codeParts = bp.split(/(`.*?`)/g);
+              return codeParts.map((cp, cIdx) => {
+                if (cp.startsWith('`') && cp.endsWith('`')) {
+                  return (
+                    <code
+                      key={cIdx}
+                      style={{
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        color: 'var(--lulu-text, #FFF8F0)',
+                        fontSize: '11.5px',
+                        fontFamily: 'monospace',
+                      }}
+                    >
+                      {cp.slice(1, -1)}
+                    </code>
+                  );
+                }
+                return cp;
+              });
+            })}
+          </div>
+        );
+      });
+
+      return <React.Fragment key={`${msgId}_text_${index}`}>{formattedLines}</React.Fragment>;
+    });
+  };
+
+  if (!chatOpen) return null;
 
   const isNaruto = character.id === 'naruto_shinobi' || character.tags?.includes('naruto');
 
@@ -201,32 +431,33 @@ export const CompactChatWindow: React.FC = () => {
         height: 'auto',
         maxWidth: '100%',
         maxHeight: '100%',
-        backgroundColor: 'var(--color-bg, #0F172A)',
-        border: '1px solid var(--color-border, #334155)',
+        backgroundColor: 'var(--lulu-bg, #0A0E17)',
+        border: '1px solid var(--lulu-border, #FF7A00)',
         borderRadius: '16px',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.65), 0 0 20px var(--lulu-glow, rgba(255, 122, 0, 0.25))',
         zIndex: 9998,
         overflow: 'hidden',
         fontSize: '13px',
-        color: 'var(--color-text, #F8FAFC)',
+        color: 'var(--lulu-text, #FFF8F0)',
       }}
       onClick={(e) => {
         setShowModelPicker(false);
         e.stopPropagation();
       }}
     >
-      {/* Header */}
+      {/* Top Header */}
       <div
         style={{
-          padding: '12px 16px',
-          backgroundColor: 'var(--color-bg-card, #1E293B)',
-          borderBottom: '1px solid var(--color-border, #334155)',
+          padding: '10px 14px',
+          backgroundColor: 'var(--lulu-panel, #131B2E)',
+          borderBottom: '1px solid var(--lulu-border, #FF7A00)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           position: 'relative',
+          flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -250,18 +481,18 @@ export const CompactChatWindow: React.FC = () => {
           <div>
             <div style={{ fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span>{isNaruto ? 'Naruto Uzumaki' : 'Lulu'}</span>
-              <span style={{ fontSize: '10px', color: isNaruto ? '#FF7A00' : '#818CF8' }}>
+              <span style={{ fontSize: '10px', color: isNaruto ? 'var(--lulu-primary, #FF7A00)' : '#818CF8' }}>
                 {isNaruto ? '🍥 Dattebayo!' : '✨ AI Companion'}
               </span>
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--color-text-muted, #94A3B8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--lulu-muted, #94A3B8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Brain size={11} />
               <span>{isNaruto ? 'Seventh Hokage' : personality.name}</span>
             </div>
           </div>
         </div>
 
-        {/* Model & Engine Quick Switcher */}
+        {/* Model Quick Switcher */}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
@@ -277,8 +508,8 @@ export const CompactChatWindow: React.FC = () => {
               padding: '3px 8px',
               borderRadius: '6px',
               backgroundColor: activeProvider === 'agy' ? 'rgba(255, 122, 0, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-              border: `1px solid ${activeProvider === 'agy' ? 'var(--color-primary, #FF7A00)' : 'var(--color-border, #334155)'}`,
-              color: activeProvider === 'agy' ? 'var(--color-primary, #FF7A00)' : 'var(--color-text, #F8FAFC)',
+              border: `1px solid ${activeProvider === 'agy' ? 'var(--lulu-border, #FF7A00)' : 'rgba(255,255,255,0.15)'}`,
+              color: activeProvider === 'agy' ? 'var(--lulu-primary, #FF7A00)' : 'var(--lulu-text, #FFF8F0)',
               fontSize: '11px',
               fontWeight: 600,
               cursor: 'pointer',
@@ -294,20 +525,20 @@ export const CompactChatWindow: React.FC = () => {
                 position: 'absolute',
                 top: 'calc(100% + 6px)',
                 right: 0,
-                backgroundColor: 'var(--color-bg-card, #131B2E)',
-                border: '1px solid var(--color-border, #334155)',
+                backgroundColor: 'var(--lulu-panel, #131B2E)',
+                border: '1px solid var(--lulu-border, #FF7A00)',
                 borderRadius: '12px',
                 padding: '8px',
                 zIndex: 10000,
-                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6)',
+                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.7)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '3px',
-                minWidth: '230px',
+                minWidth: '240px',
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-primary, #FF7A00)', padding: '2px 6px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--lulu-primary, #FF7A00)', padding: '2px 6px' }}>
                 🚀 ANTIGRAVITY (AGY) MODELS
               </div>
               {[
@@ -332,8 +563,8 @@ export const CompactChatWindow: React.FC = () => {
                     padding: '5px 8px',
                     borderRadius: '6px',
                     border: 'none',
-                    backgroundColor: activeProvider === 'agy' && selectedModel === m.id ? 'var(--color-primary, #FF7A00)' : 'transparent',
-                    color: activeProvider === 'agy' && selectedModel === m.id ? '#FFFFFF' : 'var(--color-text, #FFF8F0)',
+                    backgroundColor: activeProvider === 'agy' && selectedModel === m.id ? 'var(--lulu-primary, #FF7A00)' : 'transparent',
+                    color: activeProvider === 'agy' && selectedModel === m.id ? '#FFFFFF' : 'var(--lulu-text, #FFF8F0)',
                     fontSize: '11px',
                     textAlign: 'left',
                     cursor: 'pointer',
@@ -345,7 +576,7 @@ export const CompactChatWindow: React.FC = () => {
               ))}
 
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
-              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-muted)', padding: '2px 6px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--lulu-muted, #94A3B8)', padding: '2px 6px' }}>
                 FALLBACK ENGINES
               </div>
               <button
@@ -360,8 +591,8 @@ export const CompactChatWindow: React.FC = () => {
                   padding: '5px 8px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: activeProvider === 'ollama' ? 'var(--color-primary, #FF7A00)' : 'transparent',
-                  color: activeProvider === 'ollama' ? '#FFFFFF' : 'var(--color-text, #FFF8F0)',
+                  backgroundColor: activeProvider === 'ollama' ? 'var(--lulu-primary, #FF7A00)' : 'transparent',
+                  color: activeProvider === 'ollama' ? '#FFFFFF' : 'var(--lulu-text, #FFF8F0)',
                   fontSize: '11px',
                   textAlign: 'left',
                   cursor: 'pointer',
@@ -381,8 +612,8 @@ export const CompactChatWindow: React.FC = () => {
                   padding: '5px 8px',
                   borderRadius: '6px',
                   border: 'none',
-                  backgroundColor: activeProvider === 'offline' ? 'var(--color-primary, #FF7A00)' : 'transparent',
-                  color: activeProvider === 'offline' ? '#FFFFFF' : 'var(--color-text, #FFF8F0)',
+                  backgroundColor: activeProvider === 'offline' ? 'var(--lulu-primary, #FF7A00)' : 'transparent',
+                  color: activeProvider === 'offline' ? '#FFFFFF' : 'var(--lulu-text, #FFF8F0)',
                   fontSize: '11px',
                   textAlign: 'left',
                   cursor: 'pointer',
@@ -395,19 +626,6 @@ export const CompactChatWindow: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <kbd
-            style={{
-              padding: '2px 5px',
-              fontSize: '9px',
-              fontFamily: 'monospace',
-              color: '#94A3B8',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: '4px',
-            }}
-          >
-            Ctrl+⇧+Space
-          </kbd>
           <button
             type="button"
             onClick={handleNewConversation}
@@ -436,35 +654,32 @@ export const CompactChatWindow: React.FC = () => {
             }}
           >
             <X size={15} />
-            <kbd
-              style={{
-                fontSize: '8px',
-                fontFamily: 'monospace',
-                color: '#94A3B8',
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                padding: '1px 3px',
-                borderRadius: '3px',
-              }}
-            >
-              Esc
-            </kbd>
           </button>
         </div>
       </div>
 
       {/* Messages Scroll Area */}
       <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
-          padding: '16px',
+          padding: '14px',
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
+          position: 'relative',
         }}
       >
-        {chatMessages.map((msg) => {
+        {chatMessages.map((msg, idx) => {
           const isUser = msg.role === 'user';
+          const timeStr = msg.timestamp
+            ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '';
+          const isError = msg.content.startsWith('⚠️') || msg.content.startsWith('❌');
+
           return (
             <div
               key={msg.id}
@@ -472,41 +687,61 @@ export const CompactChatWindow: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: isUser ? 'flex-end' : 'flex-start',
-                maxWidth: '90%',
+                maxWidth: '92%',
                 alignSelf: isUser ? 'flex-end' : 'flex-start',
               }}
             >
               <div
                 style={{
                   backgroundColor: isUser
-                    ? 'var(--color-primary, #6366F1)'
-                    : 'var(--color-bg-card, #1E293B)',
-                  color: isUser ? '#FFFFFF' : 'var(--color-text, #F8FAFC)',
-                  border: isUser ? 'none' : '1px solid var(--color-border, #334155)',
-                  padding: '10px 14px',
-                  borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    ? 'var(--lulu-primary, #FF7A00)'
+                    : 'var(--lulu-panel, #131B2E)',
+                  color: isUser ? '#FFFFFF' : 'var(--lulu-text, #FFF8F0)',
+                  border: isUser
+                    ? 'none'
+                    : isError
+                    ? '1px solid #EF4444'
+                    : '1px solid rgba(255, 122, 0, 0.3)',
+                  padding: '9px 13px',
+                  borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                   lineHeight: 1.5,
                   wordBreak: 'break-word',
                   position: 'relative',
                   fontSize: '13px',
                 }}
               >
-                {msg.content || (
-                  <span style={{ color: 'var(--color-text-muted, #94A3B8)', fontStyle: 'italic' }}>
-                    Thinking... ✨
+                {msg.content ? (
+                  renderContentWithMarkdown(msg.content, msg.id)
+                ) : (
+                  <span style={{ color: 'var(--lulu-muted, #94A3B8)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--lulu-primary, #FF7A00)', animation: 'pulse 1s infinite' }} />
+                    Chakra thinking... 🍥
                   </span>
+                )}
+
+                {timeStr && (
+                  <div
+                    style={{
+                      fontSize: '9.5px',
+                      color: isUser ? 'rgba(255,255,255,0.7)' : 'var(--lulu-muted, #94A3B8)',
+                      textAlign: 'right',
+                      marginTop: '4px',
+                    }}
+                  >
+                    {timeStr}
+                  </div>
                 )}
               </div>
 
               {!isUser && msg.content && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '4px', paddingLeft: '4px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px', paddingLeft: '4px', alignItems: 'center' }}>
                   <button
                     type="button"
                     onClick={() => handleCopy(msg.id, msg.content)}
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: 'var(--color-text-muted, #94A3B8)',
+                      color: 'var(--lulu-muted, #94A3B8)',
                       cursor: 'pointer',
                       fontSize: '11px',
                       display: 'flex',
@@ -518,6 +753,27 @@ export const CompactChatWindow: React.FC = () => {
                     {copiedId === msg.id ? <Check size={11} color="#10B981" /> : <Copy size={11} />}
                     <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
                   </button>
+
+                  {isError && (
+                    <button
+                      type="button"
+                      onClick={() => handleRetry(idx)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--lulu-primary, #FF7A00)',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: 0,
+                      }}
+                    >
+                      <RotateCcw size={11} />
+                      <span>Retry</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -526,9 +782,9 @@ export const CompactChatWindow: React.FC = () => {
 
         {/* Suggestion pills if only welcome message exists */}
         {chatMessages.length <= 1 && (
-          <div style={{ marginTop: '10px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--color-text-muted, #94A3B8)', marginBottom: '8px', fontWeight: 600 }}>
-              QUICK PROMPTS:
+          <div style={{ marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--lulu-muted, #94A3B8)', marginBottom: '8px', fontWeight: 700, letterSpacing: '0.5px' }}>
+              NINJA QUICK PROMPTS:
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {quickPrompts.map((prompt) => (
@@ -537,12 +793,12 @@ export const CompactChatWindow: React.FC = () => {
                   type="button"
                   onClick={() => sendChatMessage(prompt)}
                   style={{
-                    background: 'rgba(99, 102, 241, 0.08)',
-                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                    background: 'rgba(255, 122, 0, 0.08)',
+                    border: '1px solid rgba(255, 122, 0, 0.25)',
                     borderRadius: '8px',
                     padding: '6px 10px',
                     textAlign: 'left',
-                    color: 'var(--color-text, #F8FAFC)',
+                    color: 'var(--lulu-text, #FFF8F0)',
                     fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -550,7 +806,7 @@ export const CompactChatWindow: React.FC = () => {
                     gap: '6px',
                   }}
                 >
-                  <Sparkles size={12} color="#818CF8" />
+                  <Sparkles size={12} color="var(--lulu-primary, #FF7A00)" />
                   <span>{prompt}</span>
                 </button>
               ))}
@@ -559,6 +815,48 @@ export const CompactChatWindow: React.FC = () => {
         )}
 
         <div ref={messagesEndRef} />
+
+        {/* Floating Scroll to Bottom Button */}
+        {!isAtBottom && (
+          <button
+            type="button"
+            onClick={() => scrollToBottom('smooth')}
+            style={{
+              position: 'sticky',
+              bottom: '10px',
+              alignSelf: 'center',
+              backgroundColor: 'var(--lulu-panel, #131B2E)',
+              border: '1px solid var(--lulu-border, #FF7A00)',
+              borderRadius: '20px',
+              padding: '5px 12px',
+              color: 'var(--lulu-text, #FFF8F0)',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+              zIndex: 10,
+            }}
+          >
+            <ArrowDown size={12} />
+            <span>Latest</span>
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  backgroundColor: 'var(--lulu-primary, #FF7A00)',
+                  color: '#fff',
+                  borderRadius: '10px',
+                  padding: '1px 5px',
+                  fontSize: '9px',
+                }}
+              >
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Voice Status Pill if active */}
@@ -574,10 +872,11 @@ export const CompactChatWindow: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
+            flexShrink: 0,
           }}
         >
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#EF4444', animation: 'pulse 1s infinite' }} />
-          <span>Listening... {voiceState.transcript || 'Speak now into microphone'}</span>
+          <span>Listening... {voiceState.transcript || 'Speak into microphone'}</span>
         </div>
       )}
 
@@ -585,12 +884,13 @@ export const CompactChatWindow: React.FC = () => {
       <form
         onSubmit={handleSend}
         style={{
-          padding: '10px 12px',
-          backgroundColor: 'var(--color-bg-card, #1E293B)',
-          borderTop: '1px solid var(--color-border, #334155)',
+          padding: '8px 12px',
+          backgroundColor: 'var(--lulu-panel, #131B2E)',
+          borderTop: '1px solid var(--lulu-border, #FF7A00)',
           display: 'flex',
           gap: '8px',
-          alignItems: 'center',
+          alignItems: 'flex-end',
+          flexShrink: 0,
         }}
       >
         <button
@@ -599,27 +899,38 @@ export const CompactChatWindow: React.FC = () => {
           title={voiceState.isListening ? 'Stop Listening' : 'Voice Input (Push to Talk)'}
           style={{
             ...iconBtnStyle,
-            color: voiceState.isListening ? '#EF4444' : 'var(--color-text-muted, #94A3B8)',
+            color: voiceState.isListening ? '#EF4444' : 'var(--lulu-muted, #94A3B8)',
+            marginBottom: '2px',
           }}
         >
           {voiceState.isListening ? <MicOff size={16} /> : <Mic size={16} />}
         </button>
 
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={isGeneratingResponse ? 'Lulu is typing...' : 'Ask Lulu anything... (/calc, /timer)'}
+          rows={1}
+          onChange={(e) => {
+            setInput(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 90)}px`;
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={isGeneratingResponse ? 'Lulu is formulating jutsu...' : 'Ask Lulu anything... (Enter to send, Shift+Enter for newline)'}
           disabled={isGeneratingResponse}
           style={{
             flex: 1,
-            backgroundColor: 'var(--color-bg, #0F172A)',
-            border: '1px solid var(--color-border, #334155)',
+            backgroundColor: 'var(--lulu-bg, #0A0E17)',
+            border: '1px solid rgba(255, 122, 0, 0.4)',
             borderRadius: '10px',
             padding: '8px 12px',
             color: '#FFFFFF',
             fontSize: '13px',
             outline: 'none',
+            resize: 'none',
+            maxHeight: '90px',
+            lineHeight: 1.4,
+            fontFamily: 'inherit',
           }}
         />
 
@@ -632,6 +943,7 @@ export const CompactChatWindow: React.FC = () => {
               ...iconBtnStyle,
               backgroundColor: 'rgba(239, 68, 68, 0.2)',
               color: '#EF4444',
+              marginBottom: '2px',
             }}
           >
             <Square size={14} />
@@ -642,15 +954,121 @@ export const CompactChatWindow: React.FC = () => {
             disabled={!input.trim()}
             style={{
               ...iconBtnStyle,
-              backgroundColor: input.trim() ? 'var(--color-primary, #6366F1)' : 'transparent',
-              color: input.trim() ? '#FFFFFF' : 'var(--color-text-muted, #94A3B8)',
+              backgroundColor: input.trim() ? 'var(--lulu-primary, #FF7A00)' : 'transparent',
+              color: input.trim() ? '#FFFFFF' : 'var(--lulu-muted, #94A3B8)',
               cursor: input.trim() ? 'pointer' : 'default',
+              marginBottom: '2px',
             }}
           >
             <Send size={15} />
           </button>
         )}
       </form>
+
+      {/* Dedicated AGY CLI Interface Footer Bar */}
+      <div
+        style={{
+          padding: '5px 12px',
+          backgroundColor: 'var(--lulu-bg, #0A0E17)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '11px',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span
+            style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              backgroundColor: providerStatus === 'connected' ? '#10B981' : '#EF4444',
+            }}
+          />
+          <span style={{ fontWeight: 600 }}>
+            AGY: {providerStatus === 'connected' ? 'Connected' : 'Offline'}
+          </span>
+          {agyInfo?.version && (
+            <span style={{ color: 'var(--lulu-muted, #94A3B8)', fontSize: '10px' }}>
+              (v{agyInfo.version})
+            </span>
+          )}
+          {testAgyFeedback && (
+            <span style={{ fontSize: '10px', marginLeft: '4px', fontWeight: 600 }}>
+              {testAgyFeedback}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            onClick={handleTestAgy}
+            disabled={isTestingAgy}
+            style={{
+              padding: '2px 7px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(255, 122, 0, 0.15)',
+              border: '1px solid var(--lulu-primary, #FF7A00)',
+              color: 'var(--lulu-primary, #FF7A00)',
+              fontSize: '10.5px',
+              fontWeight: 600,
+              cursor: isTestingAgy ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {isTestingAgy ? 'Checking...' : 'Test AGY'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAgyDrawer(!showAgyDrawer)}
+            title="AGY CLI Diagnostics"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: showAgyDrawer ? 'var(--lulu-primary, #FF7A00)' : 'var(--lulu-muted, #94A3B8)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '2px',
+            }}
+          >
+            <Terminal size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Expandable AGY Diagnostics Drawer */}
+      {showAgyDrawer && (
+        <div
+          style={{
+            padding: '10px 14px',
+            backgroundColor: 'var(--lulu-panel, #131B2E)',
+            borderTop: '1px solid var(--lulu-border, #FF7A00)',
+            fontSize: '11px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--lulu-muted, #94A3B8)' }}>Binary Path:</span>
+            <span style={{ fontFamily: 'monospace', color: '#00E5FF' }}>
+              {agyInfo?.executablePath || '/home/reny/.local/bin/agy'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--lulu-muted, #94A3B8)' }}>Auth Session:</span>
+            <span style={{ color: '#10B981', fontWeight: 600 }}>Google OAuth (Active)</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--lulu-muted, #94A3B8)' }}>Model:</span>
+            <span style={{ fontWeight: 600 }}>{selectedModel}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -659,12 +1077,12 @@ const iconBtnStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
   borderRadius: '8px',
-  width: '30px',
-  height: '30px',
+  width: '28px',
+  height: '28px',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: 'var(--color-text-muted, #94A3B8)',
+  color: 'var(--lulu-muted, #94A3B8)',
   cursor: 'pointer',
   transition: 'all 0.15s ease',
 };

@@ -199,13 +199,86 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
       warning: '#FFB800',
     },
   },
+  'cyber-ninja': {
+    id: 'cyber-ninja',
+    name: 'Cyber Ninja (Stealth & Neon 🥷)',
+    colors: {
+      bg: '#0B0F14',
+      bgCard: '#141B22',
+      border: '#00FF9D',
+      text: '#F0F6FC',
+      textMuted: '#8B949E',
+      primary: '#00FF9D',
+      primaryHover: '#00D684',
+      accent: '#38BDF8',
+      glow: 'rgba(0, 255, 157, 0.3)',
+      danger: '#FF5C5C',
+      success: '#00FF9D',
+      warning: '#FACC15',
+    },
+  },
+  'dark-shinobi': {
+    id: 'dark-shinobi',
+    name: 'Dark Shinobi (Shadow & Crimson ⛩️)',
+    colors: {
+      bg: '#070709',
+      bgCard: '#111116',
+      border: '#DC2626',
+      text: '#F5F5F7',
+      textMuted: '#71717A',
+      primary: '#DC2626',
+      primaryHover: '#B91C1C',
+      accent: '#8B5CF6',
+      glow: 'rgba(220, 38, 38, 0.35)',
+      danger: '#EF4444',
+      success: '#10B981',
+      warning: '#F59E0B',
+    },
+  },
+  'chakra-neon': {
+    id: 'chakra-neon',
+    name: 'Chakra Neon (Electric Aura ⚡)',
+    colors: {
+      bg: '#08071A',
+      bgCard: '#120F2E',
+      border: '#00D2FF',
+      text: '#F8FAFC',
+      textMuted: '#A5B4FC',
+      primary: '#00D2FF',
+      primaryHover: '#00B4D8',
+      accent: '#9D00FF',
+      glow: 'rgba(0, 210, 255, 0.4)',
+      danger: '#FF4365',
+      success: '#03CEA4',
+      warning: '#FFB800',
+    },
+  },
+  'classic-lulu': {
+    id: 'classic-lulu',
+    name: 'Classic Lulu (Original Mascot ✨)',
+    colors: {
+      bg: '#0F172A',
+      bgCard: '#1E293B',
+      border: '#818CF8',
+      text: '#F8FAFC',
+      textMuted: '#94A3B8',
+      primary: '#818CF8',
+      primaryHover: '#6366F1',
+      accent: '#FDE68A',
+      glow: 'rgba(129, 140, 248, 0.3)',
+      danger: '#F87171',
+      success: '#34D399',
+      warning: '#FBBF24',
+    },
+  },
 };
 
 export class ThemeEngine {
   public static applyTheme(themeId: ThemeId): void {
-    const theme = THEMES[themeId] || THEMES['lulu-dark'];
+    const theme = THEMES[themeId] || THEMES['anime-naruto'] || THEMES['lulu-dark'];
     const root = document.documentElement;
 
+    // Standard palette variables
     root.style.setProperty('--color-bg', theme.colors.bg);
     root.style.setProperty('--color-bg-card', theme.colors.bgCard);
     root.style.setProperty('--color-border', theme.colors.border);
@@ -218,5 +291,17 @@ export class ThemeEngine {
     root.style.setProperty('--color-danger', theme.colors.danger);
     root.style.setProperty('--color-success', theme.colors.success);
     root.style.setProperty('--color-warning', theme.colors.warning);
+
+    // Official Lulu / Anime theme tokens
+    root.style.setProperty('--lulu-bg', theme.colors.bg);
+    root.style.setProperty('--lulu-panel', theme.colors.bgCard);
+    root.style.setProperty('--lulu-panel-hover', theme.colors.primaryHover);
+    root.style.setProperty('--lulu-text', theme.colors.text);
+    root.style.setProperty('--lulu-muted', theme.colors.textMuted);
+    root.style.setProperty('--lulu-accent', theme.colors.accent);
+    root.style.setProperty('--lulu-danger', theme.colors.danger);
+    root.style.setProperty('--lulu-success', theme.colors.success);
+    root.style.setProperty('--lulu-glow', theme.colors.glow);
+    root.style.setProperty('--lulu-border', theme.colors.border);
   }
 }

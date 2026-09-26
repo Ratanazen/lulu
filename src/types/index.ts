@@ -396,7 +396,11 @@ export type ThemeId =
   | 'ocean'
   | 'sunset'
   | 'high-contrast'
-  | 'anime-naruto';
+  | 'anime-naruto'
+  | 'cyber-ninja'
+  | 'dark-shinobi'
+  | 'chakra-neon'
+  | 'classic-lulu';
 
 export interface ThemeConfig {
   id: ThemeId;

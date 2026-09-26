@@ -1,16 +1,40 @@
 :root {
-  --color-bg: #0F172A;
-  --color-bg-card: #1E293B;
-  --color-border: #334155;
-  --color-text: #F8FAFC;
+  /* Legacy theme aliases */
+  --color-bg: #0A0E17;
+  --color-bg-card: #131B2E;
+  --color-border: #FF7A00;
+  --color-text: #FFF8F0;
   --color-text-muted: #94A3B8;
-  --color-primary: #818CF8;
-  --color-primary-hover: #6366F1;
-  --color-accent: #FDE68A;
-  --color-glow: #1E1B4B;
-  --color-danger: #F87171;
-  --color-success: #34D399;
-  --color-warning: #FBBF24;
+  --color-primary: #FF7A00;
+  --color-primary-hover: #E06A00;
+  --color-accent: #00E5FF;
+  --color-glow: rgba(255, 122, 0, 0.35);
+  --color-danger: #EF4444;
+  --color-success: #10B981;
+  --color-warning: #FFB800;
+
+  /* Authoritative Lulu / Anime Theme System */
+  --lulu-bg: #0A0E17;
+  --lulu-panel: #131B2E;
+  --lulu-panel-hover: #E06A00;
+  --lulu-text: #FFF8F0;
+  --lulu-muted: #94A3B8;
+  --lulu-accent: #00E5FF;
+  --lulu-danger: #EF4444;
+  --lulu-success: #10B981;
+  --lulu-glow: rgba(255, 122, 0, 0.35);
+  --lulu-border: #FF7A00;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 * {

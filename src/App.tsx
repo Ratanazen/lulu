@@ -23,25 +23,26 @@ export const App: React.FC = () => {
     settings,
     updateSettings,
     isHydrated,
+    hydrationStatus,
     onboardingCompleted,
   } = useLuluStore();
 
-  // Dynamic window resizing so modals and chat have ample room and never clip
+  // Authoritative window mode sizing
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || hydrationStatus !== 'ready') return;
 
     if (!onboardingCompleted) {
-      DesktopWindowService.setSize(540, 660);
+      DesktopWindowService.setMode('onboarding');
     } else if (controlCenterOpen) {
-      DesktopWindowService.setSize(960, 680);
+      DesktopWindowService.setMode('control-center');
     } else if (chatOpen) {
-      DesktopWindowService.setSize(460, 600);
+      DesktopWindowService.setMode('chat');
     } else if (quickActionsOpen) {
-      DesktopWindowService.setSize(360, 440);
+      DesktopWindowService.setMode('quick-actions');
     } else {
-      DesktopWindowService.setSize(260, 320);
+      DesktopWindowService.setMode('mascot');
     }
-  }, [isHydrated, onboardingCompleted, controlCenterOpen, chatOpen, quickActionsOpen]);
+  }, [isHydrated, hydrationStatus, onboardingCompleted, controlCenterOpen, chatOpen, quickActionsOpen]);
 
   useEffect(() => {
     initialize();
@@ -163,6 +164,10 @@ export const App: React.FC = () => {
     settings,
     updateSettings,
   ]);
+
+  if (!isHydrated || hydrationStatus !== 'ready') {
+    return null;
+  }
 
   return (
     <>

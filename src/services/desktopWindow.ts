@@ -1,5 +1,29 @@
 import { WindowPosition, WindowSize } from '../types';
 
+export type WindowMode =
+  | 'mascot'
+  | 'quick-actions'
+  | 'chat'
+  | 'onboarding'
+  | 'control-center';
+
+export interface WindowDimensions {
+  width: number;
+  height: number;
+  minWidth?: number;
+  minHeight?: number;
+  maxWidth?: number;
+  maxHeight?: number;
+}
+
+export const WINDOW_MODE_DIMENSIONS: Record<WindowMode, WindowDimensions> = {
+  'mascot': { width: 260, height: 320, minWidth: 200, minHeight: 250, maxWidth: 400, maxHeight: 500 },
+  'quick-actions': { width: 360, height: 440, minWidth: 320, minHeight: 380, maxWidth: 500, maxHeight: 600 },
+  'chat': { width: 460, height: 600, minWidth: 400, minHeight: 480, maxWidth: 700, maxHeight: 850 },
+  'onboarding': { width: 540, height: 660, minWidth: 480, minHeight: 580, maxWidth: 800, maxHeight: 900 },
+  'control-center': { width: 960, height: 680, minWidth: 800, minHeight: 580, maxWidth: 1400, maxHeight: 1000 },
+};
+
 let tauriInvoke: (<T = any>(cmd: string, args?: Record<string, unknown>) => Promise<T>) | null = null;
 
 async function getInvoke() {
@@ -19,6 +43,24 @@ async function getInvoke() {
 export class DesktopWindowService {
   private static mockPos: WindowPosition = { x: 100, y: 100 };
   private static mockSize: WindowSize = { width: 260, height: 320 };
+  private static currentMode: WindowMode = 'mascot';
+
+  public static getMode(): WindowMode {
+    return this.currentMode;
+  }
+
+  public static async setMode(mode: WindowMode, label: string = 'main'): Promise<void> {
+    const config = WINDOW_MODE_DIMENSIONS[mode] || WINDOW_MODE_DIMENSIONS['mascot'];
+    let w = config.width;
+    let h = config.height;
+    if (config.minWidth && w < config.minWidth) w = config.minWidth;
+    if (config.maxWidth && w > config.maxWidth) w = config.maxWidth;
+    if (config.minHeight && h < config.minHeight) h = config.minHeight;
+    if (config.maxHeight && h > config.maxHeight) h = config.maxHeight;
+
+    this.currentMode = mode;
+    await this.setSize(w, h, label);
+  }
 
   public static async getPosition(label: string = 'main'): Promise<WindowPosition> {
     const invoke = await getInvoke();

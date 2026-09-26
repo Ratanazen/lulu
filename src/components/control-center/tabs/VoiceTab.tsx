@@ -43,6 +43,11 @@ export const VoiceTab: React.FC = () => {
     setIsTestingSpeech(false);
   };
 
+  const handleStopSpeech = async () => {
+    await voiceManager.stopSpeaking();
+    setIsTestingSpeech(false);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
@@ -136,7 +141,7 @@ export const VoiceTab: React.FC = () => {
               onClick={handleTestSpeech}
               disabled={isTestingSpeech}
               style={{
-                padding: '10px 16px',
+                padding: '10px 14px',
                 borderRadius: '10px',
                 backgroundColor: 'rgba(99, 102, 241, 0.15)',
                 border: '1px solid #818CF8',
@@ -151,6 +156,28 @@ export const VoiceTab: React.FC = () => {
             >
               <Play size={14} />
               <span>{isTestingSpeech ? 'Speaking...' : 'Test Voice'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStopSpeech}
+              style={{
+                padding: '10px 14px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid #EF4444',
+                color: '#EF4444',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Stop voice output immediately"
+            >
+              <Square size={13} />
+              <span>Stop Voice</span>
             </button>
           </div>
         </div>
