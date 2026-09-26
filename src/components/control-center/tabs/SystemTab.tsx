@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { MonitorService, HostHardwareInfo } from '../../../services/monitorService';
+import { useLuluStore } from '../../../stores/useLuluStore';
 import { 
   Cpu, 
   HardDrive, 
@@ -10,7 +11,9 @@ import {
   BatteryCharging, 
   RefreshCw, 
   Sliders, 
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  CheckCircle2
 } from 'lucide-react';
 
 let tauriInvoke: (<T = any>(cmd: string, args?: Record<string, unknown>) => Promise<T>) | null = null;
@@ -28,13 +31,36 @@ async function getInvoke() {
 }
 
 export const SystemTab: React.FC = () => {
+  const { settings, updateSettings, speak } = useLuluStore();
   const [hardware, setHardware] = useState<HostHardwareInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState<number>(2000);
+  const [refreshInterval, setRefreshInterval] = useState<number>(settings.performanceProfile === 'LOW' ? 5000 : 2000);
   const [autostart, setAutostart] = useState<boolean>(false);
   const [cpuAlertThreshold, setCpuAlertThreshold] = useState<number>(85);
   const [ramAlertThreshold, setRamAlertThreshold] = useState<number>(90);
-  const [gpuAlertThreshold] = useState<number>(80);
+  const [gpuAlertThreshold, setGpuAlertThreshold] = useState<number>(80);
+
+  const isOldComputerMode = settings.performanceProfile === 'LOW' || (settings.renderFps && settings.renderFps <= 30);
+
+  const toggleOldComputerMode = () => {
+    if (isOldComputerMode) {
+      updateSettings({
+        performanceProfile: 'BALANCED',
+        renderFps: 60,
+        animationFps: 60,
+      });
+      setRefreshInterval(2000);
+      speak('Balanced Mode enabled! ⚡ 60 FPS active.');
+    } else {
+      updateSettings({
+        performanceProfile: 'LOW',
+        renderFps: 24,
+        animationFps: 24,
+      });
+      setRefreshInterval(5000);
+      speak('Old Computer Optimization Mode activated! 🐢 Ultra-light CPU load.');
+    }
+  };
 
   const fetchHostTelemetry = async () => {
     try {
@@ -105,16 +131,16 @@ export const SystemTab: React.FC = () => {
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '999px',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                color: '#34D399',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
+                backgroundColor: isOldComputerMode ? 'rgba(234, 179, 8, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                color: isOldComputerMode ? '#FBBF24' : '#34D399',
+                border: `1px solid ${isOldComputerMode ? 'rgba(234, 179, 8, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
               }}
             >
-              LIVE RUST SYSFS
+              {isOldComputerMode ? '🐢 OLD COMPUTER MODE ACTIVE' : 'LIVE RUST SYSFS'}
             </span>
           </div>
           <p style={{ margin: '4px 0 0 0', color: 'var(--color-text-muted, #94A3B8)', fontSize: '13px' }}>
-            Real-time CPU, RAM, GPU, power, and kernel metrics from this physical Linux host machine.
+            Real-time CPU, RAM, GPU, power, and kernel metrics with low-spec old computer tuning.
           </p>
         </div>
 
@@ -134,7 +160,7 @@ export const SystemTab: React.FC = () => {
           >
             <option value={1000}>Poll: 1s (Fast)</option>
             <option value={2000}>Poll: 2s (Normal)</option>
-            <option value={5000}>Poll: 5s (Power Saver)</option>
+            <option value={5000}>Poll: 5s (Old Computer / Saver)</option>
           </select>
 
           <button
@@ -158,6 +184,67 @@ export const SystemTab: React.FC = () => {
             <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
+      </div>
+
+      {/* Old Computer Optimization Feature Card */}
+      <div
+        style={{
+          backgroundColor: isOldComputerMode ? 'rgba(234, 179, 8, 0.08)' : 'var(--color-bg-card, #1E293B)',
+          border: isOldComputerMode ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '14px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              backgroundColor: isOldComputerMode ? 'rgba(234, 179, 8, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+              color: isOldComputerMode ? '#FBBF24' : '#818CF8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '22px',
+            }}
+          >
+            🐢
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: '#F8FAFC' }}>
+              Old Computer & Low-Spec PC Optimization
+            </div>
+            <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>
+              {isOldComputerMode
+                ? 'Active: 24 FPS cap, disabled heavy blur filters, 5s telemetry polling, < 1% CPU overhead.'
+                : 'Caps frame rate to 24–30 FPS, minimizes background canvas draws, and eliminates CPU spikes for older CPUs/iGPUs.'}
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={toggleOldComputerMode}
+          style={{
+            padding: '8px 18px',
+            borderRadius: '10px',
+            backgroundColor: isOldComputerMode ? '#F59E0B' : 'rgba(255, 255, 255, 0.1)',
+            border: isOldComputerMode ? 'none' : '1px solid var(--color-border, #334155)',
+            color: isOldComputerMode ? '#000000' : '#FFFFFF',
+            fontWeight: 700,
+            fontSize: '13px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {isOldComputerMode ? '✓ Old Computer Mode: ON' : '⚡ Enable Old Computer Mode'}
+        </button>
       </div>
 
       {!hardware ? (

@@ -5,6 +5,7 @@ import { useLuluStore } from '../../stores/useLuluStore';
 import { DesktopWindowService } from '../../services/desktopWindow';
 import { particleSystem } from '../../animation/particleSystem';
 import { eventBus } from '../../services/eventBus';
+import { usePerformanceStore } from '../../features/performance/performanceStore';
 import luluCharacter from '@/assets/character/lulu/lulu-character.png';
 
 interface PetCanvasProps {
@@ -25,6 +26,70 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
     interact,
   } = useLuluStore();
 
+  const { config: perfConfig, setRendererState } = usePerformanceStore();
+  const [renderState, setLocalRenderState] = React.useState<'ACTIVE' | 'IDLE' | 'HIDDEN' | 'BACKGROUND'>('ACTIVE');
+
+  // Track window visibility and user idle state for adaptive rendering
+  useEffect(() => {
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let bgTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const resetActivity = () => {
+      if (document.hidden) return;
+      setLocalRenderState('ACTIVE');
+      setRendererState('ACTIVE');
+
+      if (idleTimer) clearTimeout(idleTimer);
+      if (bgTimer) clearTimeout(bgTimer);
+
+      idleTimer = setTimeout(() => {
+        setLocalRenderState('IDLE');
+        setRendererState('IDLE');
+      }, 15000);
+
+      bgTimer = setTimeout(() => {
+        setLocalRenderState('BACKGROUND');
+        setRendererState('BACKGROUND');
+      }, 60000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setLocalRenderState('HIDDEN');
+        setRendererState('HIDDEN');
+      } else {
+        resetActivity();
+      }
+    };
+
+    const handleFocus = () => resetActivity();
+    const handleBlur = () => {
+      if (bgTimer) clearTimeout(bgTimer);
+      bgTimer = setTimeout(() => {
+        setLocalRenderState('BACKGROUND');
+        setRendererState('BACKGROUND');
+      }, 30000);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('mousemove', resetActivity);
+    window.addEventListener('mousedown', resetActivity);
+
+    resetActivity();
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('mousemove', resetActivity);
+      window.removeEventListener('mousedown', resetActivity);
+      if (idleTimer) clearTimeout(idleTimer);
+      if (bgTimer) clearTimeout(bgTimer);
+    };
+  }, [setRendererState]);
+
   const animDef = ANIMATION_DEFINITIONS[animationState] || ANIMATION_DEFINITIONS.idle;
   const isImageAvatar =
     character.renderer === 'image_avatar' ||
@@ -34,12 +99,22 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
 
   // Animation frame updater loop
   useEffect(() => {
+    if (renderState === 'HIDDEN') return;
+
     let animId: number;
     let lastFrameTime = performance.now();
     let currentFrame = animationFrame;
     let forward = true;
 
-    const frameInterval = 1000 / (animDef.fps || 6);
+    // Throttle animation frame updates in BACKGROUND / IDLE states
+    let baseFps = animDef.fps || 6;
+    if (renderState === 'BACKGROUND') {
+      baseFps = Math.min(baseFps, 3);
+    } else if (renderState === 'IDLE' && animationState === 'idle') {
+      baseFps = Math.min(baseFps, 4);
+    }
+
+    const frameInterval = 1000 / baseFps;
 
     const loop = (time: number) => {
       const elapsed = time - lastFrameTime;
@@ -82,25 +157,57 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [animationState, animDef]);
+  }, [animationState, animDef, renderState]);
 
-  // Render to canvas & particles animation loop
+  // Render to canvas & particles animation loop with adaptive frame pacing
   useEffect(() => {
+    if (renderState === 'HIDDEN') return;
+
     let animId: number;
     let lastTime = performance.now();
+    let wasEmpty = false;
+
+    // Effective FPS based on performance config & adaptive state
+    let targetFps = perfConfig.performance.fps || 30;
+    if (renderState === 'IDLE') {
+      targetFps = Math.min(targetFps, 20);
+    } else if (renderState === 'BACKGROUND') {
+      targetFps = Math.min(targetFps, 10);
+    }
+
+    const minFrameInterval = 1000 / targetFps;
 
     const renderLoop = (time: number) => {
+      const elapsed = time - lastTime;
+      if (elapsed < minFrameInterval) {
+        animId = requestAnimationFrame(renderLoop);
+        return;
+      }
+
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const dt = Math.min((time - lastTime) / 1000, 0.1);
+      const dt = Math.min(elapsed / 1000, 0.1);
       lastTime = time;
 
       const w = canvas.width;
       const h = canvas.height;
 
+      const hasParticles = perfConfig.performance.particles && particleSystem.hasActiveParticles();
+
+      // On low-spec/old computers, avoid continuous clears when no particles exist
+      if (isImageAvatar && !hasParticles) {
+        if (!wasEmpty) {
+          ctx.clearRect(0, 0, w, h);
+          wasEmpty = true;
+        }
+        animId = requestAnimationFrame(renderLoop);
+        return;
+      }
+
+      wasEmpty = false;
       ctx.clearRect(0, 0, w, h);
 
       if (!isImageAvatar) {
@@ -119,16 +226,19 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
         });
       }
 
-      // Update and render particle effects (hearts, sparkles, level-up)
-      particleSystem.update(dt, w, h, time);
-      particleSystem.render(ctx);
+      // Update and render particle effects if enabled
+      if (perfConfig.performance.particles) {
+        particleSystem.update(dt, w, h, time);
+        particleSystem.render(ctx);
+      }
 
       animId = requestAnimationFrame(renderLoop);
     };
 
     animId = requestAnimationFrame(renderLoop);
     return () => cancelAnimationFrame(animId);
-  }, [character, animationState, animationFrame, facing, isImageAvatar]);
+  }, [character, animationState, animationFrame, facing, isImageAvatar, perfConfig.performance.fps, perfConfig.performance.particles, renderState]);
+
 
   // Event bus listeners for level up & achievement sparkles
   useEffect(() => {
@@ -229,18 +339,20 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
         onContextMenu={onContextMenu}
       >
         {/* Subtle Sharingan Aura */}
-        <div
-          style={{
-            position: 'absolute',
-            width: `${Math.round(canvasSize * 0.75)}px`,
-            height: `${Math.round(canvasSize * 0.75)}px`,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${character.aura || 'rgba(225, 29, 72, 0.45)'} 0%, rgba(225, 29, 72, 0.1) 65%, transparent 100%)`,
-            filter: 'blur(4px)',
-            transform: `scale(${animationState === 'jump' ? 1.25 : 1.0 + Math.sin(t) * 0.05})`,
-            pointerEvents: 'none',
-          }}
-        />
+        {perfConfig.performance.glow && (
+          <div
+            style={{
+              position: 'absolute',
+              width: `${Math.round(canvasSize * 0.75)}px`,
+              height: `${Math.round(canvasSize * 0.75)}px`,
+              borderRadius: '50%',
+              background: `radial-gradient(circle, ${character.aura || 'rgba(225, 29, 72, 0.45)'} 0%, rgba(225, 29, 72, 0.1) 65%, transparent 100%)`,
+              filter: perfConfig.performance.blur ? 'blur(4px)' : 'none',
+              transform: `scale(${animationState === 'jump' ? 1.25 : 1.0 + Math.sin(t) * 0.05})`,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
 
         {/* User-Provided Exact Character Asset */}
         <img
@@ -255,6 +367,7 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
             userSelect: 'none',
             position: 'relative',
             zIndex: 1,
+            filter: perfConfig.performance.shadows ? 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35))' : 'none',
           }}
         />
 
@@ -299,9 +412,10 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
           height: `${canvasSize}px`,
           imageRendering: 'pixelated',
           display: 'block',
-          filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25))',
+          filter: perfConfig.performance.shadows ? 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25))' : 'none',
         }}
       />
     </div>
   );
 };
+

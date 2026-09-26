@@ -15,13 +15,29 @@ async function getInvoke() {
 }
 
 export class StorageService {
+  private static memoryCache = new Map<string, any>();
+
+  public static clearCache(): void {
+    this.memoryCache.clear();
+  }
+
   public static async get<T>(key: string, defaultValue: T): Promise<T> {
+    if (typeof localStorage !== 'undefined' && localStorage.length === 0 && this.memoryCache.size > 0) {
+      this.memoryCache.clear();
+    }
+
+    if (this.memoryCache.has(key)) {
+      return this.memoryCache.get(key) as T;
+    }
+
     const invoke = await getInvoke();
     if (invoke) {
       try {
         const val = await invoke<string | null>('storage_get', { key });
         if (val !== null && val !== undefined) {
-          return JSON.parse(val) as T;
+          const parsed = JSON.parse(val) as T;
+          this.memoryCache.set(key, parsed);
+          return parsed;
         }
       } catch (e) {
         console.warn(`[StorageService] SQLite get failed for key "${key}", checking localStorage fallback:`, e);
@@ -32,17 +48,21 @@ export class StorageService {
       const local = localStorage.getItem(`lulu_${key}`);
       if (local) {
         try {
-          return JSON.parse(local) as T;
+          const parsed = JSON.parse(local) as T;
+          this.memoryCache.set(key, parsed);
+          return parsed;
         } catch {
           // ignore parse error
         }
       }
     }
 
+    this.memoryCache.set(key, defaultValue);
     return defaultValue;
   }
 
   public static async set<T>(key: string, value: T): Promise<void> {
+    this.memoryCache.set(key, value);
     const jsonStr = JSON.stringify(value);
     const invoke = await getInvoke();
     if (invoke) {
@@ -61,6 +81,7 @@ export class StorageService {
       }
     }
   }
+
 
   public static async exportBackup(): Promise<string> {
     const invoke = await getInvoke();

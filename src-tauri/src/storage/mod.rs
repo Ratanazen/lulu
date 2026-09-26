@@ -352,8 +352,10 @@ impl StorageService {
             params![key, val],
         )
         .map_err(|e| e.to_string())?;
+        crate::performance::PerformanceMonitor::increment_db_write();
         Ok(())
     }
+
 
     pub fn get_kv(&self, key: &str) -> Result<Option<String>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;

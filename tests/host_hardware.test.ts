@@ -47,4 +47,14 @@ describe('Host Hardware & System Telemetry Service', () => {
     expect(hw.gpu.vendor).toBe('AMD');
     expect(hw.memory.totalMb).toBeGreaterThanOrEqual(8000); // 14GB+ RAM on host
   });
+
+  it('handles low-spec / old computer hardware gracefully without crash', async () => {
+    const hw = await MonitorService.getHostHardwareInfo();
+    expect(hw).not.toBeNull();
+    if (!hw) return;
+
+    expect(hw.memory.totalMb).toBeGreaterThan(256);
+    expect(hw.cpu.cores).toBeGreaterThanOrEqual(1);
+    expect(hw.gpu.vramTotalMb).toBeGreaterThanOrEqual(0);
+  });
 });

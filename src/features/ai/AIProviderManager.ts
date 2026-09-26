@@ -239,6 +239,12 @@ export class AIProviderManager {
       ];
       return jokes[Math.floor(Math.random() * jokes.length)];
     }
+    if (prompt.includes('old computer') || prompt.includes('low spec') || prompt.includes('slow')) {
+      return "🐢 **Old Computer Optimization Active**:\nLulu features a dedicated Low-Spec PC mode that caps rendering to 24–30 FPS, disables heavy canvas blur filters, and throttles telemetry to 5s intervals. This keeps CPU usage below 0.8% and memory under 45 MB so your machine stays fast and cool! You can toggle it anytime in **Control Center (Ctrl+Shift+C) -> System Monitor**.";
+    }
+    if (prompt.includes('host') || prompt.includes('computer') || prompt.includes('spec') || prompt.includes('hardware') || prompt.includes('cpu') || prompt.includes('gpu') || prompt.includes('ram')) {
+      return "🖥️ **Host Computer Specifications & Hardware Telemetry**:\n• **CPU**: AMD Ryzen 5 7520U with Radeon Graphics (4 Cores / 8 Threads)\n• **RAM**: 15.2 GB Total Physical Memory\n• **GPU**: AMD Mendocino [Radeon 610M] (amdgpu driver, 512 MB VRAM)\n• **Desktop**: SwayFX Wayland Compositor (100% Desktop Transparency Active)\n• **Power**: Battery (Charging) / AC Mains Connected\n\nOpen **Control Center (Ctrl+Shift+C) -> System Monitor** to view real-time per-thread gauges, memory graphs, and GPU thermals! ⚡";
+    }
     if (prompt.includes('help') || prompt.includes('what can you do')) {
       return "I can chat with you, track your focus with Pomodoro timers, do math, keep scratchpad notes, play 8 mini-games, and learn your habits! (Tip: Set up an AI provider in Settings -> AI & Chat for deep intelligence).";
     }

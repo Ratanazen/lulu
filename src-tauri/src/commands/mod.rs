@@ -352,3 +352,69 @@ pub fn stop_native_speech() -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn get_hardware_info(state: State<'_, AppState>) -> Result<crate::performance::HardwareInfo, String> {
+    Ok(state.performance.get_hardware_info())
+}
+
+#[tauri::command]
+pub fn get_performance_config(state: State<'_, AppState>) -> Result<crate::performance::PerformanceConfig, String> {
+    Ok(state.performance.get_performance_config())
+}
+
+#[tauri::command]
+pub fn set_performance_config(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    config: crate::performance::PerformanceConfig,
+) -> Result<(), String> {
+    state.performance.set_performance_config(config, Some(&app))
+}
+
+#[tauri::command]
+pub fn get_performance_profile(
+    state: State<'_, AppState>,
+    mode: String,
+) -> Result<crate::performance::PerformanceConfig, String> {
+    Ok(state.performance.get_performance_profile(&mode))
+}
+
+#[tauri::command]
+pub fn apply_performance_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    mode: String,
+) -> Result<crate::performance::PerformanceConfig, String> {
+    state.performance.apply_performance_profile(&mode, Some(&app))
+}
+
+#[tauri::command]
+pub fn get_runtime_performance(
+    state: State<'_, AppState>,
+) -> Result<crate::performance::RuntimePerformance, String> {
+    Ok(state.performance.get_runtime_performance())
+}
+
+#[tauri::command]
+pub fn reset_performance_config(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<crate::performance::PerformanceConfig, String> {
+    state.performance.reset_performance_config(Some(&app))
+}
+
+#[tauri::command]
+pub fn detect_display_environment(
+    state: State<'_, AppState>,
+) -> Result<crate::performance::detector::DetectedDisplayInfo, String> {
+    Ok(state.performance.get_hardware_info().display)
+}
+
+#[tauri::command]
+pub fn get_power_state(
+    state: State<'_, AppState>,
+) -> Result<crate::performance::PowerState, String> {
+    Ok(state.performance.get_power_state())
+}
+
+

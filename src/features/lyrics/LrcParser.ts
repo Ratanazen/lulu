@@ -84,6 +84,31 @@ export class LrcParser {
   }
 
   /**
+   * Fast O(log N) binary search for timestamp index in pre-sorted lyric lines
+   */
+  public static binarySearchIndex(lines: LyricLine[], currentTimeMs: number): number {
+    if (!lines || lines.length === 0 || currentTimeMs < lines[0].timeMs) {
+      return -1;
+    }
+
+    let low = 0;
+    let high = lines.length - 1;
+    let result = -1;
+
+    while (low <= high) {
+      const mid = (low + high) >> 1;
+      if (lines[mid].timeMs <= currentTimeMs) {
+        result = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Returns the active lyric and next lyric for a given playback position in milliseconds
    */
   public static getLyricAtTime(
@@ -94,15 +119,7 @@ export class LrcParser {
       return { current: null, next: null, index: -1 };
     }
 
-    let activeIdx = -1;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].timeMs <= currentTimeMs) {
-        activeIdx = i;
-      } else {
-        break;
-      }
-    }
+    const activeIdx = this.binarySearchIndex(lines, currentTimeMs);
 
     if (activeIdx === -1) {
       // Prior to first lyric
@@ -120,3 +137,4 @@ export class LrcParser {
     };
   }
 }
+

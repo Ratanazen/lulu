@@ -102,7 +102,28 @@ impl SystemService {
 
         let threads = sys.cpus().len();
         let cores = sys.physical_core_count().unwrap_or(if threads > 0 { threads / 2 } else { 4 });
-        let frequency_mhz = sys.cpus().first().map(|c| c.frequency()).unwrap_or(0);
+        let mut frequency_mhz = sys.cpus().first().map(|c| c.frequency()).unwrap_or(0);
+        if frequency_mhz == 0 {
+            if let Ok(freq_str) = std::fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") {
+                if let Ok(khz) = freq_str.trim().parse::<u64>() {
+                    frequency_mhz = khz / 1000;
+                }
+            }
+        }
+        if frequency_mhz == 0 {
+            if let Ok(content) = std::fs::read_to_string("/proc/cpuinfo") {
+                for line in content.lines() {
+                    if line.starts_with("cpu MHz") {
+                        if let Some((_, val)) = line.split_once(':') {
+                            if let Ok(mhz) = val.trim().parse::<f32>() {
+                                frequency_mhz = mhz as u64;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         let per_core_usage: Vec<f32> = sys.cpus().iter().map(|c| (c.cpu_usage() * 10.0).round() / 10.0).collect();
         let usage_percentage = if !per_core_usage.is_empty() {
@@ -261,6 +282,21 @@ impl SystemService {
                         gpu_driver = "i915".to_string();
                     }
                     break;
+                }
+            }
+        }
+
+        // Older computer fallback: if VRAM is 0 (integrated Intel/nouveau/old ATI), estimate from shared RAM
+        if vram_tot == 0 {
+            vram_tot = (total_mb / 8).clamp(128, 512);
+            vram_used = (vram_tot / 4).max(64);
+        }
+
+        // Older computer fallback: if GPU temp is missing from DRM hwmon, probe Linux thermal zones
+        if gpu_temp.is_none() {
+            if let Ok(t_str) = std::fs::read_to_string("/sys/class/thermal/thermal_zone0/temp") {
+                if let Ok(mdeg) = t_str.trim().parse::<f32>() {
+                    gpu_temp = Some(((mdeg / 1000.0) * 10.0).round() / 10.0);
                 }
             }
         }

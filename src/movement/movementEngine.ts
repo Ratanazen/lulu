@@ -27,6 +27,7 @@ export class MovementEngine {
   private monitors: MonitorInfo[] = [];
   private windowSize = { width: 260, height: 320 };
   private lastTickTime: number = performance.now();
+  private movementTickMs: number = 60;
   private timerId: number | null = null;
   private onStateChange?: (state: MovementState) => void;
 
@@ -35,6 +36,17 @@ export class MovementEngine {
       this.config = { ...this.config, ...config };
     }
     this.onStateChange = onStateChange;
+  }
+
+  public setMovementTickMs(tickMs: number): void {
+    this.movementTickMs = Math.max(16, tickMs);
+    if (this.state.isMoving) {
+      this.startTickLoop();
+    }
+  }
+
+  public getMovementTickMs(): number {
+    return this.movementTickMs;
   }
 
   public setMonitors(monitors: MonitorInfo[]): void {
@@ -54,6 +66,7 @@ export class MovementEngine {
   }
 
   public setPositionDirect(pos: Vector2D): void {
+    this.stopTickLoop();
     this.state.currentPosition = { ...pos };
     this.state.targetPosition = null;
     this.state.velocity = { x: 0, y: 0 };
@@ -150,6 +163,7 @@ export class MovementEngine {
   }
 
   public stop(): void {
+    this.stopTickLoop();
     this.state.targetPosition = null;
     this.state.velocity = { x: 0, y: 0 };
     this.state.isMoving = false;
@@ -159,6 +173,7 @@ export class MovementEngine {
   }
 
   public pause(): void {
+    this.stopTickLoop();
     this.state.mode = 'paused';
     this.state.velocity = { x: 0, y: 0 };
     this.state.isMoving = false;
@@ -172,10 +187,10 @@ export class MovementEngine {
     }
   }
 
-  public startTickLoop(tickRateHz: number = 60): void {
+  public startTickLoop(tickRateHz?: number): void {
     this.stopTickLoop();
     this.lastTickTime = performance.now();
-    const intervalMs = 1000 / tickRateHz;
+    const intervalMs = tickRateHz ? 1000 / tickRateHz : this.movementTickMs;
 
     this.timerId = window.setInterval(() => {
       this.tick();
@@ -198,8 +213,10 @@ export class MovementEngine {
     this.lastTickTime = currentTime;
 
     if (this.state.mode === 'paused' || !this.state.isMoving || !this.state.targetPosition) {
+      this.stopTickLoop();
       return;
     }
+
 
     const { currentPosition, targetPosition } = this.state;
     const dx = targetPosition.x - currentPosition.x;
@@ -267,6 +284,7 @@ export class MovementEngine {
     }
 
     this.notifyState();
+    this.startTickLoop();
     eventBus.emit('MOVEMENT_STARTED', 'MovementEngine', {
       mode,
       from: this.state.currentPosition,

@@ -98,6 +98,12 @@ export class MusicEngine {
     return this.status;
   }
 
+  private configuredPollInterval: number = 350;
+
+  public setConfiguredPollInterval(ms: number) {
+    this.configuredPollInterval = Math.max(100, ms);
+  }
+
   public simulatePlayback(title: string, artist: string, durationMs: number = 180000) {
     this.processNewStatus({
       isAvailable: true,
@@ -117,12 +123,22 @@ export class MusicEngine {
 
     await this.refreshOnce();
 
-    // Determine poll interval: faster when playing (250ms for smooth lyrics), slower when paused (1200ms)
-    const interval = this.status.status === 'playing' ? 300 : 1500;
+    // Determine poll interval based on playback state:
+    // - Playing: use configured performance interval (e.g. 200–800ms)
+    // - Paused/Stopped: slow down to 2500ms since position is stationary
+    // - No Player: drop to 5000ms idle probe to eliminate CPU wakeups
+    let interval = 5000;
+    if (this.status.status === 'playing') {
+      interval = this.configuredPollInterval;
+    } else if (this.status.isAvailable) {
+      interval = 2500;
+    }
+
     this.pollingTimer = setTimeout(() => {
       this.pollLoop();
     }, interval);
   }
+
 
   private processNewStatus(nextStatus: MediaStatus) {
     const prevStatus = this.status;

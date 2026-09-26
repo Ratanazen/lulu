@@ -20,7 +20,47 @@ async function getInvoke() {
 export class LyricsSyncManager {
   private activeLrc: ParsedLrc | null = null;
   private activeIndex: number = -1;
+  private lastUpdateMs: number = 0;
+  private lastPositionMs: number = -1;
+  private minIntervalMs: number = 100;
   private listeners: Set<(current: LyricLine | null, next: LyricLine | null) => void> = new Set();
+
+  public setThrottleInterval(ms: number) {
+    this.minIntervalMs = Math.max(50, ms);
+  }
+
+  public updatePosition(positionMs: number): {
+    current: LyricLine | null;
+    next: LyricLine | null;
+    hasChanged: boolean;
+  } {
+    if (!this.activeLrc || this.activeLrc.lines.length === 0) {
+      return { current: null, next: null, hasChanged: false };
+    }
+
+    const now = performance.now();
+    // Throttle frequent redundant checks when position changes smoothly by small amounts
+    if (
+      this.activeIndex !== -1 &&
+      now - this.lastUpdateMs < this.minIntervalMs &&
+      Math.abs(positionMs - this.lastPositionMs) < 600
+    ) {
+      return { current: null, next: null, hasChanged: false };
+    }
+
+    this.lastUpdateMs = now;
+    this.lastPositionMs = positionMs;
+
+    const { current, next, index } = LrcParser.getLyricAtTime(this.activeLrc.lines, positionMs);
+
+    const hasChanged = index !== this.activeIndex;
+    if (hasChanged) {
+      this.activeIndex = index;
+      this.notifyListeners(current, next);
+    }
+
+    return { current, next, hasChanged };
+  }
 
   public async fetchLocalLyricsList(): Promise<LyricsFileInfo[]> {
     const invoke = await getInvoke();
@@ -86,26 +126,6 @@ export class LyricsSyncManager {
 
   public getActiveLrc(): ParsedLrc | null {
     return this.activeLrc;
-  }
-
-  public updatePosition(positionMs: number): {
-    current: LyricLine | null;
-    next: LyricLine | null;
-    hasChanged: boolean;
-  } {
-    if (!this.activeLrc || this.activeLrc.lines.length === 0) {
-      return { current: null, next: null, hasChanged: false };
-    }
-
-    const { current, next, index } = LrcParser.getLyricAtTime(this.activeLrc.lines, positionMs);
-
-    const hasChanged = index !== this.activeIndex;
-    if (hasChanged) {
-      this.activeIndex = index;
-      this.notifyListeners(current, next);
-    }
-
-    return { current, next, hasChanged };
   }
 
   public onLyricChange(cb: (current: LyricLine | null, next: LyricLine | null) => void): () => void {

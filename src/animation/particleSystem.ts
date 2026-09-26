@@ -32,6 +32,14 @@ export class ParticleSystem {
   private lastAmbientSpawn: number = 0;
   private maxParticles: number = 80;
 
+  public hasActiveParticles(): boolean {
+    return this.particles.length > 0;
+  }
+
+  public getCount(): number {
+    return this.particles.length;
+  }
+
   private allocate(): Particle {
     const recycled = this.pool.pop();
     if (recycled) return recycled;

@@ -8,7 +8,9 @@ pub mod monitors;
 pub mod movement;
 pub mod music;
 pub mod notifications;
+pub mod performance;
 pub mod process;
+
 pub mod state;
 pub mod storage;
 pub mod system;
@@ -47,8 +49,10 @@ pub fn run() {
             );
 
             let system = Arc::new(SystemService::default());
+            let performance = Arc::new(crate::performance::PerformanceService::default());
 
-            app.manage(AppState { storage, system });
+            app.manage(AppState { storage, system, performance });
+
 
             // Setup System Tray
             let show_i = MenuItem::with_id(app, "show", "Show Lulu", true, None::<&str>)?;
@@ -183,7 +187,17 @@ pub fn run() {
             storage_unlock_achievement,
             speak_native_text,
             stop_native_speech,
+            get_hardware_info,
+            get_performance_config,
+            set_performance_config,
+            get_performance_profile,
+            apply_performance_profile,
+            get_runtime_performance,
+            reset_performance_config,
+            detect_display_environment,
+            get_power_state,
         ])
+
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");
 }
