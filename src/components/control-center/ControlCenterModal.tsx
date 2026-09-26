@@ -94,22 +94,24 @@ export const ControlCenterModal: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: '12px',
+        boxSizing: 'border-box',
       }}
       onClick={() => setControlCenterOpen(false)}
     >
       <div
         style={{
-          width: '940px',
-          maxWidth: '95vw',
-          height: '640px',
-          maxHeight: '90vh',
+          width: '100%',
+          maxWidth: '936px',
+          height: '100%',
+          maxHeight: '656px',
           backgroundColor: 'var(--color-bg, #0F172A)',
           border: '1px solid var(--color-border, #334155)',
           borderRadius: '20px',
           display: 'flex',
           overflow: 'hidden',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+          boxSizing: 'border-box',
         }}
         onClick={(e) => e.stopPropagation()}
       >

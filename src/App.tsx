@@ -22,20 +22,26 @@ export const App: React.FC = () => {
     sleep,
     settings,
     updateSettings,
+    isHydrated,
+    onboardingCompleted,
   } = useLuluStore();
 
   // Dynamic window resizing so modals and chat have ample room and never clip
   useEffect(() => {
-    if (controlCenterOpen) {
+    if (!isHydrated) return;
+
+    if (!onboardingCompleted) {
+      DesktopWindowService.setSize(540, 660);
+    } else if (controlCenterOpen) {
       DesktopWindowService.setSize(960, 680);
     } else if (chatOpen) {
-      DesktopWindowService.setSize(440, 560);
+      DesktopWindowService.setSize(460, 600);
     } else if (quickActionsOpen) {
-      DesktopWindowService.setSize(360, 420);
+      DesktopWindowService.setSize(360, 440);
     } else {
       DesktopWindowService.setSize(260, 320);
     }
-  }, [controlCenterOpen, chatOpen, quickActionsOpen]);
+  }, [isHydrated, onboardingCompleted, controlCenterOpen, chatOpen, quickActionsOpen]);
 
   useEffect(() => {
     initialize();

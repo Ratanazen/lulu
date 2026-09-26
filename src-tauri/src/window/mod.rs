@@ -30,8 +30,25 @@ impl DesktopWindowService {
         let win = app
             .get_webview_window(label)
             .ok_or_else(|| format!("Window {} not found", label))?;
-        win.set_position(Position::Physical(PhysicalPosition { x, y }))
-            .map_err(|e| e.to_string())
+        let res = win.set_position(Position::Physical(PhysicalPosition { x, y }))
+            .map_err(|e| e.to_string());
+
+        #[cfg(target_os = "linux")]
+        {
+            if std::env::var("SWAYSOCK").is_ok() {
+                let _ = std::process::Command::new("swaymsg")
+                    .arg(format!("[app_id=\"lulu\"] move position {} {}", x, y))
+                    .output();
+                let _ = std::process::Command::new("swaymsg")
+                    .arg(format!("[app_id=\"com.ratana.lulu\"] move position {} {}", x, y))
+                    .output();
+                let _ = std::process::Command::new("swaymsg")
+                    .arg(format!("[title=\"Lulu\"] move position {} {}", x, y))
+                    .output();
+            }
+        }
+
+        res
     }
 
     pub fn get_size(app: &AppHandle, label: &str) -> Result<WindowSize, String> {
@@ -49,11 +66,28 @@ impl DesktopWindowService {
         let win = app
             .get_webview_window(label)
             .ok_or_else(|| format!("Window {} not found", label))?;
-        win.set_size(Size::Logical(LogicalSize {
+        let res = win.set_size(Size::Logical(LogicalSize {
             width: width as f64,
             height: height as f64,
         }))
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string());
+
+        #[cfg(target_os = "linux")]
+        {
+            if std::env::var("SWAYSOCK").is_ok() {
+                let _ = std::process::Command::new("swaymsg")
+                    .arg(format!("[app_id=\"lulu\"] resize set {} {}", width, height))
+                    .output();
+                let _ = std::process::Command::new("swaymsg")
+                    .arg(format!("[app_id=\"com.ratana.lulu\"] resize set {} {}", width, height))
+                    .output();
+                let _ = std::process::Command::new("swaymsg")
+                    .arg(format!("[title=\"Lulu\"] resize set {} {}", width, height))
+                    .output();
+            }
+        }
+
+        res
     }
 
     pub fn set_always_on_top(app: &AppHandle, label: &str, on_top: bool) -> Result<(), String> {

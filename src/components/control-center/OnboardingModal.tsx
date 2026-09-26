@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useLuluStore } from '../../stores/useLuluStore';
 
 export const OnboardingModal: React.FC = () => {
-  const { onboardingCompleted, completeOnboarding, setCharacter, characters, speak } = useLuluStore();
+  const { onboardingCompleted, completeOnboarding, setCharacter, characters, speak, isHydrated } = useLuluStore();
   const [step, setStep] = useState(0);
 
-  if (onboardingCompleted) return null;
+  if (!isHydrated || onboardingCompleted) return null;
 
   const steps = [
     {
@@ -146,22 +146,26 @@ export const OnboardingModal: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        padding: '16px',
+        boxSizing: 'border-box',
       }}
     >
       <div
         style={{
-          width: '460px',
-          maxWidth: '90vw',
+          width: '100%',
+          maxWidth: '480px',
+          maxHeight: 'calc(100vh - 32px)',
+          overflowY: 'auto',
           backgroundColor: 'var(--color-bg, #0F172A)',
           border: '1px solid var(--color-border, #334155)',
           borderRadius: '20px',
-          padding: '28px',
+          padding: '24px',
           boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: '16px',
+          boxSizing: 'border-box',
         }}
       >
         <img src="/icons/lulu-icon.svg" alt="Lulu" style={{ width: '48px', height: '48px' }} />
