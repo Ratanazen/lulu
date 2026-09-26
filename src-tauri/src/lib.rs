@@ -166,6 +166,8 @@ pub fn run() {
             storage_save_notification,
             storage_get_achievements,
             storage_unlock_achievement,
+            speak_native_text,
+            stop_native_speech,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");

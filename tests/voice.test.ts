@@ -33,4 +33,11 @@ describe('VoiceManager', () => {
     expect(state.isListening).toBe(false);
     expect(state.isSpeaking).toBe(false);
   });
+
+  it('safely handles stopSpeaking without crashing', async () => {
+    await expect(voice.stopSpeaking()).resolves.not.toThrow();
+    const state = voice.getState();
+    expect(state.isSpeaking).toBe(false);
+  });
 });
+

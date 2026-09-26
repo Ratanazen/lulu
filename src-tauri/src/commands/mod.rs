@@ -294,3 +294,51 @@ pub fn storage_get_achievements(state: State<'_, AppState>) -> Result<Vec<Achiev
 pub fn storage_unlock_achievement(id: String, progress: i64, state: State<'_, AppState>) -> Result<(), String> {
     state.storage.unlock_achievement(&id, progress)
 }
+
+#[tauri::command]
+pub fn speak_native_text(
+    text: String,
+    rate: Option<u32>,
+    pitch: Option<u32>,
+    volume: Option<u32>,
+) -> Result<bool, String> {
+    let binary = if std::path::Path::new("/usr/bin/espeak-ng").exists() {
+        "/usr/bin/espeak-ng"
+    } else if std::path::Path::new("/usr/bin/espeak").exists() {
+        "/usr/bin/espeak"
+    } else {
+        return Ok(false);
+    };
+
+    let mut cmd = std::process::Command::new(binary);
+    if let Some(r) = rate {
+        cmd.arg("-s").arg(r.to_string());
+    }
+    if let Some(p) = pitch {
+        cmd.arg("-p").arg(p.to_string());
+    }
+    if let Some(v) = volume {
+        cmd.arg("-a").arg(v.to_string());
+    }
+    cmd.arg(&text);
+
+    std::thread::spawn(move || {
+        let _ = cmd.output();
+    });
+
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn stop_native_speech() -> Result<(), String> {
+    let _ = std::process::Command::new("killall")
+        .arg("-q")
+        .arg("espeak-ng")
+        .output();
+    let _ = std::process::Command::new("killall")
+        .arg("-q")
+        .arg("espeak")
+        .output();
+    Ok(())
+}
+

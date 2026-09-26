@@ -6,9 +6,18 @@ import { QuickStatusOverlay } from './QuickStatusOverlay';
 import { ContextMenu } from './ContextMenu';
 import { CompactChatWindow } from '../chat/CompactChatWindow';
 import { QuickActionsMenu } from './QuickActionsMenu';
+import { AchievementToast } from './AchievementToast';
+import { WidgetMode } from '../widgets/WidgetMode';
 
 export const PetView: React.FC = () => {
-  const { speechMessage, dismissSpeech, pauseSpeech, resumeSpeech, updateNeeds } = useLuluStore();
+  const {
+    speechMessage,
+    dismissSpeech,
+    pauseSpeech,
+    resumeSpeech,
+    updateNeeds,
+    isWidgetMode,
+  } = useLuluStore();
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
 
   // Periodic needs decay & autonomous behavior tick (every 5 seconds)
@@ -47,28 +56,38 @@ export const PetView: React.FC = () => {
         boxSizing: 'border-box',
       }}
     >
-      {/* Speech Bubble + Mascot */}
-      <div
-        style={{
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-        }}
-      >
-        <SpeechBubble
-          message={speechMessage}
-          onDismiss={dismissSpeech}
-          onMouseEnter={pauseSpeech}
-          onMouseLeave={resumeSpeech}
-        />
-        <PetCanvas onContextMenu={handleContextMenu} />
-      </div>
+      {/* Achievement Unlocked Floating Toast */}
+      <AchievementToast />
 
-      {/* Mini Quick Status */}
-      <QuickStatusOverlay />
+      {/* Main Companion Body: Mascot Mode vs Compact Widget Mode */}
+      {isWidgetMode ? (
+        <WidgetMode />
+      ) : (
+        <>
+          {/* Speech Bubble + Mascot */}
+          <div
+            style={{
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+            }}
+          >
+            <SpeechBubble
+              message={speechMessage}
+              onDismiss={dismissSpeech}
+              onMouseEnter={pauseSpeech}
+              onMouseLeave={resumeSpeech}
+            />
+            <PetCanvas onContextMenu={handleContextMenu} />
+          </div>
+
+          {/* Mini Quick Status */}
+          <QuickStatusOverlay />
+        </>
+      )}
 
       {/* Floating Desktop Chat Companion */}
       <CompactChatWindow />

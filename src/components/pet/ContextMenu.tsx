@@ -38,6 +38,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
     updateSettings,
     setPersonality,
     personality,
+    isWidgetMode,
+    toggleWidgetMode,
   } = useLuluStore();
 
   const handleAction = (action: () => void) => {
@@ -434,6 +436,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
             >
               <span>{soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF'}</span>
               <kbd style={kbdStyle}>M</kbd>
+            </button>
+            <button
+              style={menuItemStyle}
+              onClick={() => handleAction(() => toggleWidgetMode())}
+            >
+              <span>{isWidgetMode ? '🐾 Pet Mascot Mode' : '📱 Compact Widget Mode'}</span>
+              <kbd style={kbdStyle}>W</kbd>
             </button>
             <button
               style={menuItemStyle}

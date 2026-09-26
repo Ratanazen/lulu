@@ -30,8 +30,16 @@ import { INITIAL_ACHIEVEMENTS, ProgressionEngine } from '../progression';
 import { StreakTracker } from '../progression/streakTracker';
 import { ThemeEngine } from '../themes';
 import { DesktopWindowService } from '../services/desktopWindow';
-import { StorageService, getAllSettings, setSettingsBulk } from '../services/storageService';
+import { StorageService, getAllSettings, setSettingsBulk, getAchievements, unlockAchievement } from '../services/storageService';
 import { ChatMessage } from '../features/ai/types';
+
+export interface AchievementToastData {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  xp?: number;
+}
 import { aiProviderManager } from '../features/ai/AIProviderManager';
 import { memoryManager } from '../features/memory/MemoryManager';
 import { personalityEngine } from '../features/personality/personalityEngine';
@@ -181,6 +189,13 @@ interface LuluStoreState {
   patPet: () => void;
   syncAgentState: (agentState: 'thinking' | 'working' | 'waiting' | 'success' | 'error' | 'cancelled') => void;
 
+  // Achievement Toast & Widget Mode
+  activeAchievementToast: AchievementToastData | null;
+  dismissAchievementToast: () => void;
+  triggerAchievementToast: (toast: AchievementToastData) => void;
+  isWidgetMode: boolean;
+  toggleWidgetMode: () => void;
+
   // Hydration & Persistence
   isHydrated: boolean;
   hydrate: () => Promise<void>;
@@ -210,6 +225,11 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     needs: DEFAULT_NEEDS,
     mood: 'calm',
     speechMessage: null,
+    activeAchievementToast: null,
+    dismissAchievementToast: () => set({ activeAchievementToast: null }),
+    triggerAchievementToast: (toast: AchievementToastData) => set({ activeAchievementToast: toast }),
+    isWidgetMode: false,
+    toggleWidgetMode: () => set((s) => ({ isWidgetMode: !s.isWidgetMode })),
     settings: DEFAULT_SETTINGS,
     preferences: DEFAULT_PREFERENCES,
     progression: {
@@ -304,6 +324,27 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
           const progState = JSON.parse(progressionStr);
           set({ progression: progState });
         } catch {}
+      }
+
+      // Hydrate persistent achievements from SQLite
+      try {
+        const dbAchievements = await getAchievements();
+        if (dbAchievements && dbAchievements.length > 0) {
+          const prog = get().progression;
+          const merged = { ...prog.achievements };
+          dbAchievements.forEach((a) => {
+            if (merged[a.id]) {
+              merged[a.id] = {
+                ...merged[a.id],
+                unlocked: true,
+                progress: Math.max(merged[a.id].progress, a.progress),
+              };
+            }
+          });
+          set({ progression: { ...prog, achievements: merged } });
+        }
+      } catch (e) {
+        console.warn('Hydrating achievements failed', e);
       }
 
       set({ isHydrated: true });
@@ -865,6 +906,14 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         get().speak(`Achievement Unlocked: ${ach.title}! 🏆`, 'success');
         eventBus.emit('ACHIEVEMENT_UNLOCKED', 'Progression', { achievement: ach });
         get().setAnimation('celebrate');
+        unlockAchievement(id, ach.progress).catch(console.error);
+        get().triggerAchievementToast({
+          id,
+          title: ach.title,
+          icon: ach.icon || '🏆',
+          description: ach.description,
+          xp: 50,
+        });
       }
     },
 

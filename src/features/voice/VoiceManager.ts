@@ -12,6 +12,22 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   pushToTalk: true,
 };
 
+let tauriInvoke: (<T = any>(cmd: string, args?: Record<string, unknown>) => Promise<T>) | null = null;
+
+async function getInvoke() {
+  if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+    return null;
+  }
+  if (tauriInvoke) return tauriInvoke;
+  try {
+    const core = await import('@tauri-apps/api/core');
+    tauriInvoke = core.invoke;
+    return tauriInvoke;
+  } catch {
+    return null;
+  }
+}
+
 export class VoiceManager {
   private settings: VoiceSettings = DEFAULT_VOICE_SETTINGS;
   private state: VoiceState = {
@@ -39,7 +55,8 @@ export class VoiceManager {
     if (typeof window === 'undefined') return;
     const hasSpeech = 'speechSynthesis' in window;
     const hasRecognition = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-    this.state.isSupported = hasSpeech || hasRecognition;
+    const hasTauri = !!(window as any).__TAURI_INTERNALS__;
+    this.state.isSupported = hasSpeech || hasRecognition || hasTauri;
   }
 
   getSettings(): VoiceSettings {
@@ -74,13 +91,52 @@ export class VoiceManager {
     return window.speechSynthesis.getVoices();
   }
 
-  speak(text: string): Promise<void> {
-    if (!this.settings.enabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return Promise.resolve();
+  async speak(text: string): Promise<void> {
+    if (!this.settings.enabled) return;
+
+    // 1. Try Native Linux TTS (espeak-ng / espeak) first via Tauri
+    const invoke = await getInvoke();
+    if (invoke) {
+      try {
+        const rate = Math.round(150 * (this.settings.rate || 1.0));
+        const pitch = Math.round(55 * (this.settings.pitch || 1.1));
+        const volume = Math.round(100 * (this.settings.volume ?? 0.8));
+
+        const ok = await invoke<boolean>('speak_native_text', {
+          text,
+          rate,
+          pitch,
+          volume,
+        });
+
+        if (ok) {
+          this.state.isSpeaking = true;
+          lipSyncController.startSpeechCadence();
+          this.notify();
+
+          const wordCount = text.split(/\s+/).filter(Boolean).length;
+          const estDurationMs = Math.max(1200, Math.round((wordCount / (rate / 60)) * 1000));
+
+          setTimeout(() => {
+            this.state.isSpeaking = false;
+            lipSyncController.stopSpeechCadence();
+            this.notify();
+          }, estDurationMs);
+
+          return;
+        }
+      } catch (err) {
+        console.warn('[VoiceManager] Native Linux TTS failed, falling back to Web Speech API', err);
+      }
+    }
+
+    // 2. Fall back to browser Web Speech API
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return;
     }
 
     return new Promise((resolve) => {
-      window.speechSynthesis.cancel(); // stop any ongoing speech
+      window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.volume = this.settings.volume;
@@ -118,13 +174,17 @@ export class VoiceManager {
     });
   }
 
-  stopSpeaking(): void {
+  async stopSpeaking(): Promise<void> {
+    const invoke = await getInvoke();
+    if (invoke) {
+      invoke('stop_native_speech').catch(() => {});
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      lipSyncController.stopSpeechCadence();
-      this.state.isSpeaking = false;
-      this.notify();
     }
+    lipSyncController.stopSpeechCadence();
+    this.state.isSpeaking = false;
+    this.notify();
   }
 
   // --- Speech to Text (STT) ---
