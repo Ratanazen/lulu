@@ -26,6 +26,58 @@ pub struct AiCliExecutionResult {
     pub execution_time_ms: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleAccountSession {
+    pub email: String,
+    pub display_name: String,
+    pub avatar_url: Option<String>,
+    pub is_authenticated: bool,
+    pub auth_source: String,
+    pub connected_at: String,
+}
+
+fn decode_base64_url(input: &str) -> Option<Vec<u8>> {
+    let mut s = input.replace('-', "+").replace('_', "/");
+    while s.len() % 4 != 0 {
+        s.push('=');
+    }
+    const T: &[u8; 128] = &{
+        let mut t = [64u8; 128];
+        let mut i = 0u8;
+        while i < 26 {
+            t[(b'A' + i) as usize] = i;
+            t[(b'a' + i) as usize] = i + 26;
+            if i < 10 { t[(b'0' + i) as usize] = i + 52; }
+            i += 1;
+        }
+        t[b'+' as usize] = 62;
+        t[b'/' as usize] = 63;
+        t
+    };
+    let bytes = s.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if i + 3 >= bytes.len() {
+            break;
+        }
+        let b0 = *T.get(*bytes.get(i)? as usize)? as u32;
+        let b1 = *T.get(*bytes.get(i+1)? as usize)? as u32;
+        let b2 = if *bytes.get(i+2)? == b'=' { 0 } else { *T.get(*bytes.get(i+2)? as usize)? as u32 };
+        let b3 = if *bytes.get(i+3)? == b'=' { 0 } else { *T.get(*bytes.get(i+3)? as usize)? as u32 };
+        if b0 > 63 || b1 > 63 || (*bytes.get(i+2)? != b'=' && b2 > 63) || (*bytes.get(i+3)? != b'=' && b3 > 63) {
+            return None;
+        }
+        let triple = (b0 << 18) | (b1 << 12) | (b2 << 6) | b3;
+        out.push(((triple >> 16) & 0xFF) as u8);
+        if *bytes.get(i+2)? != b'=' { out.push(((triple >> 8) & 0xFF) as u8); }
+        if *bytes.get(i+3)? != b'=' { out.push((triple & 0xFF) as u8); }
+        i += 4;
+    }
+    Some(out)
+}
+
 pub struct AiCliService;
 
 impl AiCliService {
@@ -87,6 +139,50 @@ impl AiCliService {
         match addr {
             Ok(sa) => TcpStream::connect_timeout(&sa, Duration::from_millis(250)).is_ok(),
             Err(_) => false,
+        }
+    }
+
+    pub fn get_google_session() -> GoogleAccountSession {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let token_path = std::path::PathBuf::from(&home).join(".gemini/antigravity-cli/antigravity-oauth-token");
+
+        if token_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&token_path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(id_token) = val.get("id_token").and_then(|v| v.as_str()) {
+                        let parts: Vec<&str> = id_token.split('.').collect();
+                        if parts.len() >= 2 {
+                            if let Some(decoded_bytes) = decode_base64_url(parts[1]) {
+                                if let Ok(claims) = serde_json::from_slice::<serde_json::Value>(&decoded_bytes) {
+                                    let email = claims.get("email").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                                    let name = claims.get("name").and_then(|v| v.as_str()).unwrap_or("Google User").to_string();
+                                    let picture = claims.get("picture").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                                    if !email.is_empty() {
+                                        return GoogleAccountSession {
+                                            email,
+                                            display_name: name,
+                                            avatar_url: picture,
+                                            is_authenticated: true,
+                                            auth_source: "antigravity-oauth".to_string(),
+                                            connected_at: chrono::Utc::now().to_rfc3339(),
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        GoogleAccountSession {
+            email: String::new(),
+            display_name: String::new(),
+            avatar_url: None,
+            is_authenticated: false,
+            auth_source: "none".to_string(),
+            connected_at: chrono::Utc::now().to_rfc3339(),
         }
     }
 

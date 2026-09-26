@@ -54,6 +54,9 @@ export const LULU_DEFAULT_CHARACTER: CharacterProfile = {
   },
   unlocked: true,
   category: 'original',
+  renderer: 'pixel',
+  avatarUrl: '/characters/lulu-character.png',
+  modelPath: '/characters/lulu-character.png',
   author: 'Lulu Core Team',
   version: '1.0.0',
 };

@@ -7,7 +7,26 @@ export const PrivacyStorageTab: React.FC = () => {
   const { speak } = useLuluStore();
   const [backupJson, setBackupJson] = useState<string>('');
   const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [oauthStatus] = useState(googleOAuthService.getStatus());
+  const [profile, setProfile] = useState(googleOAuthService.getAccountProfile());
+  const [oauthStatus, setOauthStatus] = useState(googleOAuthService.getStatus());
+
+  React.useEffect(() => {
+    const unsub = googleOAuthService.subscribe((st) => {
+      setOauthStatus(st);
+      setProfile(googleOAuthService.getAccountProfile());
+    });
+
+    if (googleOAuthService.getStatus() !== 'CONNECTED') {
+      googleOAuthService.syncLocalGoogleAccount().then((res) => {
+        if (res.success && res.profile) {
+          setProfile(res.profile);
+          setOauthStatus('CONNECTED');
+        }
+      });
+    }
+
+    return () => unsub();
+  }, []);
 
   const [permissions, setPermissions] = useState<Record<string, { label: string; desc: string; enabled: boolean; status: string }>>({
     dbus_notifications: { label: 'Desktop Notifications (D-Bus)', desc: 'Reads incoming desktop app notification titles and summaries.', enabled: true, status: 'Active' },
@@ -111,7 +130,7 @@ export const PrivacyStorageTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Official Google OAuth 2.0 PKCE Status */}
+      {/* Official Google OAuth 2.0 PKCE & Host Session Status */}
       <div
         style={{
           backgroundColor: 'var(--color-bg-card, #1E293B)',
@@ -120,16 +139,16 @@ export const PrivacyStorageTab: React.FC = () => {
           padding: '20px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px',
+          gap: '14px',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h4 style={{ margin: 0, fontSize: '15px', color: '#F8FAFC' }}>
-              Google OAuth 2.0 PKCE Architecture
+              Google & Antigravity Account Session
             </h4>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94A3B8' }}>
-              Official authorization flow (RFC 7636). Zero client secret embedding, zero webview credential scraping.
+              Official authorization session with least-privilege scopes for Google Gemini & Antigravity CLI.
             </p>
           </div>
           <span
@@ -143,21 +162,116 @@ export const PrivacyStorageTab: React.FC = () => {
               border: `1px solid ${oauthStatus === 'CONNECTED' ? '#10B981' : '#F59E0B'}`,
             }}
           >
-            {oauthStatus === 'CONNECTED' ? 'CONNECTED' : 'REQUIRES CONFIGURATION'}
+            {oauthStatus === 'CONNECTED' ? 'CONNECTED' : 'DISCONNECTED'}
           </span>
         </div>
 
+        {profile && (
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.displayName}
+                  style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #10B981' }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    color: '#818CF8',
+                  }}
+                >
+                  G
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#F8FAFC' }}>
+                  {profile.displayName}
+                </div>
+                <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                  {profile.email}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await googleOAuthService.disconnectGoogle();
+                setProfile(null);
+                setOauthStatus('DISCONNECTED');
+              }}
+              style={{
+                padding: '6px 10px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid #EF4444',
+                color: '#EF4444',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
+
         <div style={{ fontSize: '12px', color: '#CBD5E1', lineHeight: '1.5' }}>
           <div>
-            • <strong>Least-Privilege Scopes:</strong> <code>openid</code>, <code>email</code>, <code>profile</code> only.
+            • <strong>Least-Privilege Scopes:</strong> <code>openid</code>, <code>email</code>, <code>profile</code>, <code>google_gemini_oauth</code>.
           </div>
           <div>
-            • <strong>PKCE Code Challenge:</strong> S256 with cryptographically random code_verifier generated per session.
+            • <strong>Zero Telemetry:</strong> No tracking, no external credential logging, zero cloud scraping.
           </div>
           <div>
-            • <strong>Setup Instructions:</strong> Set <code>VITE_GOOGLE_CLIENT_ID</code> in <code>.env</code> with your Google Cloud Desktop Client ID.
+            • <strong>Local Session:</strong> Synchronized with host Antigravity CLI Google session at <code>~/.gemini/antigravity-cli/antigravity-oauth-token</code>.
           </div>
         </div>
+
+        {!profile && (
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await googleOAuthService.syncLocalGoogleAccount();
+              if (res.success && res.profile) {
+                setProfile(res.profile);
+                setOauthStatus('CONNECTED');
+              }
+            }}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid #10B981',
+              color: '#10B981',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              width: 'fit-content',
+            }}
+          >
+            Sync Local Google Account
+          </button>
+        )}
       </div>
 
       {/* Granular Capabilities & Privacy Permissions Matrix */}

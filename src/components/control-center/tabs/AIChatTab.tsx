@@ -16,6 +16,7 @@ import {
 import { AIProviderId, ProviderConfig } from '../../../features/ai/types';
 import { aiProviderManager } from '../../../features/ai/AIProviderManager';
 import { AiCliService, AiCliStatus, AiCliExecutionResult } from '../../../features/ai/AiCliService';
+import { googleOAuthService, GoogleAccountProfile } from '../../../services/googleOAuthService';
 
 export const AIChatTab: React.FC = () => {
   const [activeProvider, setActiveProvider] = useState<AIProviderId>(
@@ -28,6 +29,14 @@ export const AIChatTab: React.FC = () => {
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; models?: string[] } | null>(null);
 
+  // Google Account profile & OAuth status
+  const [googleProfile, setGoogleProfile] = useState<GoogleAccountProfile | null>(
+    googleOAuthService.getAccountProfile()
+  );
+  const [googleStatus, setGoogleStatus] = useState<string>(googleOAuthService.getStatus());
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
   // Native AI CLI status state
   const [cliProviders, setCliProviders] = useState<AiCliStatus[]>([]);
   const [loadingCli, setLoadingCli] = useState(false);
@@ -36,7 +45,48 @@ export const AIChatTab: React.FC = () => {
 
   React.useEffect(() => {
     loadCliProviders();
+
+    // Auto-detect or sync Google Account from host session
+    const unsub = googleOAuthService.subscribe((status) => {
+      setGoogleStatus(status);
+      setGoogleProfile(googleOAuthService.getAccountProfile());
+    });
+
+    if (googleOAuthService.getStatus() !== 'CONNECTED') {
+      googleOAuthService.syncLocalGoogleAccount().then((res) => {
+        if (res.success && res.profile) {
+          setGoogleProfile(res.profile);
+          setGoogleStatus('CONNECTED');
+        }
+      });
+    }
+
+    return () => unsub();
   }, []);
+
+  const handleSyncGoogle = async () => {
+    setSyncingGoogle(true);
+    setSyncFeedback(null);
+    try {
+      const res = await googleOAuthService.syncLocalGoogleAccount();
+      setSyncFeedback(res.message);
+      if (res.profile) {
+        setGoogleProfile(res.profile);
+        setGoogleStatus('CONNECTED');
+      }
+    } catch (err: any) {
+      setSyncFeedback(err?.message || 'Failed to sync Google account');
+    } finally {
+      setSyncingGoogle(false);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    await googleOAuthService.disconnectGoogle();
+    setGoogleProfile(null);
+    setGoogleStatus('DISCONNECTED');
+    setSyncFeedback('Disconnected Google account.');
+  };
 
   const loadCliProviders = async (force = false) => {
     setLoadingCli(true);
@@ -110,16 +160,8 @@ export const AIChatTab: React.FC = () => {
     }
   };
 
-  const providers: { id: AIProviderId; label: string; icon: string; desc: string }[] = [
-    { id: 'hybrid_gemini_agy', label: 'Gemini + AGY Combined', icon: '🔮', desc: 'Auto-routing & fallback between AGY CLI and Gemini Cloud' },
-    { id: 'agy', label: 'Antigravity (AGY)', icon: '🚀', desc: 'Google OAuth session, Gemini 3.8 & Claude' },
-    { id: 'ollama', label: 'Ollama (Local AI)', icon: '🦙', desc: '100% private, free, offline local LLM' },
-    { id: 'openai', label: 'OpenAI', icon: '⚡', desc: 'GPT-4o, GPT-4o-mini' },
-    { id: 'gemini', label: 'Google Gemini', icon: '✨', desc: 'Gemini 1.5 Flash & Pro' },
-    { id: 'anthropic', label: 'Anthropic Claude', icon: '🧠', desc: 'Claude 3.5 Sonnet & Haiku' },
-    { id: 'custom', label: 'Custom Endpoint', icon: '🌐', desc: 'LM Studio, vLLM, OpenRouter' },
-    { id: 'offline', label: 'Offline Rulebook', icon: '📦', desc: 'No network or keys needed' },
-  ];
+  // Only show Google Gemini and AGY CLI providers (plus offline fallback)
+  const providers = aiProviderManager.getVisibleProviders();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -129,14 +171,140 @@ export const AIChatTab: React.FC = () => {
           <Bot size={15} />
           <span>INTELLIGENCE & LLM ENGINE</span>
         </div>
-        <h2 style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>AI Provider Configuration</h2>
+        <h2 style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>Google Account, Gemini & AGY CLI</h2>
         <p style={{ fontSize: '13px', color: 'var(--color-text-muted, #94A3B8)', marginTop: '2px' }}>
-          Connect local Ollama or your favorite cloud AI provider. Lulu adapts seamlessly to any model.
+          Connect your Google Account and local Antigravity CLI to power Lulu with Google Gemini 3.8 and Claude models.
         </p>
       </div>
 
+      {/* Google Account & OAuth Session Card */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-bg-card, #1E293B)',
+          border: '1px solid var(--color-border, #334155)',
+          borderRadius: '16px',
+          padding: '18px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {googleProfile?.avatarUrl ? (
+            <img
+              src={googleProfile.avatarUrl}
+              alt={googleProfile.displayName}
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                border: '2px solid #10B981',
+                objectFit: 'cover',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                border: '2px solid #818CF8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '22px',
+                color: '#818CF8',
+                fontWeight: 700,
+              }}
+            >
+              G
+            </div>
+          )}
+
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#F8FAFC' }}>
+                {googleProfile ? googleProfile.displayName : 'Google & Gemini Account'}
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  backgroundColor: googleStatus === 'CONNECTED' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                  color: googleStatus === 'CONNECTED' ? '#10B981' : '#F59E0B',
+                  border: `1px solid ${googleStatus === 'CONNECTED' ? '#10B981' : '#F59E0B'}`,
+                }}
+              >
+                {googleStatus === 'CONNECTED' ? 'CONNECTED' : 'DISCONNECTED'}
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>
+              {googleProfile?.email ? (
+                <span>
+                  Signed in as <code>{googleProfile.email}</code> (Host Antigravity & Gemini OAuth session)
+                </span>
+              ) : (
+                <span>Sign in or sync your local Google / Antigravity CLI account to enable Gemini & AGY models.</span>
+              )}
+            </div>
+            {syncFeedback && (
+              <div style={{ fontSize: '11px', color: '#38BDF8', marginTop: '4px' }}>
+                {syncFeedback}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={handleSyncGoogle}
+            disabled={syncingGoogle}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid #10B981',
+              color: '#10B981',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: syncingGoogle ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <RotateCw size={13} className={syncingGoogle ? 'spin' : ''} />
+            <span>{syncingGoogle ? 'Syncing...' : 'Sync Google Account'}</span>
+          </button>
+
+          {googleProfile && (
+            <button
+              type="button"
+              onClick={handleDisconnectGoogle}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid #EF4444',
+                color: '#EF4444',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Disconnect
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Provider Selector Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
         {providers.map((p) => {
           const isSelected = activeProvider === p.id;
           return (
@@ -424,8 +592,10 @@ export const AIChatTab: React.FC = () => {
 
         {/* CLI Providers Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-          {cliProviders.map((cli) => {
-            const isInstalled = cli.status === 'INSTALLED' || cli.status === 'RUNNING';
+          {cliProviders
+            .filter((cli) => cli.id === 'agy' || cli.id === 'gemini')
+            .map((cli) => {
+              const isInstalled = cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING';
             return (
               <div
                 key={cli.id}

@@ -20,9 +20,21 @@ describe('AIProviderManager', () => {
   });
 
   it('allows switching active provider', () => {
-    expect(manager.getActiveProviderId()).toBe('ollama');
+    expect(manager.getActiveProviderId()).toBe('hybrid_gemini_agy');
     manager.setActiveProviderId('gemini');
     expect(manager.getActiveProviderId()).toBe('gemini');
+  });
+
+  it('exposes only Google Gemini and AGY providers in visible list', () => {
+    const visible = manager.getVisibleProviders();
+    const ids = visible.map((p) => p.id);
+    expect(ids).toContain('hybrid_gemini_agy');
+    expect(ids).toContain('agy');
+    expect(ids).toContain('gemini');
+    expect(ids).toContain('offline');
+    expect(ids).not.toContain('openai');
+    expect(ids).not.toContain('anthropic');
+    expect(ids).not.toContain('ollama');
   });
 
   it('returns valid default configs for all providers', () => {

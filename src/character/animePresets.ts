@@ -412,8 +412,8 @@ export const ANIME_CHARACTERS: CharacterProfile[] = [
     temperature: 0.75,
     category: 'original',
     renderer: 'image_avatar',
-    avatarUrl: '/characters/madara_avatar.png',
-    modelPath: '/characters/madara_mascot.png',
+    avatarUrl: '/characters/lulu-character.png',
+    modelPath: '/characters/lulu-character.png',
     transform: {
       position: { x: 0, y: 0, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },

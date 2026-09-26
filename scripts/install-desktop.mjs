@@ -73,9 +73,9 @@ console.log(`[PASS] Created application launcher at: ${desktopFile}`);
 const swayConfigDir = path.join(home, '.config', 'sway', 'config.d');
 if (fs.existsSync(swayConfigDir)) {
   const swayLuluRule = `# Lulu Desktop AI Companion
-for_window [app_id="lulu"] floating enable, border none, sticky enable
-for_window [app_id="com.ratana.lulu"] floating enable, border none, sticky enable
-for_window [title="Lulu"] floating enable, border none, sticky enable
+for_window [app_id="lulu"] floating enable, border none, sticky enable, blur disable, shadows disable, corner_radius 0
+for_window [app_id="com.ratana.lulu"] floating enable, border none, sticky enable, blur disable, shadows disable, corner_radius 0
+for_window [title="Lulu"] floating enable, border none, sticky enable, blur disable, shadows disable, corner_radius 0
 `;
   fs.writeFileSync(path.join(swayConfigDir, 'lulu.conf'), swayLuluRule, 'utf8');
   try {

@@ -110,6 +110,19 @@ pub fn run() {
             // Start background desktop notification listener
             crate::notifications::NotificationService::start_listener(app.handle().clone());
 
+            // Auto-apply SwayFX window rules for 100% desktop transparency
+            #[cfg(target_os = "linux")]
+            {
+                if std::env::var_os("SWAYSOCK").is_some() {
+                    std::thread::spawn(|| {
+                        std::thread::sleep(std::time::Duration::from_millis(150));
+                        let _ = std::process::Command::new("swaymsg")
+                            .arg("[app_id=\"lulu\"] blur disable, shadows disable, corner_radius 0")
+                            .output();
+                    });
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -126,6 +139,7 @@ pub fn run() {
             start_dragging,
             clamp_movement_target,
             get_system_metrics,
+            get_host_hardware_info,
             get_process_list,
             get_git_info,
             run_diagnostics,
@@ -146,6 +160,7 @@ pub fn run() {
             get_capability_by_id,
             get_capability_diagnostics,
             detect_ai_cli_providers,
+            get_google_account_session,
             execute_ai_cli,
             get_extended_system_info,
             storage_get_all_settings,

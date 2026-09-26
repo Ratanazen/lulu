@@ -11,10 +11,26 @@ describe('Madara Uchiha & Image Avatar Engine', () => {
     expect(madara?.name).toBe('Madara Uchiha');
     expect(madara?.displayName).toContain('Madara');
     expect(madara?.renderer).toBe('image_avatar');
-    expect(madara?.avatarUrl).toBe('/characters/madara_avatar.png');
-    expect(madara?.modelPath).toBe('/characters/madara_mascot.png');
+    expect(madara?.avatarUrl).toBe('/characters/lulu-character.png');
+    expect(madara?.modelPath).toBe('/characters/lulu-character.png');
     expect(madara?.palette.primary).toBe('#E11D48');
     expect(madara?.first_message).toContain('Wake up to reality');
+  });
+
+  it('verifies lulu-character asset metadata is configured', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const metaPath = path.resolve(__dirname, '../src/assets/character/lulu/metadata.json');
+    const imgPath = path.resolve(__dirname, '../src/assets/character/lulu/lulu-character.png');
+
+    expect(fs.existsSync(metaPath)).toBe(true);
+    expect(fs.existsSync(imgPath)).toBe(true);
+
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    expect(meta.id).toBe('lulu-character');
+    expect(meta.type).toBe('desktop-pet-character');
+    expect(meta.source).toBe('user-provided-image');
+    expect(meta.transparent).toBe(true);
   });
 
   it('provides ImageAvatarRendererAdapter capability', () => {

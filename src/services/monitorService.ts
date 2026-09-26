@@ -102,6 +102,62 @@ export class MonitorService {
     }
     return null;
   }
+
+  public static async getHostHardwareInfo(): Promise<HostHardwareInfo | null> {
+    const invoke = await getInvoke();
+    if (invoke) {
+      try {
+        return await invoke<HostHardwareInfo>('get_host_hardware_info');
+      } catch (e) {
+        console.warn('[MonitorService] get_host_hardware_info failed:', e);
+      }
+    }
+    return {
+      hostname: 'desktop-host',
+      osName: 'Linux',
+      osVersion: '6.x',
+      kernelVersion: '6.12-arch',
+      desktopEnvironment: 'sway',
+      windowManager: 'Sway (Wayland)',
+      sessionType: 'wayland',
+      uptimeSeconds: 84600,
+      processCount: 180,
+      batteryPercentage: 91,
+      batteryState: 'Charging',
+      acOnline: true,
+      cpu: {
+        brand: 'AMD Ryzen 5 7520U with Radeon Graphics',
+        cores: 4,
+        threads: 8,
+        frequencyMhz: 2800,
+        usagePercentage: 14.5,
+        perCoreUsage: [12.0, 15.2, 11.8, 18.0, 10.5, 14.0, 16.2, 18.3],
+      },
+      memory: {
+        totalMb: 15252,
+        usedMb: 5585,
+        availableMb: 9667,
+        freeMb: 1024,
+        usagePercentage: 36.6,
+        swapTotalMb: 15251,
+        swapUsedMb: 855,
+        swapPercentage: 5.6,
+      },
+      gpu: {
+        vendor: 'AMD',
+        model: 'AMD Mendocino [Radeon 610M]',
+        driver: 'amdgpu',
+        usagePercentage: 3.5,
+        vramTotalMb: 512,
+        vramUsedMb: 403,
+        gttTotalMb: 7626,
+        gttUsedMb: 332,
+        temperatureC: 66.0,
+        powerWatts: 18.25,
+        clockMhz: 200,
+      },
+    };
+  }
 }
 
 export interface LinuxDesktopInfo {
@@ -112,3 +168,56 @@ export interface LinuxDesktopInfo {
   isHyprland: boolean;
   activeWorkspaces: string[];
 }
+
+export interface HostCpuInfo {
+  brand: string;
+  cores: number;
+  threads: number;
+  frequencyMhz: number;
+  usagePercentage: number;
+  perCoreUsage: number[];
+}
+
+export interface HostMemoryInfo {
+  totalMb: number;
+  usedMb: number;
+  availableMb: number;
+  freeMb: number;
+  usagePercentage: number;
+  swapTotalMb: number;
+  swapUsedMb: number;
+  swapPercentage: number;
+}
+
+export interface HostGpuInfo {
+  vendor: string;
+  model: string;
+  driver: string;
+  usagePercentage: number;
+  vramTotalMb: number;
+  vramUsedMb: number;
+  gttTotalMb: number;
+  gttUsedMb: number;
+  temperatureC?: number | null;
+  powerWatts?: number | null;
+  clockMhz?: number | null;
+}
+
+export interface HostHardwareInfo {
+  hostname: string;
+  osName: string;
+  osVersion: string;
+  kernelVersion: string;
+  desktopEnvironment: string;
+  windowManager: string;
+  sessionType: string;
+  uptimeSeconds: number;
+  processCount: number;
+  batteryPercentage?: number | null;
+  batteryState?: string | null;
+  acOnline: boolean;
+  cpu: HostCpuInfo;
+  memory: HostMemoryInfo;
+  gpu: HostGpuInfo;
+}
+

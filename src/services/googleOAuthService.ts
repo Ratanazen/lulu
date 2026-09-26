@@ -1,4 +1,5 @@
 import { StorageService } from './storageService';
+import { AiCliService } from '../features/ai/AiCliService';
 
 export type GoogleAuthStatus =
   | 'DISCONNECTED'
@@ -63,6 +64,39 @@ export class GoogleOAuthService {
     this.currentProfile = savedProfile;
 
     this.recomputeStatus();
+  }
+
+  /**
+   * Synchronizes active Google / Antigravity host account session
+   */
+  public async syncLocalGoogleAccount(): Promise<{ success: boolean; profile: GoogleAccountProfile | null; message: string }> {
+    try {
+      const session = await AiCliService.getGoogleAccountSession();
+      if (session && session.isAuthenticated && session.email) {
+        const profile: GoogleAccountProfile = {
+          email: session.email,
+          displayName: session.displayName || 'Google User',
+          avatarUrl: session.avatarUrl || undefined,
+          scopes: ['openid', 'email', 'profile', 'google_gemini_oauth'],
+          connectedAt: session.connectedAt || new Date().toISOString(),
+        };
+        this.currentProfile = profile;
+        await StorageService.set('google_account_profile', profile);
+        this.recomputeStatus();
+        return {
+          success: true,
+          profile,
+          message: `Successfully connected Google Account: ${profile.email}`,
+        };
+      }
+    } catch (err: any) {
+      console.warn('syncLocalGoogleAccount error:', err);
+    }
+    return {
+      success: false,
+      profile: null,
+      message: 'No active Google / Antigravity account session detected on host.',
+    };
   }
 
   public getStatus(): GoogleAuthStatus {

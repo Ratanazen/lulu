@@ -112,7 +112,7 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<AIProviderId, ProviderConfig> = {
 export class AIProviderManager {
   private providers = new Map<AIProviderId, AIProvider>();
   private configs: Record<AIProviderId, ProviderConfig> = DEFAULT_PROVIDER_CONFIGS;
-  private activeProviderId: AIProviderId = 'ollama';
+  private activeProviderId: AIProviderId = 'hybrid_gemini_agy';
 
   constructor() {
     this.registerProvider(new CombinedGeminiAgyProvider());
@@ -183,6 +183,35 @@ export class AIProviderManager {
 
   getAllConfigs(): Record<AIProviderId, ProviderConfig> {
     return this.configs;
+  }
+
+  getVisibleProviders(): { id: AIProviderId; label: string; icon: string; desc: string }[] {
+    return [
+      {
+        id: 'hybrid_gemini_agy',
+        label: 'Combined Gemini + AGY',
+        icon: '🔮',
+        desc: 'Dual-engine auto-routing between AGY CLI and Google Gemini Cloud',
+      },
+      {
+        id: 'agy',
+        label: 'Antigravity (AGY)',
+        icon: '🚀',
+        desc: 'Google OAuth session, Gemini 3.8 Flash, Claude Sonnet 4.6',
+      },
+      {
+        id: 'gemini',
+        label: 'Google Gemini',
+        icon: '✨',
+        desc: 'Direct Google Gemini API (Gemini 1.5 Flash & Pro, 2.0 Flash Exp)',
+      },
+      {
+        id: 'offline',
+        label: 'Offline Rulebook',
+        icon: '📦',
+        desc: 'Built-in companion rulebook, zero network needed',
+      },
+    ];
   }
 
   // Fallback offline responses when provider is unreachable or user is offline

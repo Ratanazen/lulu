@@ -106,7 +106,7 @@ export class ImageAvatarRendererAdapter implements ICharacterRenderer {
     ctx.fill();
 
     // 2. Resolve image asset
-    const imgUrl = character.modelPath || character.avatarUrl || '/characters/madara_mascot.png';
+    const imgUrl = character.modelPath || character.avatarUrl || '/characters/lulu-character.png';
     const img = this.getImage(imgUrl);
 
     if (img && img.complete && img.naturalWidth > 0) {

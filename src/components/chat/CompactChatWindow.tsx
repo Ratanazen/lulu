@@ -641,30 +641,44 @@ export const CompactChatWindow: React.FC = () => {
               ))}
 
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
-              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--lulu-muted, #94A3B8)', padding: '2px 6px' }}>
-                FALLBACK ENGINES
+              <div style={{ fontSize: '10px', fontWeight: 800, color: '#38BDF8', padding: '2px 6px' }}>
+                ✨ DIRECT GOOGLE GEMINI (CLOUD API)
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  aiProviderManager.setActiveProviderId('ollama');
-                  setActiveProvider('ollama');
-                  setSelectedModel('llama3.2');
-                  setShowModelPicker(false);
-                }}
-                style={{
-                  padding: '5px 8px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: activeProvider === 'ollama' ? 'var(--lulu-primary, #FF7A00)' : 'transparent',
-                  color: activeProvider === 'ollama' ? '#FFFFFF' : 'var(--lulu-text, #FFF8F0)',
-                  fontSize: '11px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                }}
-              >
-                🦙 Ollama (Local LLM)
-              </button>
+              {[
+                { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+                { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+                { id: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash Exp' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    aiProviderManager.setActiveProviderId('gemini');
+                    aiProviderManager.updateConfig('gemini', { selectedModel: m.id });
+                    setActiveProvider('gemini');
+                    setSelectedModel(m.id);
+                    setShowModelPicker(false);
+                  }}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: activeProvider === 'gemini' && selectedModel === m.id ? '#38BDF8' : 'transparent',
+                    color: activeProvider === 'gemini' && selectedModel === m.id ? '#000000' : 'var(--lulu-text, #FFF8F0)',
+                    fontSize: '11px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontWeight: activeProvider === 'gemini' && selectedModel === m.id ? 700 : 500,
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--lulu-muted, #94A3B8)', padding: '2px 6px' }}>
+                OFFLINE FALLBACK
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -1125,8 +1139,8 @@ export const CompactChatWindow: React.FC = () => {
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: 'var(--lulu-muted, #94A3B8)' }}>Auth Session:</span>
-            <span style={{ color: '#10B981', fontWeight: 600 }}>Google OAuth (Active)</span>
+            <span style={{ color: 'var(--lulu-muted, #94A3B8)' }}>Google Account:</span>
+            <span style={{ color: '#10B981', fontWeight: 600 }}>rtnaeam611@gmail.com (Active)</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--lulu-muted, #94A3B8)' }}>Model:</span>

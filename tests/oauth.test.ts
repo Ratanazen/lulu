@@ -39,4 +39,14 @@ describe('GoogleOAuthService', () => {
     expect(res.authUrl).toContain('https://accounts.google.com/o/oauth2/v2/auth');
     expect(res.authUrl).toContain('test-client-id-123.apps.googleusercontent.com');
   });
+
+  it('synchronizes local Google account profile and sets status to CONNECTED', async () => {
+    const res = await auth.syncLocalGoogleAccount();
+    expect(res.success).toBe(true);
+    expect(res.profile).toBeDefined();
+    expect(res.profile?.email).toBe('rtnaeam611@gmail.com');
+    expect(res.profile?.displayName).toBe('Rtna Eam');
+    expect(auth.getStatus()).toBe('CONNECTED');
+    expect(auth.getAccountProfile()?.email).toBe('rtnaeam611@gmail.com');
+  });
 });

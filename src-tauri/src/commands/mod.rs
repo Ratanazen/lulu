@@ -82,6 +82,11 @@ pub fn get_system_metrics(state: State<'_, AppState>) -> Result<SystemMetrics, S
 }
 
 #[tauri::command]
+pub fn get_host_hardware_info(state: State<'_, AppState>) -> Result<crate::system::HostHardwareInfo, String> {
+    state.system.get_host_hardware_info()
+}
+
+#[tauri::command]
 pub fn get_process_list(limit: Option<usize>) -> Result<Vec<ProcessItem>, String> {
     ProcessService::list_top_processes(limit.unwrap_or(20))
 }
@@ -186,6 +191,11 @@ pub fn get_capability_by_id(app: AppHandle, id: String) -> Result<Option<crate::
 #[tauri::command]
 pub fn get_capability_diagnostics(app: AppHandle) -> Result<crate::capabilities::CapabilityDiagnosticsReport, String> {
     Ok(crate::capabilities::CapabilityManager::get_diagnostics(&app))
+}
+
+#[tauri::command]
+pub fn get_google_account_session() -> Result<crate::ai::GoogleAccountSession, String> {
+    Ok(crate::ai::AiCliService::get_google_session())
 }
 
 #[tauri::command]
