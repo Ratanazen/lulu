@@ -181,6 +181,24 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
       warning: '#FFFF33',
     },
   },
+  'anime-naruto': {
+    id: 'anime-naruto',
+    name: 'Anime Naruto (Konoha Orange 🍥)',
+    colors: {
+      bg: '#0A0E17',
+      bgCard: '#131B2E',
+      border: '#FF7A00',
+      text: '#FFF8F0',
+      textMuted: '#94A3B8',
+      primary: '#FF7A00',
+      primaryHover: '#E06A00',
+      accent: '#00E5FF',
+      glow: 'rgba(255, 122, 0, 0.35)',
+      danger: '#EF4444',
+      success: '#10B981',
+      warning: '#FFB800',
+    },
+  },
 };
 
 export class ThemeEngine {

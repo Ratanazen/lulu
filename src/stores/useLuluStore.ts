@@ -55,8 +55,8 @@ import { notificationManager } from '../features/notifications/NotificationManag
 import { CapabilityService, RuntimeCapability, EffectiveCapability } from '../services/capabilityService';
 
 export const DEFAULT_SETTINGS: LuluSettings = {
-  theme: 'lulu-dark',
-  characterId: 'lulu',
+  theme: 'anime-naruto',
+  characterId: 'naruto_shinobi',
   characterScale: 1.0,
   animationFps: 60,
   renderFps: 60,
@@ -214,7 +214,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     movementEngine,
     speechSystem,
 
-    character: LULU_DEFAULT_CHARACTER,
+    character: characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
     characters: characterManager.getRoster(),
     animationState: 'idle',
     animationFrame: 0,
@@ -252,7 +252,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       {
         id: 'welcome',
         role: 'assistant',
-        content: "Hi there! I'm Lulu ✨ What are we working on together today?",
+        content: "Yo! I'm Naruto Uzumaki! Ready to train hard and tackle any mission together today? Dattebayo! 🍥🔥",
         timestamp: Date.now(),
       },
     ],
@@ -406,7 +406,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         settings: savedSettings,
         progression: savedProg,
         preferences: loadedPrefs,
-        character: savedCustomChar || OFFICIAL_CHARACTERS.find((c) => c.id === savedSettings.characterId) || LULU_DEFAULT_CHARACTER,
+        character: savedCustomChar || characterManager.getRoster().find((c) => c.id === savedSettings.characterId) || OFFICIAL_CHARACTERS.find((c) => c.id === savedSettings.characterId) || characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
         needs: needsEngine.getNeeds(),
         onboardingCompleted: onboardingDone,
       });

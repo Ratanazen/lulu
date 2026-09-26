@@ -30,18 +30,45 @@ pub struct AiCliService;
 
 impl AiCliService {
     pub fn probe_binary(name: &str) -> Option<String> {
-        let output = Command::new("which").arg(name).output().ok()?;
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path.is_empty() {
-                return Some(path);
+        if let Ok(output) = Command::new("which").arg(name).output() {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some(path);
+                }
+            }
+        }
+        // Direct fallback checks for standard user and system paths
+        if let Ok(home) = std::env::var("HOME") {
+            let user_bin = std::path::PathBuf::from(home).join(".local/bin").join(name);
+            if user_bin.exists() {
+                return Some(user_bin.to_string_lossy().to_string());
+            }
+        }
+        for dir in &["/usr/local/bin", "/usr/bin", "/bin"] {
+            let p = std::path::Path::new(dir).join(name);
+            if p.exists() {
+                return Some(p.to_string_lossy().to_string());
             }
         }
         None
     }
 
     pub fn get_version(name: &str) -> Option<String> {
-        let output = Command::new(name).arg("--version").output().ok()?;
+        let bin_path = Self::probe_binary(name).unwrap_or_else(|| name.to_string());
+        let mut cmd = Command::new(&bin_path);
+        cmd.arg("--version");
+
+        if let Ok(path) = std::env::var("PATH") {
+            if let Ok(home) = std::env::var("HOME") {
+                let local_bin = format!("{}/.local/bin", home);
+                if !path.contains(&local_bin) {
+                    cmd.env("PATH", format!("{}:{}", local_bin, path));
+                }
+            }
+        }
+
+        let output = cmd.output().ok()?;
         if output.status.success() {
             let ver = String::from_utf8_lossy(&output.stdout).trim().to_string();
             if !ver.is_empty() {
@@ -210,6 +237,15 @@ impl AiCliService {
         let start = Instant::now();
         let mut cmd = Command::new(&binary_path);
         cmd.args(args);
+
+        if let Ok(path) = std::env::var("PATH") {
+            if let Ok(home) = std::env::var("HOME") {
+                let local_bin = format!("{}/.local/bin", home);
+                if !path.contains(&local_bin) {
+                    cmd.env("PATH", format!("{}:{}", local_bin, path));
+                }
+            }
+        }
 
         if let Some(ws) = workspace {
             // Validate workspace exists and is a directory

@@ -234,11 +234,43 @@ export class Skeletal2DRenderer implements ICharacterRenderer {
     ctx.ellipse(0, 0, 26, 23, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Starlight Forehead Mark
-    ctx.fillStyle = p.accent;
-    ctx.beginPath();
-    ctx.arc(0, -10, 4, 0, Math.PI * 2);
-    ctx.fill();
+    // Starlight Forehead Mark / Leaf Headband
+    if (character.accessories?.includes('leaf_headband') || character.id === 'naruto_shinobi') {
+      // Hidden Leaf Forehead Protector Band
+      ctx.fillStyle = '#1E293B';
+      ctx.beginPath();
+      ctx.roundRect(-22, -17, 44, 9, 2);
+      ctx.fill();
+
+      // Metallic Plate
+      ctx.fillStyle = '#E2E8F0';
+      ctx.beginPath();
+      ctx.roundRect(-14, -16, 28, 7, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#94A3B8';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Corner rivets
+      ctx.fillStyle = '#64748B';
+      ctx.beginPath();
+      ctx.arc(-11.5, -12.5, 0.9, 0, Math.PI * 2);
+      ctx.arc(11.5, -12.5, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Engraved Konoha Leaf Spiral
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(0, -12.5, 2.2, 0.4 * Math.PI, 1.8 * Math.PI);
+      ctx.lineTo(2.2, -10.5);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = p.accent;
+      ctx.beginPath();
+      ctx.arc(0, -10, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Cheeks
     ctx.fillStyle = 'rgba(244, 114, 182, 0.45)';
@@ -246,6 +278,23 @@ export class Skeletal2DRenderer implements ICharacterRenderer {
     ctx.ellipse(-16, 6, 5, 3, 0, 0, Math.PI * 2);
     ctx.ellipse(16, 6, 5, 3, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Whiskers (Naruto Shinobi)
+    if (character.accessories?.includes('whisker_marks') || character.id === 'naruto_shinobi') {
+      ctx.strokeStyle = '#C2410C';
+      ctx.lineWidth = 1.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      // Left cheek 3 whiskers
+      ctx.moveTo(-12, 3.5); ctx.lineTo(-19, 2.5);
+      ctx.moveTo(-13, 6);   ctx.lineTo(-20, 6);
+      ctx.moveTo(-12, 8.5); ctx.lineTo(-19, 9.5);
+      // Right cheek 3 whiskers
+      ctx.moveTo(12, 3.5);  ctx.lineTo(19, 2.5);
+      ctx.moveTo(13, 6);    ctx.lineTo(20, 6);
+      ctx.moveTo(12, 8.5);  ctx.lineTo(19, 9.5);
+      ctx.stroke();
+    }
 
     // Eyes
     if (animationState === 'sleep') {

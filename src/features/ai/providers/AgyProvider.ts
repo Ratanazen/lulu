@@ -1,6 +1,10 @@
 import { AIProvider, AIProviderId, ChatRequest, ChatResponse, ProviderConfig } from '../types';
 import { AiCliService } from '../AiCliService';
 
+function stripAnsi(text: string): string {
+  return text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '').trim();
+}
+
 export class AgyProvider implements AIProvider {
   readonly id: AIProviderId = 'agy';
   readonly name = 'Antigravity (AGY)';
@@ -64,7 +68,8 @@ export class AgyProvider implements AIProvider {
       throw new Error(`AGY CLI Error: ${res.stderr || 'Non-zero exit code'}`);
     }
 
-    const replyContent = res.stdout.trim() || 'Lulu has received your thought ✨';
+    const cleaned = stripAnsi(res.stdout);
+    const replyContent = cleaned || res.stdout.trim() || 'Lulu has received your thought ✨';
 
     return {
       message: {

@@ -10,12 +10,14 @@ import {
   Square, 
   Sparkles, 
   Bot,
-  Brain
+  Brain,
+  ChevronDown,
+  Plus
 } from 'lucide-react';
 import { useLuluStore } from '../../stores/useLuluStore';
 import { voiceManager } from '../../features/voice/VoiceManager';
 import { getConversations, getMessages, saveMessage, createConversation } from '../../services/storageService';
-import { Plus } from 'lucide-react';
+import { aiProviderManager } from '../../features/ai/AIProviderManager';
 
 export const CompactChatWindow: React.FC = () => {
   const {
@@ -27,16 +29,29 @@ export const CompactChatWindow: React.FC = () => {
     cancelGeneration,
     clearChat,
     personality,
+    character,
     voiceState,
   } = useLuluStore();
 
   const [input, setInput] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [providerStatus, setProviderStatus] = useState<'connected' | 'offline' | 'checking'>('checking');
+  const [activeProvider, setActiveProvider] = useState<string>('agy');
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.8-flash-low');
+  const [showModelPicker, setShowModelPicker] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const savedMessageIds = useRef<Set<string>>(new Set());
   const initialLoadDone = useRef(false);
+
+  useEffect(() => {
+    if (chatOpen) {
+      const ap = aiProviderManager.getActiveProviderId();
+      setActiveProvider(ap);
+      const cfg = aiProviderManager.getConfig(ap);
+      if (cfg?.selectedModel) setSelectedModel(cfg.selectedModel);
+    }
+  }, [chatOpen]);
 
   useEffect(() => {
     let mounted = true;
@@ -161,12 +176,21 @@ export const CompactChatWindow: React.FC = () => {
     }
   };
 
-  const quickPrompts = [
-    'Help me debug some code',
-    'Explain something fascinating',
-    '/timer 25 Focus sprint',
-    '/calc 15% of 240',
-  ];
+  const isNaruto = character.id === 'naruto_shinobi' || character.tags?.includes('naruto');
+
+  const quickPrompts = isNaruto
+    ? [
+        'Dattebayo! What is our next mission? 🍥',
+        'Help me debug this code like a Hokage 🥷',
+        'Explain this concept simply, believe it! ✨',
+        '/timer 25 Ninja Focus sprint 🥷',
+      ]
+    : [
+        'Help me debug some code',
+        'Explain something fascinating',
+        '/timer 25 Focus sprint',
+        '/calc 15% of 240',
+      ];
 
   return (
     <div
@@ -188,7 +212,10 @@ export const CompactChatWindow: React.FC = () => {
         fontSize: '13px',
         color: 'var(--color-text, #F8FAFC)',
       }}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        setShowModelPicker(false);
+        e.stopPropagation();
+      }}
     >
       {/* Header */}
       <div
@@ -199,6 +226,7 @@ export const CompactChatWindow: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          position: 'relative',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -207,7 +235,9 @@ export const CompactChatWindow: React.FC = () => {
               width: '28px',
               height: '28px',
               borderRadius: '8px',
-              background: 'linear-gradient(135deg, #818CF8, #C084FC)',
+              background: isNaruto
+                ? 'linear-gradient(135deg, #FF7A00, #E06A00)'
+                : 'linear-gradient(135deg, #818CF8, #C084FC)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -215,18 +245,153 @@ export const CompactChatWindow: React.FC = () => {
               fontSize: '14px',
             }}
           >
-            <Bot size={16} />
+            {isNaruto ? '🍥' : <Bot size={16} />}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span>Lulu</span>
-              <span style={{ fontSize: '10px', color: '#818CF8' }}>✨ AI Companion</span>
+              <span>{isNaruto ? 'Naruto Uzumaki' : 'Lulu'}</span>
+              <span style={{ fontSize: '10px', color: isNaruto ? '#FF7A00' : '#818CF8' }}>
+                {isNaruto ? '🍥 Dattebayo!' : '✨ AI Companion'}
+              </span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--color-text-muted, #94A3B8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Brain size={11} />
-              <span>{personality.name}</span>
+              <span>{isNaruto ? 'Seventh Hokage' : personality.name}</span>
             </div>
           </div>
+        </div>
+
+        {/* Model & Engine Quick Switcher */}
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowModelPicker(!showModelPicker);
+            }}
+            title="Switch AI Model & Engine"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '3px 8px',
+              borderRadius: '6px',
+              backgroundColor: activeProvider === 'agy' ? 'rgba(255, 122, 0, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+              border: `1px solid ${activeProvider === 'agy' ? 'var(--color-primary, #FF7A00)' : 'var(--color-border, #334155)'}`,
+              color: activeProvider === 'agy' ? 'var(--color-primary, #FF7A00)' : 'var(--color-text, #F8FAFC)',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <span>{activeProvider === 'agy' ? '🚀 AGY' : activeProvider.toUpperCase()}: {selectedModel.replace('gemini-', 'Gemini ').replace('claude-', 'Claude ').replace('-low', ' (Low)').replace('-high', ' (High)').replace('-medium', '')}</span>
+            <ChevronDown size={11} />
+          </button>
+
+          {showModelPicker && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 6px)',
+                right: 0,
+                backgroundColor: 'var(--color-bg-card, #131B2E)',
+                border: '1px solid var(--color-border, #334155)',
+                borderRadius: '12px',
+                padding: '8px',
+                zIndex: 10000,
+                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '3px',
+                minWidth: '230px',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-primary, #FF7A00)', padding: '2px 6px' }}>
+                🚀 ANTIGRAVITY (AGY) MODELS
+              </div>
+              {[
+                { id: 'gemini-3.8-flash-low', label: 'Gemini 3.8 Flash (Low)' },
+                { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)' },
+                { id: 'gemini-3.7-flash-high', label: 'Gemini 3.7 Flash (High)' },
+                { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Thinking)' },
+                { id: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 (Thinking)' },
+                { id: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B (Medium)' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    aiProviderManager.setActiveProviderId('agy');
+                    aiProviderManager.updateConfig('agy', { selectedModel: m.id });
+                    setActiveProvider('agy');
+                    setSelectedModel(m.id);
+                    setShowModelPicker(false);
+                  }}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: activeProvider === 'agy' && selectedModel === m.id ? 'var(--color-primary, #FF7A00)' : 'transparent',
+                    color: activeProvider === 'agy' && selectedModel === m.id ? '#FFFFFF' : 'var(--color-text, #FFF8F0)',
+                    fontSize: '11px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontWeight: activeProvider === 'agy' && selectedModel === m.id ? 700 : 500,
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--color-text-muted)', padding: '2px 6px' }}>
+                FALLBACK ENGINES
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  aiProviderManager.setActiveProviderId('ollama');
+                  setActiveProvider('ollama');
+                  setSelectedModel('llama3.2');
+                  setShowModelPicker(false);
+                }}
+                style={{
+                  padding: '5px 8px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: activeProvider === 'ollama' ? 'var(--color-primary, #FF7A00)' : 'transparent',
+                  color: activeProvider === 'ollama' ? '#FFFFFF' : 'var(--color-text, #FFF8F0)',
+                  fontSize: '11px',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                🦙 Ollama (Local LLM)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  aiProviderManager.setActiveProviderId('offline');
+                  setActiveProvider('offline');
+                  setSelectedModel('built-in-rules');
+                  setShowModelPicker(false);
+                }}
+                style={{
+                  padding: '5px 8px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: activeProvider === 'offline' ? 'var(--color-primary, #FF7A00)' : 'transparent',
+                  color: activeProvider === 'offline' ? '#FFFFFF' : 'var(--color-text, #FFF8F0)',
+                  fontSize: '11px',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                📦 Offline Rulebook
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

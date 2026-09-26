@@ -104,13 +104,28 @@ export class AIProviderManager {
   }
 
   async loadSettings(): Promise<void> {
-    const savedActive = await StorageService.get<AIProviderId>('ai_active_provider', 'ollama');
+    const savedActive = await StorageService.get<AIProviderId | null>('ai_active_provider', null);
     const savedConfigs = await StorageService.get<Record<AIProviderId, ProviderConfig>>(
       'ai_provider_configs',
       DEFAULT_PROVIDER_CONFIGS
     );
 
-    this.activeProviderId = savedActive;
+    if (!savedActive || savedActive === 'ollama') {
+      try {
+        const { AiCliService } = await import('./AiCliService');
+        const agyStatus = await AiCliService.getProviderStatus('agy');
+        if (agyStatus && agyStatus.status !== 'NOT_INSTALLED') {
+          this.activeProviderId = 'agy';
+        } else {
+          this.activeProviderId = savedActive || 'ollama';
+        }
+      } catch {
+        this.activeProviderId = savedActive || 'ollama';
+      }
+    } else {
+      this.activeProviderId = savedActive;
+    }
+
     this.configs = { ...DEFAULT_PROVIDER_CONFIGS, ...savedConfigs };
   }
 

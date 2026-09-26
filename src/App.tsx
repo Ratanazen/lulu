@@ -89,7 +89,7 @@ export const App: React.FC = () => {
       }
 
       // Toggle Chat via Ctrl+Shift+Space / Cmd+Shift+Space
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'Space') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar')) {
         e.preventDefault();
         setChatOpen(!chatOpen);
         return;
@@ -113,7 +113,10 @@ export const App: React.FC = () => {
       // Single-key shortcuts (when not typing in an input/textarea)
       if (!isInput && !e.ctrlKey && !e.altKey && !e.metaKey) {
         const k = e.key.toLowerCase();
-        if (k === 'f') {
+        if (k === 'c' || e.key === 'Enter') {
+          e.preventDefault();
+          setChatOpen(!chatOpen);
+        } else if (k === 'f') {
           e.preventDefault();
           feed(25);
         } else if (k === 'p') {

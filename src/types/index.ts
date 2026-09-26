@@ -395,7 +395,8 @@ export type ThemeId =
   | 'forest'
   | 'ocean'
   | 'sunset'
-  | 'high-contrast';
+  | 'high-contrast'
+  | 'anime-naruto';
 
 export interface ThemeConfig {
   id: ThemeId;

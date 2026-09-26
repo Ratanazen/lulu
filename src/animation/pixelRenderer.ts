@@ -308,6 +308,24 @@ export class PixelRenderer {
       drawRect(-2, earY - 9, 4, 3, '#6366F1');
       drawPixel(-1, earY - 11, '#FDE68A');
     }
+    if (accessories?.includes('leaf_headband') || accessories?.includes('naruto_headband')) {
+      // Hidden Leaf Forehead Protector
+      drawRect(-6, earY - 1, 12, 3, '#1E293B'); // Blue fabric band
+      drawRect(-4, earY - 1, 8, 3, '#CBD5E1'); // Metallic plate
+      drawPixel(-3, earY, '#64748B'); // Rivet L
+      drawPixel(2, earY, '#64748B'); // Rivet R
+      drawPixel(-1, earY, '#0F172A'); // Leaf swirl center
+      drawPixel(0, earY, '#0F172A');
+    }
+    if (accessories?.includes('whisker_marks')) {
+      // Naruto cheek whiskers (3 on each cheek)
+      drawPixel(-6, eyeY + 1, '#C2410C');
+      drawPixel(-7, eyeY + 2, '#C2410C');
+      drawPixel(-6, eyeY + 3, '#C2410C');
+      drawPixel(5, eyeY + 1, '#C2410C');
+      drawPixel(6, eyeY + 2, '#C2410C');
+      drawPixel(5, eyeY + 3, '#C2410C');
+    }
 
     ctx.restore();
   }
