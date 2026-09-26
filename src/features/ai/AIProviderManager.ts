@@ -4,11 +4,28 @@ import { GeminiProvider } from './providers/GeminiProvider';
 import { AnthropicProvider } from './providers/AnthropicProvider';
 import { OllamaProvider } from './providers/OllamaProvider';
 import { CustomProvider } from './providers/CustomProvider';
+import { AgyProvider } from './providers/AgyProvider';
 import { StorageService } from '../../services/storageService';
 import { personalityEngine } from '../personality/personalityEngine';
 import { memoryManager } from '../memory/MemoryManager';
 
 export const DEFAULT_PROVIDER_CONFIGS: Record<AIProviderId, ProviderConfig> = {
+  agy: {
+    id: 'agy',
+    name: 'Antigravity (AGY Account)',
+    enabled: true,
+    selectedModel: 'gemini-3.8-flash-low',
+    availableModels: [
+      'gemini-3.8-flash-low',
+      'gemini-3.8-flash-high',
+      'gemini-3.7-flash-high',
+      'claude-sonnet-4-6',
+      'claude-opus-4-6-thinking',
+      'gpt-oss-120b-medium',
+    ],
+    temperature: 0.7,
+    maxTokens: 1024,
+  },
   ollama: {
     id: 'ollama',
     name: 'Ollama (Local AI)',
@@ -78,6 +95,7 @@ export class AIProviderManager {
   private activeProviderId: AIProviderId = 'ollama';
 
   constructor() {
+    this.registerProvider(new AgyProvider());
     this.registerProvider(new OllamaProvider());
     this.registerProvider(new OpenAIProvider());
     this.registerProvider(new GeminiProvider());

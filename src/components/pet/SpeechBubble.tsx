@@ -14,7 +14,32 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
-  if (!message) return null;
+  const [isExiting, setIsExiting] = React.useState(false);
+  const [displayedMessage, setDisplayedMessage] = React.useState<SpeechMessage | null>(message);
+
+  React.useEffect(() => {
+    if (message) {
+      setDisplayedMessage(message);
+      setIsExiting(false);
+    } else if (displayedMessage && !isExiting) {
+      setIsExiting(true);
+      const timer = setTimeout(() => {
+        setDisplayedMessage(null);
+        setIsExiting(false);
+      }, 220);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
+  const handleDismiss = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      onDismiss();
+      setIsExiting(false);
+    }, 200);
+  };
+
+  if (!displayedMessage) return null;
 
   return (
     <div
@@ -39,7 +64,10 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
         zIndex: 100,
         pointerEvents: 'auto',
         userSelect: 'none',
-        animation: 'bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        opacity: isExiting ? 0 : 1,
+        transform: isExiting ? 'scale(0.88) translateY(6px)' : 'scale(1) translateY(0)',
+        transition: 'opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+        animation: !isExiting ? 'bubblePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
@@ -58,14 +86,14 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
             overflowWrap: 'break-word',
             whiteSpace: 'pre-wrap',
             textAlign: 'center',
-            paddingRight: message.dismissible ? '2px' : '0',
+            paddingRight: displayedMessage.dismissible ? '2px' : '0',
           }}
         >
-          {message.text}
+          {displayedMessage.text}
         </div>
-        {message.dismissible && (
+        {displayedMessage.dismissible && (
           <button
-            onClick={onDismiss}
+            onClick={handleDismiss}
             style={{
               background: 'none',
               border: 'none',

@@ -133,6 +133,49 @@ impl AiCliService {
             capabilities: vec!["offline".to_string(), "local_models".to_string(), "streaming".to_string(), "zero_telemetry".to_string()],
         });
 
+        // 5. Antigravity CLI (AGY)
+        let agy_path = Self::probe_binary("agy").or_else(|| {
+            std::env::var("HOME").ok().map(|h| std::path::PathBuf::from(h).join(".local/bin/agy")).and_then(|p| {
+                if p.exists() {
+                    Some(p.to_string_lossy().to_string())
+                } else {
+                    None
+                }
+            })
+        });
+        let agy_ver = agy_path.as_ref().and_then(|_| Self::get_version("agy"));
+        let agy_installed = agy_path.is_some();
+        let agy_auth = std::env::var("HOME")
+            .ok()
+            .map(|h| std::path::PathBuf::from(h).join(".gemini/antigravity-cli/antigravity-oauth-token").exists())
+            .unwrap_or(false);
+        let agy_status = if agy_installed {
+            if agy_auth {
+                "AUTHENTICATED".to_string()
+            } else {
+                "INSTALLED".to_string()
+            }
+        } else {
+            "NOT_INSTALLED".to_string()
+        };
+        results.push(AiCliStatus {
+            id: "agy".to_string(),
+            name: "Antigravity CLI (AGY)".to_string(),
+            status: agy_status,
+            executable_path: agy_path,
+            version: agy_ver,
+            is_authenticated: agy_auth,
+            install_guidance: "Antigravity CLI (AGY) authenticated via active Google/Antigravity account.".to_string(),
+            capabilities: vec![
+                "gemini-3.8-flash".to_string(),
+                "gemini-3.7-flash".to_string(),
+                "claude-sonnet-4-6".to_string(),
+                "gpt-oss-120b".to_string(),
+                "google_oauth_session".to_string(),
+                "streaming".to_string(),
+            ],
+        });
+
         results
     }
 
@@ -141,20 +184,31 @@ impl AiCliService {
         args: &[&str],
         workspace: Option<&str>,
     ) -> Result<AiCliExecutionResult, String> {
-        let binary = match provider {
-            "gemini" => "gemini",
-            "codex" => "codex",
-            "claude" => "claude",
-            "ollama" => "ollama",
+        let binary_path = match provider {
+            "gemini" => "gemini".to_string(),
+            "codex" => "codex".to_string(),
+            "claude" => "claude".to_string(),
+            "ollama" => "ollama".to_string(),
+            "agy" => {
+                Self::probe_binary("agy").or_else(|| {
+                    std::env::var("HOME").ok().map(|h| std::path::PathBuf::from(h).join(".local/bin/agy")).and_then(|p| {
+                        if p.exists() {
+                            Some(p.to_string_lossy().to_string())
+                        } else {
+                            None
+                        }
+                    })
+                }).unwrap_or_else(|| "agy".to_string())
+            }
             other => return Err(format!("Unsupported AI CLI provider: {}", other)),
         };
 
-        if Self::probe_binary(binary).is_none() {
-            return Err(format!("Provider binary '{}' is not installed on this system.", binary));
+        if Self::probe_binary(&binary_path).is_none() && !std::path::Path::new(&binary_path).exists() {
+            return Err(format!("Provider binary '{}' is not installed on this system.", binary_path));
         }
 
         let start = Instant::now();
-        let mut cmd = Command::new(binary);
+        let mut cmd = Command::new(&binary_path);
         cmd.args(args);
 
         if let Some(ws) = workspace {
@@ -176,7 +230,7 @@ impl AiCliService {
                     execution_time_ms: duration,
                 })
             }
-            Err(e) => Err(format!("Failed to execute '{}': {}", binary, e)),
+            Err(e) => Err(format!("Failed to execute '{}': {}", binary_path, e)),
         }
     }
 }

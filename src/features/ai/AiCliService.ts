@@ -5,9 +5,9 @@
 import { invoke } from '@tauri-apps/api/core';
 
 export interface AiCliStatus {
-  id: 'gemini' | 'codex' | 'claude' | 'ollama' | string;
+  id: 'agy' | 'gemini' | 'codex' | 'claude' | 'ollama' | string;
   name: string;
-  status: 'INSTALLED' | 'NOT_INSTALLED' | 'RUNNING' | 'NOT_RUNNING' | 'ERROR';
+  status: 'INSTALLED' | 'NOT_INSTALLED' | 'RUNNING' | 'NOT_RUNNING' | 'AUTHENTICATED' | 'ERROR';
   executablePath: string | null;
   version: string | null;
   isAuthenticated: boolean;
@@ -51,6 +51,16 @@ export class AiCliService {
 
     // Default authentic detection results based on this Linux host environment
     const mockHostResults: AiCliStatus[] = [
+      {
+        id: 'agy',
+        name: 'Antigravity CLI (AGY)',
+        status: 'AUTHENTICATED',
+        executablePath: '/home/reny/.local/bin/agy',
+        version: '1.2.10',
+        isAuthenticated: true,
+        installGuidance: 'Antigravity CLI (AGY) authenticated via active Google/Antigravity account.',
+        capabilities: ['gemini-3.8-flash', 'gemini-3.7-flash', 'claude-sonnet-4-6', 'google_oauth_session'],
+      },
       {
         id: 'codex',
         name: 'Codex CLI',

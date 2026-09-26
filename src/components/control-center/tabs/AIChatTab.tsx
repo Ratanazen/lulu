@@ -111,6 +111,7 @@ export const AIChatTab: React.FC = () => {
   };
 
   const providers: { id: AIProviderId; label: string; icon: string; desc: string }[] = [
+    { id: 'agy', label: 'Antigravity (AGY)', icon: '🚀', desc: 'Google OAuth session, Gemini 3.8 & Claude' },
     { id: 'ollama', label: 'Ollama (Local AI)', icon: '🦙', desc: '100% private, free, offline local LLM' },
     { id: 'openai', label: 'OpenAI', icon: '⚡', desc: 'GPT-4o, GPT-4o-mini' },
     { id: 'gemini', label: 'Google Gemini', icon: '✨', desc: 'Gemini 1.5 Flash & Pro' },
@@ -250,8 +251,8 @@ export const AIChatTab: React.FC = () => {
           </div>
         )}
 
-        {/* API Key (if cloud provider) */}
-        {activeProvider !== 'ollama' && activeProvider !== 'offline' && (
+        {/* API Key (if cloud provider requiring keys) */}
+        {activeProvider !== 'ollama' && activeProvider !== 'offline' && activeProvider !== 'agy' && (
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted, #94A3B8)', marginBottom: '6px' }}>
               API Key (stored locally and encrypted)
@@ -279,6 +280,29 @@ export const AIChatTab: React.FC = () => {
               >
                 {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Antigravity OAuth Session Notice */}
+        {activeProvider === 'agy' && (
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(99, 102, 241, 0.08)',
+              border: '1px solid rgba(99, 102, 241, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <span style={{ fontSize: '20px' }}>🔐</span>
+            <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+              <div style={{ fontWeight: 600, color: '#C7D2FE' }}>Zero API Keys Required</div>
+              <div style={{ color: 'var(--color-text-muted, #94A3B8)' }}>
+                Lulu communicates directly with your local Antigravity CLI Google OAuth session (<code>~/.gemini/antigravity-cli/antigravity-oauth-token</code>).
+              </div>
             </div>
           </div>
         )}

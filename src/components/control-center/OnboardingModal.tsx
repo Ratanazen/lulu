@@ -56,6 +56,61 @@ export const OnboardingModal: React.FC = () => {
       ),
     },
     {
+      title: 'Account & AI Login',
+      subtitle: 'What account would you like to use with Lulu?',
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div
+            style={{
+              padding: '12px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(52, 211, 153, 0.1)',
+              border: '1px solid #34D399',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: '13px', color: '#34D399', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>🔒 Offline Guest (Default)</span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              No account required! Lulu runs 100% offline, local virtual pet, zero telemetry, completely free.
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: '12px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+              border: '1px solid #818CF8',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: '13px', color: '#818CF8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>🚀 Antigravity (AGY) Google OAuth</span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              Uses your pre-authenticated Google session in ~/.gemini/antigravity-cli. Powers Gemini 3.8 & Claude models without typing API keys!
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: '12px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: '13px', color: '#F8FAFC' }}>
+              <span>🔑 Custom API Keys & Local Ollama</span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              Configure OpenAI, Anthropic, Gemini API keys, or local Ollama anytime in the AI Chat tab.
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
       title: 'Ready for Starlight Days!',
       subtitle: 'You can drag Lulu anytime, or right-click for quick actions.',
       content: (

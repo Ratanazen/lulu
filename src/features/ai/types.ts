@@ -1,6 +1,6 @@
 // AI Provider Subsystem Types
 
-export type AIProviderId = 'openai' | 'gemini' | 'anthropic' | 'ollama' | 'custom' | 'offline';
+export type AIProviderId = 'agy' | 'openai' | 'gemini' | 'anthropic' | 'ollama' | 'custom' | 'offline';
 
 export interface ChatMessage {
   id: string;

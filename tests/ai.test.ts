@@ -11,6 +11,7 @@ describe('AIProviderManager', () => {
   });
 
   it('registers all standard providers by default', () => {
+    expect(manager.getProvider('agy')).toBeDefined();
     expect(manager.getProvider('ollama')).toBeDefined();
     expect(manager.getProvider('openai')).toBeDefined();
     expect(manager.getProvider('gemini')).toBeDefined();
@@ -63,5 +64,28 @@ describe('AIProviderManager', () => {
 
     expect(tokens.length).toBeGreaterThan(0);
     expect(full.length).toBeGreaterThan(0);
+  });
+
+  it('supports Antigravity (AGY) provider chat and model selection', async () => {
+    const agy = manager.getProvider('agy');
+    expect(agy).toBeDefined();
+    expect(agy?.name).toContain('Antigravity');
+
+    const config = manager.getConfig('agy');
+    expect(config.selectedModel).toBe('gemini-3.8-flash-low');
+    expect(config.availableModels).toContain('gemini-3.8-flash-high');
+
+    const testConn = await agy?.testConnection?.(config);
+    expect(testConn).toBeDefined();
+    expect(testConn?.success).toBe(true);
+
+    const chatRes = await agy?.chat(
+      {
+        messages: [{ id: '1', role: 'user', content: 'hello from test', timestamp: Date.now() }],
+      },
+      config
+    );
+    expect(chatRes).toBeDefined();
+    expect(chatRes?.message.role).toBe('assistant');
   });
 });

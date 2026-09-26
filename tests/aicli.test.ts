@@ -7,10 +7,15 @@ describe('AI CLI Detection & Execution Service', () => {
     expect(providers.length).toBeGreaterThanOrEqual(4);
 
     const ids = providers.map((p) => p.id);
+    expect(ids).toContain('agy');
     expect(ids).toContain('codex');
     expect(ids).toContain('claude');
     expect(ids).toContain('gemini');
     expect(ids).toContain('ollama');
+
+    const agy = providers.find((p) => p.id === 'agy');
+    expect(agy?.status).toBe('AUTHENTICATED');
+    expect(agy?.executablePath).toBe('/home/reny/.local/bin/agy');
 
     const codex = providers.find((p) => p.id === 'codex');
     expect(codex?.status).toBe('INSTALLED');
