@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { PetView } from './components/pet/PetView';
+import { CompactChatWindow } from './components/chat/CompactChatWindow';
 import { ControlCenterModal } from './components/control-center/ControlCenterModal';
 import { OnboardingModal } from './components/control-center/OnboardingModal';
 import { useLuluStore } from './stores/useLuluStore';
@@ -114,9 +115,14 @@ export const App: React.FC = () => {
       // Single-key shortcuts (when not typing in an input/textarea)
       if (!isInput && !e.ctrlKey && !e.altKey && !e.metaKey) {
         const k = e.key.toLowerCase();
-        if (k === 'c' || e.key === 'Enter') {
+        if (k === 'c') {
           e.preventDefault();
           setChatOpen(!chatOpen);
+        } else if (e.key === 'Enter') {
+          if (!chatOpen) {
+            e.preventDefault();
+            setChatOpen(true);
+          }
         } else if (k === 'f') {
           e.preventDefault();
           feed(25);
@@ -172,6 +178,7 @@ export const App: React.FC = () => {
   return (
     <>
       <PetView />
+      <CompactChatWindow />
       <ControlCenterModal />
       <OnboardingModal />
     </>

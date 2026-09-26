@@ -50,7 +50,7 @@ export interface PersonalityTraits {
 
 export type MouthShape = 'closed' | 'small' | 'medium' | 'open' | 'smile';
 
-export type CharacterRendererType = 'pixel' | 'skeletal_2d' | 'live2d' | 'three_vrm' | 'spritesheet';
+export type CharacterRendererType = 'pixel' | 'skeletal_2d' | 'live2d' | 'three_vrm' | 'spritesheet' | 'image_avatar';
 
 export interface SpriteSheetActionConfig {
   fileUrl: string;
@@ -262,6 +262,7 @@ export interface CharacterProfile {
   aura?: string;
   accessories?: string[];
   renderer?: CharacterRendererType;
+  avatarUrl?: string;
   modelPath?: string;
   spriteSheetConfig?: CharacterSpriteSheetConfig;
   category?: 'original' | 'anime' | 'user' | 'imported';
@@ -325,6 +326,24 @@ export type SpeechCategory =
   | 'weather'
   | 'break';
 
+export enum SpeechPriority {
+  IDLE = 0,
+  SYSTEM = 1,
+  MUSIC = 2,
+  USER_INTERACTION = 3,
+  NOTIFICATION = 4,
+  CRITICAL = 5,
+}
+
+export type SpeechBubbleState =
+  | 'HIDDEN'
+  | 'SHOWING'
+  | 'TYPING'
+  | 'VISIBLE'
+  | 'PAUSED'
+  | 'FADING'
+  | 'QUEUED';
+
 export interface SpeechMessage {
   id: string;
   text: string;
@@ -334,6 +353,8 @@ export interface SpeechMessage {
   category: SpeechCategory;
   dismissible: boolean;
   createdAt: number;
+  pages?: string[];
+  currentPage?: number;
 }
 
 // Games
@@ -397,6 +418,7 @@ export type ThemeId =
   | 'sunset'
   | 'high-contrast'
   | 'anime-naruto'
+  | 'madara-shinobi'
   | 'cyber-ninja'
   | 'dark-shinobi'
   | 'chakra-neon'

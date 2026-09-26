@@ -4,6 +4,7 @@ import { PixelRendererAdapter } from './renderers/PixelRendererAdapter';
 import { Skeletal2DRenderer } from './renderers/Skeletal2DRenderer';
 import { ThreeVRMAdapter } from './renderers/ThreeVRMAdapter';
 import { SpriteSheetRendererAdapter } from './renderers/SpriteSheetRendererAdapter';
+import { ImageAvatarRendererAdapter } from './renderers/ImageAvatarRendererAdapter';
 import { lipSyncController, LipSyncController } from './LipSyncController';
 import { OFFICIAL_CHARACTERS } from './index';
 import { ANIME_CHARACTERS } from './animePresets';
@@ -22,6 +23,7 @@ export class CharacterManager {
     this.registerRenderer(new Skeletal2DRenderer());
     this.registerRenderer(new ThreeVRMAdapter());
     this.registerRenderer(new SpriteSheetRendererAdapter());
+    this.registerRenderer(new ImageAvatarRendererAdapter());
 
     // Merge default and anime characters
     this.characterRoster = [...OFFICIAL_CHARACTERS, ...ANIME_CHARACTERS];
@@ -60,7 +62,7 @@ export class CharacterManager {
     capability: CharacterRendererCapability;
     usedFallback: boolean;
   } {
-    const requestedType = overrideType || char.renderer || this.currentRendererType || 'pixel';
+    const requestedType = overrideType || char.renderer || (char.avatarUrl ? 'image_avatar' : this.currentRendererType) || 'pixel';
     const target = this.renderers.get(requestedType);
 
     if (target) {

@@ -111,6 +111,7 @@ export const AIChatTab: React.FC = () => {
   };
 
   const providers: { id: AIProviderId; label: string; icon: string; desc: string }[] = [
+    { id: 'hybrid_gemini_agy', label: 'Gemini + AGY Combined', icon: '🔮', desc: 'Auto-routing & fallback between AGY CLI and Gemini Cloud' },
     { id: 'agy', label: 'Antigravity (AGY)', icon: '🚀', desc: 'Google OAuth session, Gemini 3.8 & Claude' },
     { id: 'ollama', label: 'Ollama (Local AI)', icon: '🦙', desc: '100% private, free, offline local LLM' },
     { id: 'openai', label: 'OpenAI', icon: '⚡', desc: 'GPT-4o, GPT-4o-mini' },
@@ -251,11 +252,11 @@ export const AIChatTab: React.FC = () => {
           </div>
         )}
 
-        {/* API Key (if cloud provider requiring keys) */}
-        {activeProvider !== 'ollama' && activeProvider !== 'offline' && activeProvider !== 'agy' && (
+        {/* API Key (if cloud provider requiring keys or hybrid) */}
+        {(activeProvider === 'hybrid_gemini_agy' || (activeProvider !== 'ollama' && activeProvider !== 'offline' && activeProvider !== 'agy')) && (
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted, #94A3B8)', marginBottom: '6px' }}>
-              API Key (stored locally and encrypted)
+              {activeProvider === 'hybrid_gemini_agy' ? 'Gemini Cloud API Key (Optional — Cloud Backup when AGY CLI is busy/offline)' : 'API Key (stored locally and encrypted)'}
             </label>
             <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
               <Key size={15} style={{ position: 'absolute', left: '12px', color: '#94A3B8' }} />
@@ -263,7 +264,7 @@ export const AIChatTab: React.FC = () => {
                 type={showApiKey ? 'text' : 'password'}
                 value={currentConfig.apiKey || ''}
                 onChange={(e) => handleConfigChange({ apiKey: e.target.value })}
-                placeholder="sk-..."
+                placeholder="sk-... or AIza..."
                 style={{ ...inputFieldStyle, paddingRight: '40px' }}
               />
               <button
@@ -285,7 +286,7 @@ export const AIChatTab: React.FC = () => {
         )}
 
         {/* Antigravity OAuth Session Notice */}
-        {activeProvider === 'agy' && (
+        {(activeProvider === 'agy' || activeProvider === 'hybrid_gemini_agy') && (
           <div
             style={{
               padding: '12px 14px',
@@ -299,9 +300,11 @@ export const AIChatTab: React.FC = () => {
           >
             <span style={{ fontSize: '20px' }}>🔐</span>
             <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-              <div style={{ fontWeight: 600, color: '#C7D2FE' }}>Zero API Keys Required</div>
+              <div style={{ fontWeight: 600, color: '#C7D2FE' }}>Local Antigravity CLI Integration Active</div>
               <div style={{ color: 'var(--color-text-muted, #94A3B8)' }}>
-                Lulu communicates directly with your local Antigravity CLI Google OAuth session (<code>~/.gemini/antigravity-cli/antigravity-oauth-token</code>).
+                {activeProvider === 'hybrid_gemini_agy'
+                  ? 'Queries dynamically run through your local Antigravity CLI Google session, with seamless fallback to Google Gemini Cloud API if configured.'
+                  : 'Lulu communicates directly with your local Antigravity CLI Google OAuth session (~/.gemini/antigravity-cli/antigravity-oauth-token).'}
               </div>
             </div>
           </div>

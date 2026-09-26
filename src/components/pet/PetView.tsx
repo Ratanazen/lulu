@@ -4,7 +4,6 @@ import { PetCanvas } from './PetCanvas';
 import { SpeechBubble } from './SpeechBubble';
 import { QuickStatusOverlay } from './QuickStatusOverlay';
 import { ContextMenu } from './ContextMenu';
-import { CompactChatWindow } from '../chat/CompactChatWindow';
 import { QuickActionsMenu } from './QuickActionsMenu';
 import { AchievementToast } from './AchievementToast';
 import { WidgetMode } from '../widgets/WidgetMode';
@@ -17,6 +16,9 @@ export const PetView: React.FC = () => {
     resumeSpeech,
     updateNeeds,
     isWidgetMode,
+    chatOpen,
+    controlCenterOpen,
+    onboardingCompleted,
   } = useLuluStore();
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
 
@@ -40,12 +42,14 @@ export const PetView: React.FC = () => {
     setContextMenuPos({ x: e.clientX, y: e.clientY });
   };
 
+  const isOverlayOpen = chatOpen || controlCenterOpen || !onboardingCompleted;
+
   return (
     <div
       style={{
         width: '100vw',
         height: '100vh',
-        display: 'flex',
+        display: isOverlayOpen ? 'none' : 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-end',
@@ -88,9 +92,6 @@ export const PetView: React.FC = () => {
           <QuickStatusOverlay />
         </>
       )}
-
-      {/* Floating Desktop Chat Companion */}
-      <CompactChatWindow />
 
       {/* Quick Actions Dock */}
       <QuickActionsMenu />

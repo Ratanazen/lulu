@@ -268,9 +268,11 @@ export const CompactChatWindow: React.FC = () => {
     const welcomeMsg = {
       id: `msg-${Date.now()}`,
       role: 'assistant' as const,
-      content: character.id === 'naruto_shinobi' 
-        ? "Dattebayo! Naruto Uzumaki is on standby! 🍥 What's our next mission?"
-        : "Hi there! I'm Lulu ✨ What are we working on together today?",
+      content: character.id === 'madara_shinobi'
+        ? "Wake up to reality! Madara Uchiha is on standby! 👁️ What shall we conquer today?"
+        : character.id === 'naruto_shinobi'
+          ? "Dattebayo! Naruto Uzumaki is on standby! 🍥 What's our next mission?"
+          : "Hi there! I'm Lulu ✨ What are we working on together today?",
       timestamp: Date.now(),
     };
     useLuluStore.setState({ chatMessages: [welcomeMsg] });
@@ -300,6 +302,7 @@ export const CompactChatWindow: React.FC = () => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       handleSend();
     }
   };
@@ -406,9 +409,17 @@ export const CompactChatWindow: React.FC = () => {
 
   if (!chatOpen) return null;
 
+  const isMadara = character.id === 'madara_shinobi' || character.tags?.includes('madara');
   const isNaruto = character.id === 'naruto_shinobi' || character.tags?.includes('naruto');
 
-  const quickPrompts = isNaruto
+  const quickPrompts = isMadara
+    ? [
+        'Wake up to reality! What is our next battle plan? 👁️',
+        'Analyze this code with the Mangekyo Sharingan ⚔️',
+        'Unleash the Susanoo to build our application! 🌌',
+        '/agent Summon an elite ninja strike team 🥷',
+      ]
+    : isNaruto
     ? [
         'Dattebayo! What is our next mission? 🍥',
         'Help me debug this code like a Hokage 🥷',
@@ -466,7 +477,9 @@ export const CompactChatWindow: React.FC = () => {
               width: '28px',
               height: '28px',
               borderRadius: '8px',
-              background: isNaruto
+              background: isMadara
+                ? 'linear-gradient(135deg, #E11D48, #9F1239)'
+                : isNaruto
                 ? 'linear-gradient(135deg, #FF7A00, #E06A00)'
                 : 'linear-gradient(135deg, #818CF8, #C084FC)',
               display: 'flex',
@@ -474,20 +487,38 @@ export const CompactChatWindow: React.FC = () => {
               justifyContent: 'center',
               color: '#fff',
               fontSize: '14px',
+              overflow: 'hidden',
             }}
           >
-            {isNaruto ? '🍥' : <Bot size={16} />}
+            {character.avatarUrl ? (
+              <img
+                src={character.avatarUrl}
+                alt={character.displayName}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : isMadara ? (
+              '👁️'
+            ) : isNaruto ? (
+              '🍥'
+            ) : (
+              <Bot size={16} />
+            )}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span>{isNaruto ? 'Naruto Uzumaki' : 'Lulu'}</span>
-              <span style={{ fontSize: '10px', color: isNaruto ? 'var(--lulu-primary, #FF7A00)' : '#818CF8' }}>
-                {isNaruto ? '🍥 Dattebayo!' : '✨ AI Companion'}
+              <span>{isMadara ? 'Madara Uchiha' : isNaruto ? 'Naruto Uzumaki' : 'Lulu'}</span>
+              <span
+                style={{
+                  fontSize: '10px',
+                  color: isMadara ? 'var(--lulu-primary, #E11D48)' : isNaruto ? 'var(--lulu-primary, #FF7A00)' : '#818CF8',
+                }}
+              >
+                {isMadara ? '👁️ Ghost of Uchiha' : isNaruto ? '🍥 Dattebayo!' : '✨ AI Companion'}
               </span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--lulu-muted, #94A3B8)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Brain size={11} />
-              <span>{isNaruto ? 'Seventh Hokage' : personality.name}</span>
+              <span>{isMadara ? 'Legendary Clan Leader' : isNaruto ? 'Seventh Hokage' : personality.name}</span>
             </div>
           </div>
         </div>
@@ -507,15 +538,15 @@ export const CompactChatWindow: React.FC = () => {
               gap: '4px',
               padding: '3px 8px',
               borderRadius: '6px',
-              backgroundColor: activeProvider === 'agy' ? 'rgba(255, 122, 0, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-              border: `1px solid ${activeProvider === 'agy' ? 'var(--lulu-border, #FF7A00)' : 'rgba(255,255,255,0.15)'}`,
-              color: activeProvider === 'agy' ? 'var(--lulu-primary, #FF7A00)' : 'var(--lulu-text, #FFF8F0)',
+              backgroundColor: activeProvider === 'hybrid_gemini_agy' || activeProvider === 'agy' ? 'rgba(225, 29, 72, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+              border: `1px solid ${activeProvider === 'hybrid_gemini_agy' || activeProvider === 'agy' ? 'var(--lulu-border, #E11D48)' : 'rgba(255,255,255,0.15)'}`,
+              color: activeProvider === 'hybrid_gemini_agy' ? '#38BDF8' : activeProvider === 'agy' ? 'var(--lulu-primary, #FF7A00)' : 'var(--lulu-text, #FFF8F0)',
               fontSize: '11px',
               fontWeight: 600,
               cursor: 'pointer',
             }}
           >
-            <span>{activeProvider === 'agy' ? '🚀 AGY' : activeProvider.toUpperCase()}: {selectedModel.replace('gemini-', 'Gemini ').replace('claude-', 'Claude ').replace('-low', ' (Low)').replace('-high', ' (High)').replace('-medium', '')}</span>
+            <span>{activeProvider === 'hybrid_gemini_agy' ? '🔮 GEMINI+AGY' : activeProvider === 'agy' ? '🚀 AGY' : activeProvider.toUpperCase()}: {selectedModel === 'auto' ? 'Auto-Route' : selectedModel.replace('gemini-', 'Gemini ').replace('claude-', 'Claude ').replace('-low', ' (Low)').replace('-high', ' (High)').replace('-medium', '')}</span>
             <ChevronDown size={11} />
           </button>
 
@@ -534,19 +565,53 @@ export const CompactChatWindow: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '3px',
-                minWidth: '240px',
+                minWidth: '250px',
               }}
               onClick={(e) => e.stopPropagation()}
             >
+              <div style={{ fontSize: '10px', fontWeight: 800, color: '#38BDF8', padding: '2px 6px' }}>
+                🔮 COMBINED GEMINI + AGY ENGINE
+              </div>
+              {[
+                { id: 'auto', label: '⚡ Auto-Route (AGY CLI + Cloud Fallback)' },
+                { id: 'gemini-1.5-flash', label: '✨ Google Gemini 1.5 Flash (Cloud API)' },
+                { id: 'gemini-1.5-pro', label: '🌟 Google Gemini 1.5 Pro (Cloud API)' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    aiProviderManager.setActiveProviderId('hybrid_gemini_agy');
+                    aiProviderManager.updateConfig('hybrid_gemini_agy', { selectedModel: m.id });
+                    setActiveProvider('hybrid_gemini_agy');
+                    setSelectedModel(m.id);
+                    setShowModelPicker(false);
+                  }}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: activeProvider === 'hybrid_gemini_agy' && selectedModel === m.id ? 'var(--lulu-primary, #E11D48)' : 'transparent',
+                    color: activeProvider === 'hybrid_gemini_agy' && selectedModel === m.id ? '#FFFFFF' : 'var(--lulu-text, #FFF8F0)',
+                    fontSize: '11px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontWeight: activeProvider === 'hybrid_gemini_agy' && selectedModel === m.id ? 700 : 500,
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '4px 0' }} />
               <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--lulu-primary, #FF7A00)', padding: '2px 6px' }}>
-                🚀 ANTIGRAVITY (AGY) MODELS
+                🚀 DEDICATED AGY CLI MODELS
               </div>
               {[
                 { id: 'gemini-3.8-flash-low', label: 'Gemini 3.8 Flash (Low)' },
                 { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)' },
                 { id: 'gemini-3.7-flash-high', label: 'Gemini 3.7 Flash (High)' },
                 { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Thinking)' },
-                { id: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 (Thinking)' },
                 { id: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B (Medium)' },
               ].map((m) => (
                 <button

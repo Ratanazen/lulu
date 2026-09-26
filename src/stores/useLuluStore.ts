@@ -53,10 +53,11 @@ import { musicEngine } from '../features/music/MusicEngine';
 import { lyricsSyncManager } from '../features/lyrics/LyricsSync';
 import { notificationManager } from '../features/notifications/NotificationManager';
 import { CapabilityService, RuntimeCapability, EffectiveCapability } from '../services/capabilityService';
+import { calculateMessageDuration } from '../utils/readingTime';
 
 export const DEFAULT_SETTINGS: LuluSettings = {
-  theme: 'anime-naruto',
-  characterId: 'naruto_shinobi',
+  theme: 'madara-shinobi',
+  characterId: 'madara_shinobi',
   characterScale: 1.0,
   animationFps: 60,
   renderFps: 60,
@@ -153,7 +154,7 @@ interface LuluStoreState {
   clean: () => void;
   sleep: () => void;
   interact: () => void;
-  speak: (text?: string, category?: any) => void;
+  speak: (text?: string, category?: any, priority?: number) => void;
   dismissSpeech: () => void;
   pauseSpeech: () => void;
   resumeSpeech: () => void;
@@ -215,7 +216,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     movementEngine,
     speechSystem,
 
-    character: characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
+    character: characterManager.getRoster().find((c) => c.id === 'madara_shinobi') || characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
     characters: characterManager.getRoster(),
     animationState: 'idle',
     animationFrame: 0,
@@ -253,7 +254,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       {
         id: 'welcome',
         role: 'assistant',
-        content: "Yo! I'm Naruto Uzumaki! Ready to train hard and tackle any mission together today? Dattebayo! 🍥🔥",
+        content: "Wake up to reality! I am Madara Uchiha. Ready to conquer your codebase with Sharingan precision and Susanoo strength? 👁️⚔️",
         timestamp: Date.now(),
       },
     ],
@@ -280,11 +281,25 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       const allSettings = await getAllSettings();
       const settingsMap = new Map(allSettings);
 
-      const theme = settingsMap.get('theme') as ThemeId;
-      if (theme) get().setTheme(theme);
+      const rawTheme = settingsMap.get('theme') as ThemeId;
+      const themeStr = rawTheme as string;
+      const theme = (!rawTheme || themeStr === 'anime-naruto' || themeStr === 'naruto-sage' || themeStr === 'midnight-neon')
+        ? 'madara-shinobi'
+        : rawTheme;
+      get().setTheme(theme);
 
-      const activeCharacterId = settingsMap.get('activeCharacterId');
-      if (activeCharacterId) get().setCharacter(activeCharacterId);
+      const rawCharId = settingsMap.get('activeCharacterId');
+      const activeCharacterId = (!rawCharId || rawCharId === 'naruto_shinobi' || rawCharId === 'lulu')
+        ? 'madara_shinobi'
+        : rawCharId;
+      get().setCharacter(activeCharacterId);
+
+      if (rawCharId !== activeCharacterId || rawTheme !== theme) {
+        setSettingsBulk([
+          ['activeCharacterId', activeCharacterId],
+          ['theme', theme],
+        ]).catch(console.error);
+      }
 
       const behaviorMode = settingsMap.get('behaviorMode') as BehaviorMode;
       if (behaviorMode) get().updateSettings({ behaviorMode });
@@ -372,6 +387,19 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     initialize: async () => {
       // 1. Load settings & progression from SQLite storage
       const savedSettings = await StorageService.get<LuluSettings>('settings', DEFAULT_SETTINGS);
+      if (!savedSettings.characterId || savedSettings.characterId === 'naruto_shinobi' || savedSettings.characterId === 'lulu') {
+        savedSettings.characterId = 'madara_shinobi';
+      }
+      const savedThemeStr = savedSettings.theme as string;
+      if (!savedSettings.theme || savedThemeStr === 'anime-naruto' || savedThemeStr === 'naruto-sage' || savedThemeStr === 'midnight-neon') {
+        savedSettings.theme = 'madara-shinobi';
+      }
+      StorageService.set('settings', savedSettings).catch(console.error);
+
+      // Subscribe store to speechSystem state machine & queue
+      speechSystem.subscribe((_state, msg) => {
+        set({ speechMessage: msg });
+      });
       const savedProg = await StorageService.get<UserProgression>('progression', {
         xp: 0,
         level: 1,
@@ -408,7 +436,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         settings: savedSettings,
         progression: savedProg,
         preferences: loadedPrefs,
-        character: savedCustomChar || characterManager.getRoster().find((c) => c.id === savedSettings.characterId) || OFFICIAL_CHARACTERS.find((c) => c.id === savedSettings.characterId) || characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
+        character: savedCustomChar || characterManager.getRoster().find((c) => c.id === savedSettings.characterId) || OFFICIAL_CHARACTERS.find((c) => c.id === savedSettings.characterId) || characterManager.getRoster().find((c) => c.id === 'madara_shinobi') || characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
         needs: needsEngine.getNeeds(),
         onboardingCompleted: onboardingDone,
       });
@@ -701,8 +729,13 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       get().addXp(10);
       get().progressAchievement('friendly_visitor', 1);
 
-      if (get().settings.speechBubblesEnabled && Math.random() > 0.4) {
-        get().speak();
+      if (get().settings.speechBubblesEnabled) {
+        if (!get().speechMessage) {
+          const reopened = get().speechSystem.reopenLastMessage();
+          if (!reopened && Math.random() > 0.4) {
+            get().speak();
+          }
+        }
       }
 
       setTimeout(() => {
@@ -712,28 +745,29 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       }, 2200);
     },
 
-    speak: (text?: string, category: any = 'idle') => {
+    speak: (text?: string, category: any = 'idle', priority?: number) => {
       const { speechSystem, mood } = get();
       if (!get().settings.speechBubblesEnabled) return;
 
+      const prio = priority !== undefined ? priority : (category === 'failure' ? 1 : category === 'music' ? 2 : text ? 3 : 0);
       const msg = text
         ? {
-            id: `msg_${Date.now()}`,
+            id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
             text,
             mood,
-            priority: 2,
-            durationMs: 8000,
-            category: 'idle' as const,
+            priority: prio,
+            durationMs: calculateMessageDuration(text, category, prio),
+            category,
             dismissible: true,
             createdAt: Date.now(),
           }
         : speechSystem.getRandomMessage(category, mood);
 
-      speechSystem.setMessage(msg, () => {
+      speechSystem.enqueue(msg, () => {
         set({ speechMessage: null });
       });
 
-      set({ speechMessage: msg });
+      set({ speechMessage: speechSystem.getCurrentMessage() });
       soundService.play('notification', 'character');
     },
 

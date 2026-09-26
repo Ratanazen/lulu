@@ -501,8 +501,20 @@ export const CharacterTab: React.FC = () => {
                           backgroundColor: c.palette.primary,
                           border: `2px solid ${c.palette.glow || c.palette.shadow}`,
                           boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}
-                      />
+                      >
+                        {c.avatarUrl ? (
+                          <img
+                            src={c.avatarUrl}
+                            alt={c.displayName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : null}
+                      </div>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '14px', color: '#F8FAFC' }}>
                           {c.displayName}

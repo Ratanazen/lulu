@@ -5,11 +5,31 @@ import { AnthropicProvider } from './providers/AnthropicProvider';
 import { OllamaProvider } from './providers/OllamaProvider';
 import { CustomProvider } from './providers/CustomProvider';
 import { AgyProvider } from './providers/AgyProvider';
+import { CombinedGeminiAgyProvider } from './providers/CombinedGeminiAgyProvider';
 import { StorageService } from '../../services/storageService';
 import { personalityEngine } from '../personality/personalityEngine';
 import { memoryManager } from '../memory/MemoryManager';
 
 export const DEFAULT_PROVIDER_CONFIGS: Record<AIProviderId, ProviderConfig> = {
+  hybrid_gemini_agy: {
+    id: 'hybrid_gemini_agy',
+    name: 'Combined Gemini + AGY Engine',
+    enabled: true,
+    apiKey: '',
+    selectedModel: 'auto',
+    availableModels: [
+      'auto',
+      'gemini-3.8-flash-low',
+      'gemini-3.8-flash-high',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro',
+      'gemini-2.0-flash-exp',
+      'claude-sonnet-4-6',
+      'gpt-oss-120b-medium',
+    ],
+    temperature: 0.7,
+    maxTokens: 1024,
+  },
   agy: {
     id: 'agy',
     name: 'Antigravity (AGY Account)',
@@ -95,6 +115,7 @@ export class AIProviderManager {
   private activeProviderId: AIProviderId = 'ollama';
 
   constructor() {
+    this.registerProvider(new CombinedGeminiAgyProvider());
     this.registerProvider(new AgyProvider());
     this.registerProvider(new OllamaProvider());
     this.registerProvider(new OpenAIProvider());
@@ -110,17 +131,17 @@ export class AIProviderManager {
       DEFAULT_PROVIDER_CONFIGS
     );
 
-    if (!savedActive || savedActive === 'ollama') {
+    if (!savedActive || savedActive === 'ollama' || savedActive === 'agy') {
       try {
         const { AiCliService } = await import('./AiCliService');
         const agyStatus = await AiCliService.getProviderStatus('agy');
         if (agyStatus && agyStatus.status !== 'NOT_INSTALLED') {
-          this.activeProviderId = 'agy';
+          this.activeProviderId = 'hybrid_gemini_agy';
         } else {
-          this.activeProviderId = savedActive || 'ollama';
+          this.activeProviderId = savedActive || 'hybrid_gemini_agy';
         }
       } catch {
-        this.activeProviderId = savedActive || 'ollama';
+        this.activeProviderId = savedActive || 'hybrid_gemini_agy';
       }
     } else {
       this.activeProviderId = savedActive;

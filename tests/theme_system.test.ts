@@ -6,6 +6,7 @@ describe('Anime & Shinobi Theme Engine', () => {
   it('defines all required anime and ninja themes', () => {
     const requiredThemes: ThemeId[] = [
       'anime-naruto',
+      'madara-shinobi',
       'cyber-ninja',
       'dark-shinobi',
       'chakra-neon',
@@ -25,9 +26,15 @@ describe('Anime & Shinobi Theme Engine', () => {
   });
 
   it('applies --lulu-* CSS custom properties to document root', () => {
-    ThemeEngine.applyTheme('anime-naruto');
+    ThemeEngine.applyTheme('madara-shinobi');
     const root = document.documentElement;
 
+    expect(root.style.getPropertyValue('--lulu-bg')).toBe('#09090B');
+    expect(root.style.getPropertyValue('--lulu-panel')).toBe('#18181B');
+    expect(root.style.getPropertyValue('--lulu-border')).toBe('#E11D48');
+    expect(root.style.getPropertyValue('--color-primary')).toBe('#E11D48');
+
+    ThemeEngine.applyTheme('anime-naruto');
     expect(root.style.getPropertyValue('--lulu-bg')).toBe('#0A0E17');
     expect(root.style.getPropertyValue('--lulu-panel')).toBe('#131B2E');
     expect(root.style.getPropertyValue('--lulu-border')).toBe('#FF7A00');
