@@ -196,7 +196,10 @@ pub fn run() {
             reset_performance_config,
             detect_display_environment,
             get_power_state,
+            check_for_updates,
+            run_update_task,
         ])
+
 
         .run(tauri::generate_context!())
         .expect("error while running Lulu application");

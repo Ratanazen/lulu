@@ -190,6 +190,64 @@ export const AgentsTab: React.FC = () => {
           </button>
         </div>
 
+        {/* Quick Task Presets */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAgentId('devops_agent');
+              setPromptInput('Run application update task (pull upstream, rebuild assets & binary)');
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              color: '#38BDF8',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            🚀 Update Application Task
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAgentId('tester');
+              setPromptInput('Run comprehensive test suites for Rust and Vitest');
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              color: '#10B981',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            🧪 Run Test Suites
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAgentId('cybersecurity_agent');
+              setPromptInput('Perform security boundary audit on workspace and IPC commands');
+            }}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(129, 140, 248, 0.1)',
+              border: '1px solid rgba(129, 140, 248, 0.25)',
+              color: '#818CF8',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            🛡️ Security Boundary Audit
+          </button>
+        </div>
+
         {/* Task Progress & Output */}
         {currentTask && (
           <div

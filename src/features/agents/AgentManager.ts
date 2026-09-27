@@ -77,7 +77,7 @@ export class AgentManager {
     if (/\b(linux|wayland|sway|hyprland|x11|dbus|systemd|sysadmin|kernel|journalctl|pipewire)\b/.test(lower)) {
       return this.agents.get('linux_agent')!;
     }
-    if (/\b(docker|podman|deb|packaging|release|ci\/cd|pipeline|appimage|bundle)\b/.test(lower)) {
+    if (/\b(docker|podman|deb|packaging|release|ci\/cd|pipeline|appimage|bundle|update|upgrade|rebuild)\b/.test(lower)) {
       return this.agents.get('devops_agent')!;
     }
     if (/\b(ui|ux|css|tailwind|style|layout|component|frontend|modal|button|theme)\b/.test(lower)) {
@@ -164,9 +164,18 @@ export class AgentManager {
         useLuluStore.getState().syncAgentState('working');
       } catch {}
 
-      // If AI provider is available, query agent
+      // If task is an application update task, route to native update pipeline
       let responseText = '';
-      if (aiProviderManager) {
+      if (task.agentId === 'devops_agent' && /\b(update|upgrade|rebuild|build-app)\b/i.test(task.input)) {
+        task.steps[0].detail = `Executing native update pipeline in ${task.workspaceRoot}...`;
+        onUpdate?.({ ...task });
+        const { updateService } = await import('../../services/updateService');
+        const updateRes = await updateService.runUpdateTask(task.workspaceRoot);
+        responseText = `[${agent.name}]: ${updateRes.message}\n\n=== Build & Update Log ===\n${updateRes.outputLog}`;
+        if (!updateRes.success) {
+          throw new Error(updateRes.message);
+        }
+      } else if (aiProviderManager) {
         try {
           const res = await aiProviderManager.chat({
             messages: [{ id: '1', role: 'user', content: task.input, timestamp: Date.now() }],

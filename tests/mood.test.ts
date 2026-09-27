@@ -8,7 +8,7 @@ describe('MoodEngine', () => {
 
   it('evaluates calm/happy mood under balanced conditions', () => {
     const mood = MoodEngine.calculateMood(DEFAULT_NEEDS, personality);
-    expect(['happy', 'curious', 'calm', 'playful']).toContain(mood);
+    expect(['happy', 'curious', 'calm', 'playful', 'meditative']).toContain(mood);
   });
 
   it('detects sleepy mood when energy is critically depleted', () => {

@@ -417,4 +417,17 @@ pub fn get_power_state(
     Ok(state.performance.get_power_state())
 }
 
+#[tauri::command]
+pub fn check_for_updates(path: Option<String>) -> Result<crate::git::UpdateCheckResult, String> {
+    let p = path.unwrap_or_else(|| ".".to_string());
+    crate::git::GitService::check_for_updates(&p)
+}
+
+#[tauri::command]
+pub fn run_update_task(path: Option<String>) -> Result<crate::git::UpdateTaskResult, String> {
+    let p = path.unwrap_or_else(|| ".".to_string());
+    crate::git::GitService::run_update_task(&p)
+}
+
+
 
