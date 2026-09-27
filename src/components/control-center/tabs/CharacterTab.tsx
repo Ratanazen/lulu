@@ -9,6 +9,7 @@ import {
 import { StorageService } from '../../../services/storageService';
 import { characterManager } from '../../../character/CharacterManager';
 import { CharacterPackValidator } from '../../../character/CharacterPackValidator';
+import { copyToClipboard } from '../../../utils/clipboard';
 
 type StudioSubTab = 'basic' | 'appearance' | 'personality' | 'transform' | 'collider' | 'camera' | 'voice' | 'export';
 
@@ -133,14 +134,12 @@ export const CharacterTab: React.FC = () => {
     renderer: rendererFilter,
   });
 
-  const handleCopyId = (char: CharacterProfile) => {
+  const handleCopyId = async (char: CharacterProfile) => {
     const idToCopy = char.character_id || char.id;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(idToCopy);
-      setCopiedId(idToCopy);
-      setTimeout(() => setCopiedId(null), 2000);
-      speak(`Copied ID ${idToCopy}! 📋`);
-    }
+    await copyToClipboard(idToCopy);
+    setCopiedId(idToCopy);
+    setTimeout(() => setCopiedId(null), 2000);
+    speak(`Copied ID ${idToCopy}! 📋`);
   };
 
   const handleLoadById = () => {

@@ -1,9 +1,63 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAgentStore, ChatMessage } from '../../stores/useAgentStore';
-import { Send, Square, Terminal, User, Bot, AlertTriangle, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { copyToClipboard } from '../../utils/clipboard';
+import {
+  Send,
+  Square,
+  Terminal,
+  User,
+  Bot,
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Check,
+  Code2,
+} from 'lucide-react';
+
+const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, language }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await copyToClipboard(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-2 rounded-lg border border-[#2b313e] bg-[#0d0f14] overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1 bg-[#161922] border-b border-[#2b313e] text-[10px] text-gray-400 select-none">
+        <div className="flex items-center gap-1.5">
+          <Code2 size={11} className="text-cyan-400" />
+          <span className="font-mono uppercase text-cyan-300 font-semibold">{language || 'code'}</span>
+        </div>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 text-gray-300 hover:text-white transition"
+          title="Copy Code"
+        >
+          {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+          <span>{copied ? 'Copied!' : 'Copy Code'}</span>
+        </button>
+      </div>
+      <pre className="p-3 font-mono text-[11px] text-gray-200 overflow-x-auto whitespace-pre leading-relaxed select-text">
+        {code}
+      </pre>
+    </div>
+  );
+};
 
 const ToolMessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
   const [collapsed, setCollapsed] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyOutput = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await copyToClipboard(msg.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="bg-[#14161d] border border-[#2b313e] rounded-lg overflow-hidden my-1 text-xs">
@@ -26,11 +80,20 @@ const ToolMessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
             </span>
           )}
         </div>
-        {collapsed ? <ChevronRight size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopyOutput}
+            className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-gray-200 transition"
+            title="Copy Output"
+          >
+            {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+          </button>
+          {collapsed ? <ChevronRight size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />}
+        </div>
       </div>
 
       {!collapsed && (
-        <pre className="p-3 font-mono text-[11px] text-gray-300 bg-[#101217] overflow-x-auto whitespace-pre-wrap max-h-48">
+        <pre className="p-3 font-mono text-[11px] text-gray-300 bg-[#101217] overflow-x-auto whitespace-pre-wrap max-h-48 select-text">
           {msg.content}
         </pre>
       )}
@@ -41,6 +104,7 @@ const ToolMessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
 export const ChatPanel: React.FC = () => {
   const { messages, state, startTask, stopTask } = useAgentStore();
   const [prompt, setPrompt] = useState('');
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +117,43 @@ export const ChatPanel: React.FC = () => {
     const p = prompt.trim();
     setPrompt('');
     startTask(p);
+  };
+
+  const handleCopyMessage = async (id: string, text: string) => {
+    await copyToClipboard(text);
+    setCopiedMsgId(id);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
+
+  const renderContent = (content: string) => {
+    const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(
+          <span key={lastIndex} className="whitespace-pre-wrap leading-relaxed select-text">
+            {content.slice(lastIndex, match.index)}
+          </span>
+        );
+      }
+      const lang = match[1] || 'code';
+      const code = match[2];
+      parts.push(<CodeBlock key={match.index} code={code} language={lang} />);
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < content.length) {
+      parts.push(
+        <span key={lastIndex} className="whitespace-pre-wrap leading-relaxed select-text">
+          {content.slice(lastIndex)}
+        </span>
+      );
+    }
+
+    return parts.length > 0 ? parts : <span className="whitespace-pre-wrap leading-relaxed select-text">{content}</span>;
   };
 
   const isAgentActive =
@@ -88,7 +189,7 @@ export const ChatPanel: React.FC = () => {
             return (
               <div
                 key={m.id}
-                className={`flex gap-2.5 text-xs ${isUser ? 'justify-end' : 'justify-start'}`}
+                className={`group flex gap-2.5 text-xs ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 {!isUser && (
                   <div className="w-6 h-6 rounded-md bg-blue-600/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5 border border-blue-500/30">
@@ -97,7 +198,7 @@ export const ChatPanel: React.FC = () => {
                 )}
 
                 <div
-                  className={`max-w-[85%] rounded-lg p-3 ${
+                  className={`max-w-[85%] rounded-lg p-3 relative ${
                     isUser
                       ? 'bg-blue-600 text-white'
                       : isSystem
@@ -105,8 +206,22 @@ export const ChatPanel: React.FC = () => {
                       : 'bg-[#181b22] border border-[#2b313e] text-gray-200'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap leading-relaxed select-text">{m.content}</p>
-                  <span className="block text-[9px] opacity-40 text-right mt-1">{m.timestamp}</span>
+                  <div>{renderContent(m.content)}</div>
+                  <div className="flex items-center justify-between mt-1 text-[9px] opacity-60">
+                    <button
+                      onClick={() => handleCopyMessage(m.id, m.content)}
+                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 hover:text-white transition"
+                      title="Copy full message text"
+                    >
+                      {copiedMsgId === m.id ? (
+                        <Check size={10} className="text-emerald-400" />
+                      ) : (
+                        <Copy size={10} />
+                      )}
+                      <span>{copiedMsgId === m.id ? 'Copied' : 'Copy'}</span>
+                    </button>
+                    <span className="ml-auto">{m.timestamp}</span>
+                  </div>
                 </div>
 
                 {isUser && (

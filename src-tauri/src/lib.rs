@@ -198,6 +198,7 @@ pub fn run() {
             get_power_state,
             check_for_updates,
             run_update_task,
+            copy_to_clipboard,
         ])
 
 

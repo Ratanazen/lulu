@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDiagnosticsStore } from '../../stores/useDiagnosticsStore';
 import { useEditorStore } from '../../stores/useEditorStore';
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore';
-import { AlertCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
+import { copyToClipboard } from '../../utils/clipboard';
+import { AlertCircle, AlertTriangle, Info, CheckCircle2, Copy, Check } from 'lucide-react';
 
 export const DiagnosticsList: React.FC = () => {
   const { diagnostics, filter, setFilter } = useDiagnosticsStore();
   const { openFile } = useEditorStore();
   const { rootPath } = useWorkspaceStore();
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const filtered = diagnostics.filter((d) => {
     if (filter === 'all') return true;
@@ -18,6 +20,14 @@ export const DiagnosticsList: React.FC = () => {
     if (rootPath) {
       await openFile(rootPath, file);
     }
+  };
+
+  const handleCopyDiag = async (e: React.MouseEvent, diag: any, idx: number) => {
+    e.stopPropagation();
+    const text = `[${diag.source}] ${diag.file}:${diag.line}:${diag.column} - ${diag.message}`;
+    await copyToClipboard(text);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   return (
@@ -54,7 +64,7 @@ export const DiagnosticsList: React.FC = () => {
               <div
                 key={i}
                 onClick={() => handleSelect(diag.file)}
-                className="p-2.5 rounded-lg bg-[#181b22] hover:bg-[#1f232d] border border-[#2b313e] cursor-pointer transition flex items-start gap-2.5"
+                className="group p-2.5 rounded-lg bg-[#181b22] hover:bg-[#1f232d] border border-[#2b313e] cursor-pointer transition flex items-start gap-2.5"
               >
                 <div className="pt-0.5 shrink-0">
                   {isErr ? (
@@ -69,9 +79,22 @@ export const DiagnosticsList: React.FC = () => {
                     <span className="font-mono text-cyan-300 truncate">
                       {diag.file}:{diag.line}:{diag.column}
                     </span>
-                    <span className="text-[10px] px-1 py-0.2 rounded bg-white/5 text-gray-400 uppercase">
-                      {diag.source}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={(e) => handleCopyDiag(e, diag, i)}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-gray-200 transition"
+                        title="Copy Diagnostic Text"
+                      >
+                        {copiedIndex === i ? (
+                          <Check size={11} className="text-emerald-400" />
+                        ) : (
+                          <Copy size={11} />
+                        )}
+                      </button>
+                      <span className="text-[10px] px-1 py-0.2 rounded bg-white/5 text-gray-400 uppercase">
+                        {diag.source}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-gray-300 leading-snug break-words select-text">{diag.message}</p>
                 </div>

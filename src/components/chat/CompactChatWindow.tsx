@@ -24,6 +24,7 @@ import { voiceManager } from '../../features/voice/VoiceManager';
 import { getConversations, getMessages, saveMessage, createConversation } from '../../services/storageService';
 import { aiProviderManager } from '../../features/ai/AIProviderManager';
 import { AiCliService, AiCliStatus } from '../../features/ai/AiCliService';
+import { copyToClipboard } from '../../utils/clipboard';
 
 interface CodeBlockProps {
   language: string;
@@ -33,8 +34,8 @@ interface CodeBlockProps {
 const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(code);
+  const handleCopyCode = async () => {
+    await copyToClipboard(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -307,8 +308,8 @@ export const CompactChatWindow: React.FC = () => {
     }
   };
 
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
+  const handleCopy = async (id: string, text: string) => {
+    await copyToClipboard(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };

@@ -14,7 +14,10 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  Copy,
+  Check,
 } from 'lucide-react';
+import { copyToClipboard } from '../../utils/clipboard';
 
 interface FileTreeItemProps {
   node: FileNode;
@@ -61,6 +64,15 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, depth }) => {
     }
   };
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyPath = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await copyToClipboard(node.path);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!rootPath) return;
@@ -96,13 +108,22 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, depth }) => {
           <span className="truncate">{node.name}</span>
         </div>
 
-        <button
-          onClick={handleDelete}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:text-red-400 transition"
-          title="Delete"
-        >
-          <Trash2 size={12} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleCopyPath}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-gray-200 transition"
+            title="Copy Path"
+          >
+            {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+          </button>
+          <button
+            onClick={handleDelete}
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:text-red-400 transition"
+            title="Delete"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
       </div>
 
       {node.is_dir && isOpen && node.children && (

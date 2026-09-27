@@ -68,6 +68,8 @@ pub fn run() {
             commands::save_message,
             commands::get_permission_level,
             commands::set_permission_level,
+            commands::test_ai_connection,
+            commands::copy_to_clipboard,
         ])
         .build(tauri::generate_context!())
         .expect("error while running lulu code application")

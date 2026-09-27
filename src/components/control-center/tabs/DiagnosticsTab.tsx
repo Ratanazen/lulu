@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DiagnosticResult } from '../../../types';
 import { CapabilityService, CapabilityDiagnosticsReport } from '../../../services/capabilityService';
+import { copyToClipboard } from '../../../utils/clipboard';
 
 let tauriInvoke: (<T = any>(cmd: string, args?: Record<string, unknown>) => Promise<T>) | null = null;
 
@@ -83,9 +84,9 @@ export const DiagnosticsTab: React.FC = () => {
     fetchReport();
   }, []);
 
-  const handleCopyDiagnostics = () => {
+  const handleCopyDiagnostics = async () => {
     if (!capReport) return;
-    navigator.clipboard.writeText(JSON.stringify(capReport, null, 2));
+    await copyToClipboard(JSON.stringify(capReport, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

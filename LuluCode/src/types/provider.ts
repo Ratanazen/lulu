@@ -1,4 +1,4 @@
-export type ProviderType = 'LOCAL_OLLAMA' | 'OPENAI_COMPATIBLE' | 'CUSTOM';
+export type ProviderType = 'LOCAL_OLLAMA' | 'OPENAI' | 'GOOGLE_GEMINI' | 'OPENAI_COMPATIBLE' | 'CUSTOM';
 
 export interface OllamaStatus {
   is_available: boolean;

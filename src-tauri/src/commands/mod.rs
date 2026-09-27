@@ -429,5 +429,67 @@ pub fn run_update_task(path: Option<String>, full: Option<bool>) -> Result<crate
     crate::git::GitService::run_update_task(&p, full.unwrap_or(false))
 }
 
+#[tauri::command]
+pub fn copy_to_clipboard(text: String) -> Result<(), String> {
+    // 1. Wayland wl-copy (ideal for Sway / Wayland)
+    if std::env::var("WAYLAND_DISPLAY").is_ok() || std::path::Path::new("/usr/bin/wl-copy").exists() {
+        if let Ok(mut child) = std::process::Command::new("wl-copy")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            use std::io::Write;
+            if let Some(mut stdin) = child.stdin.take() {
+                let _ = stdin.write_all(text.as_bytes());
+            }
+            if let Ok(status) = child.wait() {
+                if status.success() {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    // 2. X11 xclip
+    if std::path::Path::new("/usr/bin/xclip").exists() {
+        if let Ok(mut child) = std::process::Command::new("xclip")
+            .args(["-selection", "clipboard"])
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            use std::io::Write;
+            if let Some(mut stdin) = child.stdin.take() {
+                let _ = stdin.write_all(text.as_bytes());
+            }
+            if let Ok(status) = child.wait() {
+                if status.success() {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    // 3. X11 xsel
+    if std::path::Path::new("/usr/bin/xsel").exists() {
+        if let Ok(mut child) = std::process::Command::new("xsel")
+            .args(["--clipboard", "--input"])
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            use std::io::Write;
+            if let Some(mut stdin) = child.stdin.take() {
+                let _ = stdin.write_all(text.as_bytes());
+            }
+            if let Ok(status) = child.wait() {
+                if status.success() {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+
 
 

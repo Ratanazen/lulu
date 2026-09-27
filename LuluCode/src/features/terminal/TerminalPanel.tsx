@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTerminalStore, TerminalTabId } from '../../stores/useTerminalStore';
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore';
-import { Terminal, Play, Square, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Terminal, Play, Square, Trash2, CheckCircle2, AlertCircle, Copy, Check } from 'lucide-react';
+import { copyToClipboard } from '../../utils/clipboard';
 
 export const TerminalPanel: React.FC = () => {
   const { activeTab, setActiveTab, logs, isRunning, runCommandInTab, stopRunningCommand, clearTab } =
@@ -22,6 +23,15 @@ export const TerminalPanel: React.FC = () => {
     const cmd = inputCmd.trim();
     setInputCmd('');
     await runCommandInTab(activeTab, cmd, rootPath || '.');
+  };
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyOutput = async () => {
+    const raw = currentLogs.map((l) => l.text).join('\n');
+    await copyToClipboard(raw);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const tabs: { id: TerminalTabId; label: string }[] = [
@@ -65,6 +75,14 @@ export const TerminalPanel: React.FC = () => {
               <Square size={11} fill="currentColor" /> Stop
             </button>
           )}
+
+          <button
+            onClick={handleCopyOutput}
+            className="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-[#1f232d] transition"
+            title="Copy Terminal Output"
+          >
+            {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+          </button>
 
           <button
             onClick={() => clearTab(activeTab)}
