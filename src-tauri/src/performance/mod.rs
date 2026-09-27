@@ -129,6 +129,9 @@ impl PerformanceService {
 
         let tier_str = format!("{:?}", hw.overall_tier);
 
+        let cpu_temp_celsius = PerformanceMonitor::get_cpu_temp();
+        let (thermal_state, _) = PerformanceMonitor::get_thermal_state(cpu_temp_celsius);
+
         RuntimePerformance {
             current_fps: cfg.performance.fps,
             target_fps: cfg.performance.fps,
@@ -152,6 +155,8 @@ impl PerformanceService {
             database_writes_count: db_writes,
             is_power_saving: power.is_power_saving_active,
             is_adaptive_downgraded,
+            cpu_temp_celsius,
+            thermal_state,
         }
     }
 }

@@ -12,7 +12,31 @@ export const PerformanceMonitor: React.FC = () => {
     return () => clearInterval(timer);
   }, [refreshRuntime]);
 
+  const tempColor = !runtime.cpuTempCelsius
+    ? '#38BDF8'
+    : runtime.cpuTempCelsius >= 74
+    ? '#EF4444'
+    : runtime.cpuTempCelsius >= 68
+    ? '#F59E0B'
+    : '#10B981';
+
   const rows = [
+    {
+      label: 'CPU Temperature',
+      val: runtime.cpuTempCelsius
+        ? `${runtime.cpuTempCelsius.toFixed(1)}°C (${runtime.thermalState})`
+        : 'Sensors active',
+      color: tempColor,
+    },
+    {
+      label: 'Thermal Governor',
+      val: runtime.thermalState === 'HOT'
+        ? 'EMERGENCY COOLING'
+        : runtime.thermalState === 'WARM'
+        ? 'THROTTLE ACTIVE'
+        : 'OPTIMAL / COOL',
+      color: tempColor,
+    },
     { label: 'Render Frame Rate', val: `${runtime.currentFps} FPS (Target: ${config.performance.fps})` },
     { label: 'Process RSS Memory', val: `${runtime.memoryRssMb} MB` },
     { label: 'Performance Mode', val: runtime.mode },
@@ -74,7 +98,7 @@ export const PerformanceMonitor: React.FC = () => {
             }}
           >
             <span style={{ color: '#94A3B8' }}>{r.label}:</span>
-            <span style={{ fontWeight: 600, color: '#38BDF8' }}>{r.val}</span>
+            <span style={{ fontWeight: 600, color: (r as any).color || '#38BDF8' }}>{r.val}</span>
           </div>
         ))}
       </div>

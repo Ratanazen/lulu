@@ -1,9 +1,11 @@
 import React from 'react';
 import { usePerformanceStore, PerformanceMode } from './performanceStore';
-import { Zap, Battery, Cpu, Sparkles, Sliders, Shield } from 'lucide-react';
+import { Zap, Battery, Cpu, Sparkles, Sliders, Shield, Flame, Snowflake } from 'lucide-react';
 
 export const PerformanceModeSelector: React.FC = () => {
-  const { mode, tier, power, setMode, config } = usePerformanceStore();
+  const { mode, tier, power, setMode, config, runtime, applyCoolAndSilent } = usePerformanceStore();
+
+  const isHot = (runtime.cpuTempCelsius !== null && runtime.cpuTempCelsius >= 68) || runtime.thermalState === 'HOT' || runtime.thermalState === 'WARM';
 
   const modes: {
     id: PerformanceMode;
@@ -19,7 +21,7 @@ export const PerformanceModeSelector: React.FC = () => {
       sublabel: `Tier: ${tier}`,
       icon: <Sparkles size={18} className="text-amber-400" />,
       fps: config.performance.fps,
-      description: 'Auto-selects optimal preset based on CPU, RAM, GPU, and battery status.',
+      description: 'Auto-selects optimal preset based on CPU, RAM, GPU, temperature, and battery status.',
     },
     {
       id: 'POWER_SAVER',
@@ -27,7 +29,7 @@ export const PerformanceModeSelector: React.FC = () => {
       sublabel: '18 FPS • Minimal',
       icon: <Battery size={18} className="text-emerald-400" />,
       fps: 18,
-      description: 'For very old laptops & battery mode. Disables shadows, glow, and canvas shaders.',
+      description: 'Cool & Silent: For hot laptops & battery mode. Disables shadows, glow, and canvas shaders.',
     },
     {
       id: 'LOW',
@@ -65,6 +67,56 @@ export const PerformanceModeSelector: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* High Temperature / Thermal Mitigation Banner */}
+      {isHot && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 14px',
+            backgroundColor: runtime.cpuTempCelsius && runtime.cpuTempCelsius >= 74
+              ? 'rgba(239, 68, 68, 0.15)'
+              : 'rgba(245, 158, 11, 0.15)',
+            border: `1px solid ${
+              runtime.cpuTempCelsius && runtime.cpuTempCelsius >= 74
+                ? 'rgba(239, 68, 68, 0.4)'
+                : 'rgba(245, 158, 11, 0.4)'
+            }`,
+            borderRadius: '12px',
+            fontSize: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Flame size={16} color={runtime.cpuTempCelsius && runtime.cpuTempCelsius >= 74 ? '#EF4444' : '#F59E0B'} />
+            <span style={{ color: '#F8FAFC' }}>
+              <strong>Elevated Hardware Temperature ({runtime.cpuTempCelsius ? `${runtime.cpuTempCelsius.toFixed(1)}°C` : 'Warm'})</strong>
+              {' • '}Thermal protection active to reduce CPU usage and fan heat.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => applyCoolAndSilent()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              backgroundColor: '#10B981',
+              color: '#FFFFFF',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            <Snowflake size={13} />
+            <span>Cool Down Now</span>
+          </button>
+        </div>
+      )}
+
       {/* Power status bar if battery mode active */}
       {power.hasBattery && (
         <div

@@ -68,6 +68,14 @@ pub struct DetectedPowerInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DetectedThermalInfo {
+    pub cpu_temp_celsius: Option<f32>,
+    pub thermal_state: String, // "COOL", "NORMAL", "WARM", "HOT", "UNKNOWN"
+    pub is_thermal_throttling: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HardwareInfo {
     pub cpu: DetectedCpuInfo,
     pub ram: DetectedRamInfo,
@@ -76,6 +84,7 @@ pub struct HardwareInfo {
     pub os: DetectedOsInfo,
     pub desktop: DetectedDesktopInfo,
     pub power: DetectedPowerInfo,
+    pub thermal: DetectedThermalInfo,
     pub overall_tier: PerformanceTier,
 }
 
@@ -311,7 +320,11 @@ impl HardwareDetector {
             }
         }
 
-        // 7. Calculate Hardware Performance Class (PerformanceTier)
+        // 7. Thermal State Probing
+        let cpu_temp_celsius = Self::probe_cpu_temp();
+        let (thermal_state, is_thermal_throttling) = Self::evaluate_thermal_state(cpu_temp_celsius);
+
+        // 8. Calculate Hardware Performance Class (PerformanceTier)
         let overall_tier = Self::classify_tier(physical_cores, logical_cores, total_mb, is_discrete, vram_total_mb);
 
         HardwareInfo {
@@ -356,7 +369,68 @@ impl HardwareDetector {
                 battery_percentage,
                 battery_state,
             },
+            thermal: DetectedThermalInfo {
+                cpu_temp_celsius,
+                thermal_state,
+                is_thermal_throttling,
+            },
             overall_tier,
+        }
+    }
+
+    pub fn probe_cpu_temp() -> Option<f32> {
+        // 1. Try hwmon sensors (prefer k10temp, coretemp, zenpower, cpu)
+        if let Ok(entries) = std::fs::read_dir("/sys/class/hwmon") {
+            let mut fallback_temp: Option<f32> = None;
+            for entry in entries.flatten() {
+                let p = entry.path();
+                let name = std::fs::read_to_string(p.join("name")).unwrap_or_default().to_lowercase();
+                let is_cpu = name.contains("k10temp")
+                    || name.contains("coretemp")
+                    || name.contains("zenpower")
+                    || name.contains("cpu");
+
+                if let Ok(temp_str) = std::fs::read_to_string(p.join("temp1_input")) {
+                    if let Ok(milli) = temp_str.trim().parse::<f32>() {
+                        let c = milli / 1000.0;
+                        if is_cpu {
+                            return Some(c);
+                        } else if fallback_temp.is_none() {
+                            fallback_temp = Some(c);
+                        }
+                    }
+                }
+            }
+            if let Some(t) = fallback_temp {
+                return Some(t);
+            }
+        }
+
+        // 2. Try thermal_zone*
+        if let Ok(entries) = std::fs::read_dir("/sys/class/thermal") {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                let fname = p.file_name().unwrap_or_default().to_string_lossy();
+                if fname.starts_with("thermal_zone") {
+                    if let Ok(temp_str) = std::fs::read_to_string(p.join("temp")) {
+                        if let Ok(milli) = temp_str.trim().parse::<f32>() {
+                            return Some(milli / 1000.0);
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn evaluate_thermal_state(temp: Option<f32>) -> (String, bool) {
+        match temp {
+            Some(t) if t >= 74.0 => ("HOT".to_string(), true),
+            Some(t) if t >= 68.0 => ("WARM".to_string(), true),
+            Some(t) if t >= 55.0 => ("NORMAL".to_string(), false),
+            Some(_) => ("COOL".to_string(), false),
+            None => ("UNKNOWN".to_string(), false),
         }
     }
 

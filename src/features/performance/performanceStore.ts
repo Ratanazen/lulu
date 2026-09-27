@@ -56,6 +56,8 @@ export interface RuntimePerformance {
   databaseWritesCount: number;
   isPowerSaving: boolean;
   isAdaptiveDowngraded: boolean;
+  cpuTempCelsius: number | null;
+  thermalState: string; // "COOL", "NORMAL", "WARM", "HOT", "UNKNOWN"
 }
 
 export interface HardwareInfo {
@@ -99,6 +101,11 @@ export interface HardwareInfo {
     hasBattery: boolean;
     batteryPercentage: number | null;
     batteryState: string | null;
+  };
+  thermal?: {
+    cpuTempCelsius: number | null;
+    thermalState: string;
+    isThermalThrottling: boolean;
   };
   overallTier: PerformanceTier;
 }
@@ -176,7 +183,7 @@ interface PerformanceStoreState {
   // Actions
   init: () => Promise<void>;
   setMode: (mode: PerformanceMode) => Promise<void>;
-  updateConfig: (patch: Partial<PerformanceConfig>) => Promise<void>;
+  updateConfig: (patch: Partial<PerformanceConfig>, newMode?: PerformanceMode) => Promise<void>;
   updatePerformanceSection: (patch: Partial<PerformanceConfig['performance']>) => Promise<void>;
   updatePetSection: (patch: Partial<PerformanceConfig['pet']>) => Promise<void>;
   updateSystemSection: (patch: Partial<PerformanceConfig['system']>) => Promise<void>;
@@ -186,6 +193,7 @@ interface PerformanceStoreState {
   refreshHardware: () => Promise<void>;
   refreshRuntime: () => Promise<void>;
   setRendererState: (state: 'ACTIVE' | 'IDLE' | 'HIDDEN' | 'BACKGROUND') => void;
+  applyCoolAndSilent: () => Promise<void>;
 }
 
 export const usePerformanceStore = create<PerformanceStoreState>((set, get) => ({
@@ -207,6 +215,8 @@ export const usePerformanceStore = create<PerformanceStoreState>((set, get) => (
     databaseWritesCount: 0,
     isPowerSaving: false,
     isAdaptiveDowngraded: false,
+    cpuTempCelsius: null,
+    thermalState: 'NORMAL',
   },
   hardware: null,
   power: {
@@ -286,7 +296,7 @@ export const usePerformanceStore = create<PerformanceStoreState>((set, get) => (
     }
   },
 
-  updateConfig: async (patch: Partial<PerformanceConfig>) => {
+  updateConfig: async (patch: Partial<PerformanceConfig>, newMode?: PerformanceMode) => {
     const current = get().config;
     const merged: PerformanceConfig = {
       ...current,
@@ -299,7 +309,8 @@ export const usePerformanceStore = create<PerformanceStoreState>((set, get) => (
       developer: { ...current.developer, ...patch.developer },
     };
 
-    set({ config: merged, mode: 'CUSTOM' });
+    const targetMode = newMode ?? (patch.performance?.mode ? (patch.performance.mode.toUpperCase() as PerformanceMode) : 'CUSTOM');
+    set({ config: merged, mode: targetMode });
     const invoke = await getInvoke();
     if (invoke) {
       try {
@@ -387,5 +398,29 @@ export const usePerformanceStore = create<PerformanceStoreState>((set, get) => (
     set((state) => ({
       runtime: { ...state.runtime, rendererState },
     }));
+  },
+
+  applyCoolAndSilent: async () => {
+    await get().setMode('POWER_SAVER');
+    await get().updateConfig({
+      performance: {
+        ...get().config.performance,
+        fps: 20,
+        glow: false,
+        blur: false,
+        particles: false,
+        background_effects: false,
+        power_saving: true,
+        mode: 'power_saver',
+      },
+      pet: {
+        ...get().config.pet,
+        movement_tick_ms: 100,
+      },
+      system: {
+        ...get().config.system,
+        monitoring_interval: 6000,
+      },
+    }, 'POWER_SAVER');
   },
 }));

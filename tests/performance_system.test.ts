@@ -14,6 +14,8 @@ describe('Performance System — Old Computer & Low-End Hardware Suite', () => {
         targetFps: 30,
         cpuUsage: 1.0,
         memoryRssMb: 80,
+        cpuTempCelsius: null,
+        thermalState: 'NORMAL',
         mode: 'AUTO',
         tier: 'MEDIUM',
         animationQuality: 'NORMAL',
@@ -71,6 +73,28 @@ describe('Performance System — Old Computer & Low-End Hardware Suite', () => {
 
       setRendererState('ACTIVE');
       expect(usePerformanceStore.getState().runtime.rendererState).toBe('ACTIVE');
+    });
+
+    it('activates Cool & Silent mode to rapidly cool down CPU/RAM', async () => {
+      const { applyCoolAndSilent } = usePerformanceStore.getState();
+      await applyCoolAndSilent();
+      const state = usePerformanceStore.getState();
+      expect(state.mode).toBe('POWER_SAVER');
+      expect(state.config.performance.fps).toBe(20);
+      expect(state.config.performance.glow).toBe(false);
+      expect(state.config.performance.blur).toBe(false);
+      expect(state.config.performance.background_effects).toBe(false);
+      expect(state.config.pet.movement_tick_ms).toBe(100);
+      expect(state.config.system.monitoring_interval).toBe(6000);
+    });
+
+    it('tracks thermal metrics and status in runtime telemetry', () => {
+      usePerformanceStore.setState((s) => ({
+        runtime: { ...s.runtime, cpuTempCelsius: 76.2, thermalState: 'HOT' },
+      }));
+      const current = usePerformanceStore.getState().runtime;
+      expect(current.cpuTempCelsius).toBe(76.2);
+      expect(current.thermalState).toBe('HOT');
     });
   });
 

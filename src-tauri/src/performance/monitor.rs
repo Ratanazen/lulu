@@ -18,6 +18,8 @@ pub struct RuntimePerformance {
     pub database_writes_count: u64,
     pub is_power_saving: bool,
     pub is_adaptive_downgraded: bool,
+    pub cpu_temp_celsius: Option<f32>,
+    pub thermal_state: String, // "COOL", "NORMAL", "WARM", "HOT", "UNKNOWN"
 }
 
 static DB_WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -31,6 +33,14 @@ impl PerformanceMonitor {
 
     pub fn get_db_writes() -> u64 {
         DB_WRITE_COUNTER.load(Ordering::Relaxed)
+    }
+
+    pub fn get_cpu_temp() -> Option<f32> {
+        super::detector::HardwareDetector::probe_cpu_temp()
+    }
+
+    pub fn get_thermal_state(temp: Option<f32>) -> (String, bool) {
+        super::detector::HardwareDetector::evaluate_thermal_state(temp)
     }
 
     pub fn get_process_memory_mb() -> u64 {

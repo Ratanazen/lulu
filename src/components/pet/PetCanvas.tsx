@@ -26,7 +26,7 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
     interact,
   } = useLuluStore();
 
-  const { config: perfConfig, setRendererState } = usePerformanceStore();
+  const { config: perfConfig, runtime, setRendererState } = usePerformanceStore();
   const [renderState, setLocalRenderState] = React.useState<'ACTIVE' | 'IDLE' | 'HIDDEN' | 'BACKGROUND'>('ACTIVE');
 
   // Track window visibility and user idle state for adaptive rendering
@@ -101,6 +101,12 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
   useEffect(() => {
     if (renderState === 'HIDDEN') return;
 
+    // Zero-Heat Optimization: for image avatars in idle/sleep/sit states, pure CSS GPU keyframes handle gentle breathing.
+    // Skip JS requestAnimationFrame loop and setFrame to allow CPU deep C-states!
+    if (isImageAvatar && (animationState === 'idle' || animationState === 'sleep' || animationState === 'sit')) {
+      return;
+    }
+
     let animId: number;
     let lastFrameTime = performance.now();
     let currentFrame = animationFrame;
@@ -157,15 +163,16 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [animationState, animDef, renderState]);
+  }, [animationState, animDef, renderState, isImageAvatar]);
 
   // Render to canvas & particles animation loop with adaptive frame pacing
   useEffect(() => {
     if (renderState === 'HIDDEN') return;
 
-    let animId: number;
+    let animId: number | null = null;
     let lastTime = performance.now();
     let wasEmpty = false;
+    let isLoopRunning = false;
 
     // Effective FPS based on performance config & adaptive state
     let targetFps = perfConfig.performance.fps || 30;
@@ -185,9 +192,15 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
       }
 
       const canvas = canvasRef.current;
-      if (!canvas) return;
+      if (!canvas) {
+        isLoopRunning = false;
+        return;
+      }
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!ctx) {
+        isLoopRunning = false;
+        return;
+      }
 
       const dt = Math.min(elapsed / 1000, 0.1);
       lastTime = time;
@@ -197,13 +210,14 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
 
       const hasParticles = perfConfig.performance.particles && particleSystem.hasActiveParticles();
 
-      // On low-spec/old computers, avoid continuous clears when no particles exist
+      // On low-spec/old computers, halt rAF when no particles exist to eliminate idle CPU consumption
       if (isImageAvatar && !hasParticles) {
         if (!wasEmpty) {
           ctx.clearRect(0, 0, w, h);
           wasEmpty = true;
         }
-        animId = requestAnimationFrame(renderLoop);
+        isLoopRunning = false;
+        animId = null;
         return;
       }
 
@@ -235,8 +249,38 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
       animId = requestAnimationFrame(renderLoop);
     };
 
-    animId = requestAnimationFrame(renderLoop);
-    return () => cancelAnimationFrame(animId);
+    const startLoop = () => {
+      if (!isLoopRunning) {
+        isLoopRunning = true;
+        lastTime = performance.now();
+        animId = requestAnimationFrame(renderLoop);
+      }
+    };
+
+    // If non-image avatar or particles already exist, start immediately
+    if (!isImageAvatar || particleSystem.hasActiveParticles()) {
+      startLoop();
+    } else {
+      // Clear canvas once on initialization
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        wasEmpty = true;
+      }
+    }
+
+    // Awaken loop immediately whenever any particle is spawned
+    const unsubSpawn = particleSystem.onSpawn(() => {
+      wasEmpty = false;
+      startLoop();
+    });
+
+    return () => {
+      unsubSpawn();
+      if (animId !== null) cancelAnimationFrame(animId);
+      isLoopRunning = false;
+    };
   }, [character, animationState, animationFrame, facing, isImageAvatar, perfConfig.performance.fps, perfConfig.performance.particles, renderState]);
 
 
@@ -330,7 +374,10 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
           cursor: 'grab',
           userSelect: 'none',
           WebkitUserSelect: 'none',
-          transform: `translate(${translateX}px, ${translateY}px) scale(${facing === 'left' ? -scaleVal : scaleVal}, ${scaleVal}) rotate(${facing === 'left' ? -rotateDeg : rotateDeg}deg)`,
+          transform: animationState === 'idle'
+            ? undefined
+            : `translate(${translateX}px, ${translateY}px) scale(${facing === 'left' ? -scaleVal : scaleVal}, ${scaleVal}) rotate(${facing === 'left' ? -rotateDeg : rotateDeg}deg)`,
+          animation: animationState === 'idle' ? 'lulu-idle-breathe 3.5s ease-in-out infinite' : 'none',
           transition: 'transform 0.08s ease-out',
         }}
         onMouseDown={handleMouseDown}
@@ -338,8 +385,18 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
         onDoubleClick={handleDoubleClick}
         onContextMenu={onContextMenu}
       >
-        {/* Subtle Sharingan Aura */}
-        {perfConfig.performance.glow && (
+        <style>{`
+          @keyframes lulu-idle-breathe {
+            0%, 100% {
+              transform: translateY(0px) scale(${facing === 'left' ? -scaleVal : scaleVal}, ${scaleVal});
+            }
+            50% {
+              transform: translateY(-2.5px) scale(${facing === 'left' ? -scaleVal * 1.015 : scaleVal * 1.015}, ${scaleVal * 1.015});
+            }
+          }
+        `}</style>
+        {/* Subtle Sharingan Aura - Suppressed during thermal pressure or heavy throttling */}
+        {perfConfig.performance.glow && !runtime.isAdaptiveDowngraded && runtime.thermalState !== 'HOT' && (
           <div
             style={{
               position: 'absolute',
@@ -348,7 +405,7 @@ export const PetCanvas: React.FC<PetCanvasProps> = ({ onContextMenu }) => {
               borderRadius: '50%',
               background: `radial-gradient(circle, ${character.aura || 'rgba(225, 29, 72, 0.45)'} 0%, rgba(225, 29, 72, 0.1) 65%, transparent 100%)`,
               filter: perfConfig.performance.blur ? 'blur(4px)' : 'none',
-              transform: `scale(${animationState === 'jump' ? 1.25 : 1.0 + Math.sin(t) * 0.05})`,
+              transform: `scale(${animationState === 'jump' ? 1.25 : 1.0})`,
               pointerEvents: 'none',
             }}
           />

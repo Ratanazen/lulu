@@ -50,6 +50,21 @@ export class ParticleSystem {
     };
   }
 
+  private spawnListeners: Set<() => void> = new Set();
+
+  public onSpawn(cb: () => void): () => void {
+    this.spawnListeners.add(cb);
+    return () => {
+      this.spawnListeners.delete(cb);
+    };
+  }
+
+  private notifySpawn(): void {
+    this.spawnListeners.forEach((cb) => {
+      try { cb(); } catch {}
+    });
+  }
+
   private emit(overrides: Partial<Particle>): void {
     if (this.particles.length >= this.maxParticles) return;
     const p = this.allocate();
@@ -60,6 +75,7 @@ export class ParticleSystem {
       ...overrides,
     });
     this.particles.push(p);
+    this.notifySpawn();
   }
 
   public spawnPreset(preset: ParticlePreset, x: number, y: number, count?: number): void {
