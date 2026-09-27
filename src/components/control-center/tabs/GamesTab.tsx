@@ -7,8 +7,9 @@ import { soundService } from '../../../services/soundService';
 import { getGameScores, saveGameRecord } from '../../../services/storageService';
 
 export const GamesTab: React.FC = () => {
-  const { activeGameId, setActiveGame, addXp, progressAchievement } = useLuluStore();
+  const { activeGameId, setActiveGame, addXp, progressAchievement, mood, needs, feed, clean, playGame, sleep } = useLuluStore();
   const [gameInstance, setGameInstance] = useState<IGameInstance | null>(null);
+  const [selectedCareTool, setSelectedCareTool] = useState<'FEED' | 'BRUSH' | 'BALL' | 'BED'>('FEED');
   const [stats, setStats] = useState<GameStats | null>(null);
   const [highScores, setHighScores] = useState<Record<string, number>>({});
   const [newHighScore, setNewHighScore] = useState(false);
@@ -78,6 +79,20 @@ export const GamesTab: React.FC = () => {
       setStats(gameInstance.getStats());
     };
 
+    if (activeGameId === 'care' && 'onCareAction' in gameInstance) {
+      (gameInstance as any).onCareAction = (tool: string) => {
+        if (tool === 'FEED') {
+          feed(15);
+        } else if (tool === 'BRUSH') {
+          clean();
+        } else if (tool === 'BALL') {
+          playGame(15);
+        } else if (tool === 'BED') {
+          sleep();
+        }
+      };
+    }
+
     let animId: number;
     let lastTime = performance.now();
 
@@ -99,6 +114,12 @@ export const GamesTab: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       gameInstance.handleKeyDown(e.key);
+      if (activeGameId === 'care') {
+        if (e.key === '1') setSelectedCareTool('FEED');
+        if (e.key === '2') setSelectedCareTool('BRUSH');
+        if (e.key === '3') setSelectedCareTool('BALL');
+        if (e.key === '4') setSelectedCareTool('BED');
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
 
@@ -143,6 +164,33 @@ export const GamesTab: React.FC = () => {
             ← Exit Game
           </button>
         </div>
+
+        {/* Care Mode Live Status Bar */}
+        {activeGameId === 'care' && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 14px',
+              backgroundColor: 'rgba(129, 140, 248, 0.12)',
+              border: '1px solid rgba(129, 140, 248, 0.25)',
+              borderRadius: '10px',
+              fontSize: '12px',
+            }}
+          >
+            <div>
+              <span>💖 Lulu Mood: </span>
+              <strong style={{ textTransform: 'capitalize', color: '#818CF8' }}>{mood}</strong>
+            </div>
+            <div style={{ display: 'flex', gap: '14px', color: '#94A3B8' }}>
+              <span>⚡ Energy: <strong style={{ color: '#F8FAFC' }}>{Math.round(needs.energy)}%</strong></span>
+              <span>🍓 Hunger: <strong style={{ color: '#F8FAFC' }}>{Math.round(needs.hunger)}%</strong></span>
+              <span>🎾 Fun: <strong style={{ color: '#F8FAFC' }}>{Math.round(needs.fun)}%</strong></span>
+              <span>🫧 Clean: <strong style={{ color: '#F8FAFC' }}>{Math.round(needs.cleanliness)}%</strong></span>
+            </div>
+          </div>
+        )}
 
         {/* Game Canvas Container */}
         <div
@@ -204,6 +252,46 @@ export const GamesTab: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Care Game Tool Buttons */}
+        {activeGameId === 'care' && (
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {[
+              { id: 'FEED', label: 'Feed Berries', icon: '🍓', keyHint: '1' },
+              { id: 'BRUSH', label: 'Brush Fur', icon: '🫧', keyHint: '2' },
+              { id: 'BALL', label: 'Play Ball', icon: '🎾', keyHint: '3' },
+              { id: 'BED', label: 'Tuck into Bed', icon: '🛏️', keyHint: '4' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  if (gameInstance) {
+                    (gameInstance as any).selectedTool = t.id;
+                    setSelectedCareTool(t.id as any);
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: selectedCareTool === t.id ? '2px solid #818CF8' : '1px solid #334155',
+                  backgroundColor: selectedCareTool === t.id ? 'rgba(129, 140, 248, 0.25)' : 'rgba(30, 41, 59, 0.8)',
+                  color: '#F8FAFC',
+                  cursor: 'pointer',
+                  fontWeight: selectedCareTool === t.id ? 700 : 500,
+                  fontSize: '12px',
+                }}
+              >
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
+                <span style={{ fontSize: '10px', color: '#94A3B8' }}>[{t.keyHint}]</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Game Controls footer */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
