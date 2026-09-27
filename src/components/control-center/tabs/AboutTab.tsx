@@ -44,12 +44,29 @@ export const AboutTab: React.FC = () => {
     try {
       const res = await updateService.runUpdateTask();
       setTaskResult(res);
-      // Re-check status after update
       await handleCheckUpdates();
     } catch (err: any) {
       setTaskResult({
         success: false,
         message: `Task execution failed: ${err?.message || String(err)}`,
+        outputLog: `Error: ${err?.message || String(err)}`,
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRunFullUpdate = async () => {
+    setIsUpdating(true);
+    setShowLog(true);
+    try {
+      const res = await updateService.runFullUpdateTask();
+      setTaskResult(res);
+      await handleCheckUpdates();
+    } catch (err: any) {
+      setTaskResult({
+        success: false,
+        message: `Full update task failed: ${err?.message || String(err)}`,
         outputLog: `Error: ${err?.message || String(err)}`,
       });
     } finally {
@@ -272,7 +289,29 @@ export const AboutTab: React.FC = () => {
             }}
           >
             <ArrowUpCircle size={15} />
-            <span>{isUpdating ? 'Executing Update Pipeline...' : 'Run Update Task'}</span>
+            <span>{isUpdating ? 'Executing Update...' : 'Update Lulu'}</span>
+          </button>
+
+          <button
+            onClick={handleRunFullUpdate}
+            disabled={isUpdating}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 18px',
+              borderRadius: '8px',
+              backgroundColor: isUpdating ? '#475569' : '#6366F1',
+              border: 'none',
+              color: '#FFFFFF',
+              cursor: isUpdating ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+              fontWeight: 600,
+              boxShadow: isUpdating ? 'none' : '0 2px 8px rgba(99, 102, 241, 0.35)',
+            }}
+          >
+            <Layers size={15} />
+            <span>{isUpdating ? 'Updating Full Suite...' : 'Update Full Suite (Lulu + Code)'}</span>
           </button>
 
           {(taskResult || isUpdating) && (

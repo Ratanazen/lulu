@@ -424,9 +424,9 @@ pub fn check_for_updates(path: Option<String>) -> Result<crate::git::UpdateCheck
 }
 
 #[tauri::command]
-pub fn run_update_task(path: Option<String>) -> Result<crate::git::UpdateTaskResult, String> {
+pub fn run_update_task(path: Option<String>, full: Option<bool>) -> Result<crate::git::UpdateTaskResult, String> {
     let p = path.unwrap_or_else(|| ".".to_string());
-    crate::git::GitService::run_update_task(&p)
+    crate::git::GitService::run_update_task(&p, full.unwrap_or(false))
 }
 
 

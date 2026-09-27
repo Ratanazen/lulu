@@ -83,11 +83,32 @@ export class UpdateService {
     }
 
     try {
-      return await invoke<UpdateTaskResult>('run_update_task', { path });
+      return await invoke<UpdateTaskResult>('run_update_task', { path, full: false });
     } catch (err: any) {
       return {
         success: false,
         message: `Update execution error: ${err?.message || String(err)}`,
+        outputLog: `Error: ${err?.message || String(err)}`,
+      };
+    }
+  }
+
+  public async runFullUpdateTask(path?: string): Promise<UpdateTaskResult> {
+    const invoke = await getInvoke();
+    if (!invoke) {
+      return {
+        success: true,
+        message: 'Mock full update succeeded in browser mode',
+        outputLog: '[Mock Full Update Task]\n[1/7] Git check\n[2/7] Build Lulu\n[3/7] Build Lulu Code\n[4/7] Install desktop binaries\nStatus: OK',
+      };
+    }
+
+    try {
+      return await invoke<UpdateTaskResult>('run_update_task', { path, full: true });
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Full update execution error: ${err?.message || String(err)}`,
         outputLog: `Error: ${err?.message || String(err)}`,
       };
     }

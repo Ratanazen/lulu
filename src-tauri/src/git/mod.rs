@@ -124,11 +124,18 @@ impl GitService {
         })
     }
 
-    pub fn run_update_task(path: &str) -> Result<UpdateTaskResult, String> {
-        let update_script = std::path::Path::new(path).join("scripts").join("update-app.mjs");
-        if update_script.exists() {
+    pub fn run_update_task(path: &str, full: bool) -> Result<UpdateTaskResult, String> {
+        let script_name = if full { "update-full.mjs" } else { "update-app.mjs" };
+        let update_script = std::path::Path::new(path).join("scripts").join(script_name);
+        let target_script = if update_script.exists() {
+            update_script
+        } else {
+            std::path::Path::new(path).join("scripts").join("update-app.mjs")
+        };
+
+        if target_script.exists() {
             let out = Command::new("node")
-                .arg(&update_script)
+                .arg(&target_script)
                 .output()
                 .map_err(|e| format!("Failed to spawn update script: {}", e))?;
 
@@ -139,7 +146,11 @@ impl GitService {
             Ok(UpdateTaskResult {
                 success,
                 message: if success {
-                    "Lulu successfully updated and reinstalled".to_string()
+                    if full {
+                        "Lulu and Lulu Code full suite successfully updated and reinstalled".to_string()
+                    } else {
+                        "Lulu successfully updated and reinstalled".to_string()
+                    }
                 } else {
                     format!("Update failed: {}", stderr)
                 },
