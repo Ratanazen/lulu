@@ -28,8 +28,8 @@
     "update:app": "node scripts/update-app.mjs",
     "check:update": "git fetch --dry-run 2>&1"
   },
-
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-fs": "^2.0.1",
     "@tauri-apps/plugin-os": "^2.0.1",

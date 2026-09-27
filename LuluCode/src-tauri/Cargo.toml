@@ -1,0 +1,37 @@
+[package]
+name = "lulu-code"
+version = "0.1.0"
+description = "Lulu Code — Original Native Desktop AI Coding Agent"
+authors = ["Lulu Team"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "lulu_code_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", default-features = false , features = [] }
+
+[dependencies]
+tauri = { version = "2.1", features = ["tray-icon"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+sysinfo = "0.32"
+rusqlite = { version = "0.32", features = ["bundled"] }
+thiserror = "2.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+libc = "0.2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
