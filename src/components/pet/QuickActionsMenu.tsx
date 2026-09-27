@@ -5,7 +5,6 @@ import {
   Code2, 
   Timer, 
   Calculator, 
-  Gamepad2, 
   Brain, 
   Settings, 
   X,
@@ -81,14 +80,14 @@ export const QuickActionsMenu: React.FC = () => {
       },
     },
     {
-      icon: <Gamepad2 size={16} color="#A78BFA" />,
-      label: 'Mini-Games',
-      shortcut: 'P',
-      desc: 'Play offline games',
+      icon: <Sparkles size={16} color="#A78BFA" />,
+      label: 'AI Agents',
+      shortcut: 'Team',
+      desc: 'Autonomous coding agents',
       onClick: () => {
         setQuickActionsOpen(false);
         setControlCenterOpen(true);
-        setActiveTab('games');
+        setActiveTab('agents');
       },
     },
     {

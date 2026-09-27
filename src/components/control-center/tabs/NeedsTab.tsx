@@ -2,12 +2,12 @@ import React from 'react';
 import { useLuluStore } from '../../../stores/useLuluStore';
 
 export const NeedsTab: React.FC = () => {
-  const { needs, mood, feed, playGame, clean, sleep, interact } = useLuluStore();
+  const { needs, mood, feed, clean, sleep, interact } = useLuluStore();
 
   const needDetails = [
     { key: 'energy', label: 'Energy', val: needs.energy, icon: '⚡', desc: 'Restores when sleeping. Drains slowly as Lulu moves.', action: () => sleep(), actionLabel: 'Rest' },
-    { key: 'happiness', label: 'Happiness', val: needs.happiness, icon: '💖', desc: 'Maintained by regular affection, games, and treats.', action: () => interact(), actionLabel: 'Pet' },
-    { key: 'fun', label: 'Fun', val: needs.fun, icon: '🎾', desc: 'Increases when playing mini-games or chasing toys.', action: () => playGame(25), actionLabel: 'Play' },
+    { key: 'happiness', label: 'Happiness', val: needs.happiness, icon: '💖', desc: 'Maintained by regular affection, chat, and treats.', action: () => interact(), actionLabel: 'Pet' },
+    { key: 'fun', label: 'Work Breaks & Fun', val: needs.fun, icon: '🎾', desc: 'Increases when taking work breaks and relaxing.', action: () => interact(), actionLabel: 'Relax' },
     { key: 'hunger', label: 'Hunger & Nutrition', val: needs.hunger, icon: '🍓', desc: 'Keeps Lulu energized with sweet starlight berries.', action: () => feed(25), actionLabel: 'Feed' },
     { key: 'cleanliness', label: 'Cleanliness', val: needs.cleanliness, icon: '🫧', desc: 'A clean companion is a cheerful companion.', action: () => clean(), actionLabel: 'Brush' },
     { key: 'attention', label: 'Attention', val: needs.attention, icon: '👀', desc: 'Increases when you click and talk with Lulu.', action: () => interact(), actionLabel: 'Interact' },

@@ -10,11 +10,11 @@ export const INITIAL_ACHIEVEMENTS: Record<string, Achievement> = {
     progress: 0,
     maxProgress: 1,
   },
-  first_game: {
-    id: 'first_game',
-    title: 'Game On',
-    description: 'Played any mini-game in the Lulu Game Center.',
-    icon: '🎮',
+  first_chat: {
+    id: 'first_chat',
+    title: 'Work Assistant',
+    description: 'Chatted with Lulu using Gemini CLI for daily work.',
+    icon: '💬',
     unlocked: false,
     progress: 0,
     maxProgress: 1,
@@ -28,11 +28,11 @@ export const INITIAL_ACHIEVEMENTS: Record<string, Achievement> = {
     progress: 0,
     maxProgress: 5,
   },
-  game_master: {
-    id: 'game_master',
-    title: 'Game Master',
-    description: 'Scored over 1,000 points in any mini-game.',
-    icon: '🏆',
+  coding_companion: {
+    id: 'coding_companion',
+    title: 'Coding Companion',
+    description: 'Paired with Lulu for daily coding and development tasks.',
+    icon: '💻',
     unlocked: false,
     progress: 0,
     maxProgress: 1,

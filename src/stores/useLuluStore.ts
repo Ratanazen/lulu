@@ -3,7 +3,6 @@ import {
   AnimationState,
   BehaviorMode,
   CharacterProfile,
-  GameId,
   LearnedPreferences,
   LuluSettings,
   MonitorInfo,
@@ -118,7 +117,6 @@ interface LuluStoreState {
   // UI Navigation
   controlCenterOpen: boolean;
   activeTab: string;
-  activeGameId: GameId | null;
   onboardingCompleted: boolean;
   chatOpen: boolean;
   quickActionsOpen: boolean;
@@ -171,7 +169,6 @@ interface LuluStoreState {
   setCharacter: (id: string) => void;
   setControlCenterOpen: (open: boolean) => void;
   setActiveTab: (tab: string) => void;
-  setActiveGame: (gameId: GameId | null) => void;
   addXp: (amount: number) => void;
   spendStars: (amount: number) => boolean;
   progressAchievement: (id: string, delta?: number) => void;
@@ -246,7 +243,6 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     systemMetrics: null,
     controlCenterOpen: false,
     activeTab: 'overview',
-    activeGameId: null,
     onboardingCompleted: false,
     chatOpen: false,
     quickActionsOpen: false,
@@ -901,14 +897,6 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     setActiveTab: (tab: string) => {
       set({ activeTab: tab });
       soundService.play('click', 'ui');
-    },
-
-    setActiveGame: (gameId: GameId | null) => {
-      set({ activeGameId: gameId });
-      if (gameId) {
-        get().progressAchievement('first_game', 1);
-        soundService.play('jump', 'game');
-      }
     },
 
     addXp: (amount: number) => {

@@ -357,33 +357,6 @@ export interface SpeechMessage {
   currentPage?: number;
 }
 
-// Games
-export type GameId =
-  | 'quick_click'
-  | 'reaction'
-  | 'memory'
-  | 'catch'
-  | 'dodge'
-  | 'care'
-  | 'exploration'
-  | 'custom';
-
-export type GameDifficulty = 'easy' | 'normal' | 'hard';
-
-export interface GameScore {
-  gameId: GameId;
-  score: number;
-  highScore: number;
-  playedAt: string;
-}
-
-export interface GameMetadata {
-  id: GameId;
-  title: string;
-  description: string;
-  icon: string;
-}
-
 // Progression & Achievements
 export interface Achievement {
   id: string;

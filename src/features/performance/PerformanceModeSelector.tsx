@@ -25,11 +25,11 @@ export const PerformanceModeSelector: React.FC = () => {
     },
     {
       id: 'POWER_SAVER',
-      label: 'Power Saver / Game Mode',
+      label: 'Power Saver / Deep Work',
       sublabel: '18 FPS • Low VRAM & CPU',
       icon: <Battery size={18} className="text-emerald-400" />,
       fps: 18,
-      description: 'Cool & Silent / Game Mode: Drops background GPU/VRAM footprint to ~0% for PC gaming and cool thermals.',
+      description: 'Cool & Silent Work Mode: Drops background GPU/VRAM footprint to ~0% for heavy IDEs, multitasking, and cool thermals.',
     },
     {
       id: 'LOW',

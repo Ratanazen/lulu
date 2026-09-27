@@ -4,7 +4,6 @@ const OverviewTab = React.lazy(() => import('./tabs/OverviewTab').then((m) => ({
 const CharacterTab = React.lazy(() => import('./tabs/CharacterTab').then((m) => ({ default: m.CharacterTab })));
 const BehaviorTab = React.lazy(() => import('./tabs/BehaviorTab').then((m) => ({ default: m.BehaviorTab })));
 const NeedsTab = React.lazy(() => import('./tabs/NeedsTab').then((m) => ({ default: m.NeedsTab })));
-const GamesTab = React.lazy(() => import('./tabs/GamesTab').then((m) => ({ default: m.GamesTab })));
 const MusicTab = React.lazy(() => import('./tabs/MusicTab').then((m) => ({ default: m.MusicTab })));
 const ThemesTab = React.lazy(() => import('./tabs/ThemesTab').then((m) => ({ default: m.ThemesTab })));
 const ScreenMapTab = React.lazy(() => import('./tabs/ScreenMapTab').then((m) => ({ default: m.ScreenMapTab })));
@@ -43,7 +42,6 @@ export const ControlCenterModal: React.FC = () => {
     { id: 'character', label: 'Character Studio', icon: '🎨' },
     { id: 'behavior', label: 'Behavior & Personality', icon: '🧠' },
     { id: 'needs', label: 'Needs & Vitality', icon: '💖' },
-    { id: 'games', label: 'Mini-Games', icon: '🎮' },
     { id: 'music', label: 'Music Reactions', icon: '🎵' },
     { id: 'themes', label: 'Theme Engine', icon: '🌈' },
     { id: 'screen_map', label: 'Screen Map', icon: '🗺️' },
@@ -67,7 +65,6 @@ export const ControlCenterModal: React.FC = () => {
       case 'character': return <CharacterTab />;
       case 'behavior': return <BehaviorTab />;
       case 'needs': return <NeedsTab />;
-      case 'games': return <GamesTab />;
       case 'music': return <MusicTab />;
       case 'themes': return <ThemesTab />;
       case 'screen_map': return <ScreenMapTab />;

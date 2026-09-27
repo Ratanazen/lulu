@@ -4,8 +4,6 @@ import { DesktopWindowService } from '../../services/desktopWindow';
 import { soundService } from '../../services/soundService';
 import { PERSONALITY_ARCHETYPES } from '../../features/personality/personalityEngine';
 import { PersonalityArchetype } from '../../features/personality/types';
-import { GAME_CATALOG } from '../../games';
-import { GameId } from '../../types';
 
 interface ContextMenuProps {
   x: number;
@@ -13,7 +11,7 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
-type MenuCategory = 'all' | 'ai' | 'care' | 'games' | 'personality' | 'tools' | 'system' | 'shortcuts';
+type MenuCategory = 'all' | 'ai' | 'care' | 'personality' | 'tools' | 'system' | 'shortcuts';
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('all');
@@ -21,7 +19,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
 
   const {
     feed,
-    playGame,
     sleep,
     wander,
     clean,
@@ -29,7 +26,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
     patPet,
     setControlCenterOpen,
     setActiveTab,
-    setActiveGame,
     setChatOpen,
     setQuickActionsOpen,
     clearChat,
@@ -69,7 +65,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
     { id: 'all', label: 'All', icon: '⭐' },
     { id: 'ai', label: 'AI', icon: '💬' },
     { id: 'care', label: 'Care', icon: '🍓' },
-    { id: 'games', label: 'Games', icon: '🎮' },
     { id: 'personality', label: 'Mood', icon: '🧠' },
     { id: 'tools', label: 'Tools', icon: '🛠️' },
     { id: 'system', label: 'System', icon: '⚙️' },
@@ -192,7 +187,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
               { key: 'Ctrl+Shift+L', desc: 'Quick Actions Dock' },
               { key: 'Ctrl+Shift+C', desc: 'Control Center' },
               { key: 'F', desc: 'Feed Berry (+25)' },
-              { key: 'P', desc: 'Play Mini-Game' },
+              { key: 'P', desc: 'Pet / Affection' },
               { key: 'W', desc: 'Wander Desktop' },
               { key: 'S', desc: 'Sleep / Rest' },
               { key: 'T', desc: 'Toggle Always on Top' },
@@ -276,9 +271,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
             </button>
             <button
               style={menuItemStyle}
-              onClick={() => handleAction(() => playGame(25))}
+              onClick={() => handleAction(() => interact())}
             >
-              <span>🎾 Play Ball</span>
+              <span>🎾 Play & Affection</span>
               <kbd style={kbdStyle}>P</kbd>
             </button>
             <button
@@ -301,28 +296,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
             >
               <span>🧼 Clean & Bath</span>
             </button>
-          </>
-        )}
-
-        {/* MINI-GAMES ARCADE */}
-        {(activeCategory === 'all' || activeCategory === 'games') && (
-          <>
-            {activeCategory === 'all' && <div style={categoryHeaderStyle}>🎮 Arcade Games</div>}
-            {GAME_CATALOG.map((g) => (
-              <button
-                key={g.id}
-                style={menuItemStyle}
-                onClick={() =>
-                  handleAction(() => {
-                    setControlCenterOpen(true);
-                    setActiveTab('games');
-                    setActiveGame(g.id as GameId);
-                  })
-                }
-              >
-                <span>{g.icon} {g.title}</span>
-              </button>
-            ))}
           </>
         )}
 
