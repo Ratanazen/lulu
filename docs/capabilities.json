@@ -204,7 +204,7 @@
       "name": "Speech To Text",
       "category": "voice",
       "platforms": {
-        "linux": "partial",
+        "linux": "unsupported",
         "windows": "supported",
         "macos": "supported"
       },
@@ -212,7 +212,7 @@
         "microphone_permission"
       ],
       "optional": true,
-      "status": "requires_permission",
+      "status": "unsupported",
       "fallback": "text_input_only",
       "privacy": "requires_permission"
     },
@@ -247,23 +247,6 @@
       ],
       "optional": true,
       "status": "requires_permission",
-      "fallback": "disabled",
-      "privacy": "requires_permission"
-    },
-    {
-      "id": "context.browser",
-      "name": "Browser Page Context",
-      "category": "context",
-      "platforms": {
-        "linux": "unsupported",
-        "windows": "unsupported",
-        "macos": "unsupported"
-      },
-      "requires": [
-        "browser_extension_permission"
-      ],
-      "optional": true,
-      "status": "disabled",
       "fallback": "disabled",
       "privacy": "requires_permission"
     },

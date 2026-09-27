@@ -218,19 +218,6 @@ export class CapabilityService {
         privacy: 'local_only',
         reason: 'Using localStorage fallback in web context',
       },
-      {
-        id: 'context.browser',
-        name: 'Browser Page Context',
-        category: 'context',
-        status: 'disabled',
-        platform: 'web',
-        windowSystem: 'browser',
-        dependencies: {},
-        permission: 'requires_permission',
-        fallback: 'disabled',
-        privacy: 'requires_permission',
-        reason: 'Disabled by default - Lulu does not track or inspect browser activity',
-      },
     ];
 
     this.cachedCapabilities = fallbackList;

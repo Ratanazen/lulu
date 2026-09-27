@@ -35,8 +35,8 @@ export const GitPanel: React.FC = () => {
   const handleViewDiff = async (file: string, staged: boolean) => {
     if (!rootPath) return;
     await fetchDiff(rootPath, file, staged);
-    // Open in diff mode
-    showDiff('// Base commit version', activeDiff || '// Proposed changes');
+    const freshDiff = useGitStore.getState().activeDiff;
+    showDiff('// Base commit version', freshDiff || '// Proposed changes');
   };
 
   if (!status) {

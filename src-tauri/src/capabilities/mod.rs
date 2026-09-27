@@ -330,7 +330,7 @@ impl CapabilityManager {
             notification_service_available,
             ollama_available,
             tts_available: true,
-            stt_available: true,
+            stt_available: false,
             monitor_count,
             capabilities,
             timestamp: chrono::Utc::now().to_rfc3339(),

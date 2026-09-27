@@ -38,7 +38,6 @@ export class VoiceManager {
     error: null,
   };
 
-  private recognition: any = null;
   private onStateChangeCallback?: (state: VoiceState) => void;
   private onTranscriptCallback?: (transcript: string) => void;
 
@@ -54,9 +53,8 @@ export class VoiceManager {
   private checkSupport(): void {
     if (typeof window === 'undefined') return;
     const hasSpeech = 'speechSynthesis' in window;
-    const hasRecognition = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     const hasTauri = !!(window as any).__TAURI_INTERNALS__;
-    this.state.isSupported = hasSpeech || hasRecognition || hasTauri;
+    this.state.isSupported = hasSpeech || hasTauri;
   }
 
   getSettings(): VoiceSettings {
@@ -188,74 +186,14 @@ export class VoiceManager {
   }
 
   // --- Speech to Text (STT) ---
+  // STT is unsupported in Linux WebKitGTK / Tauri webview environment without heavy external daemon.
 
   startListening(): void {
-    if (typeof window === 'undefined') return;
-
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      this.state.error = 'Speech recognition is not supported in this environment.';
-      this.notify();
-      return;
-    }
-
-    try {
-      this.stopListening();
-
-      this.recognition = new SpeechRec();
-      this.recognition.continuous = false;
-      this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
-
-      this.recognition.onstart = () => {
-        this.state.isListening = true;
-        this.state.transcript = '';
-        this.state.error = null;
-        this.notify();
-      };
-
-      this.recognition.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          transcript += event.results[i][0].transcript;
-        }
-        this.state.transcript = transcript;
-        this.notify();
-      };
-
-      this.recognition.onerror = (event: any) => {
-        this.state.isListening = false;
-        this.state.error = event.error || 'Recognition error';
-        this.notify();
-      };
-
-      this.recognition.onend = () => {
-        this.state.isListening = false;
-        if (this.state.transcript && this.onTranscriptCallback) {
-          this.onTranscriptCallback(this.state.transcript);
-        }
-        this.notify();
-      };
-
-      this.recognition.start();
-    } catch (err: any) {
-      this.state.isListening = false;
-      this.state.error = err.message || 'Failed to start speech recognition.';
-      this.notify();
-    }
+    this.state.isListening = false;
   }
 
   stopListening(): void {
-    if (this.recognition) {
-      try {
-        this.recognition.stop();
-      } catch {
-        // ignore
-      }
-      this.recognition = null;
-    }
     this.state.isListening = false;
-    this.notify();
   }
 }
 

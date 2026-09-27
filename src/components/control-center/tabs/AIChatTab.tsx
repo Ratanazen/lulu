@@ -591,13 +591,18 @@ export const AIChatTab: React.FC = () => {
         </div>
 
         {/* CLI Providers Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-          {cliProviders
-            .filter((cli) => cli.id === 'agy' || cli.id === 'gemini')
-            .map((cli) => {
-              const isInstalled = cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING';
-            return (
-              <div
+        {cliProviders.filter((cli) => cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING').length === 0 ? (
+          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px dashed #334155', color: '#94A3B8', fontSize: '13px', textAlign: 'center' }}>
+            No external AI CLI tools found in system $PATH. Built-in engines and API connections remain ready.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+            {cliProviders
+              .filter((cli) => cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING')
+              .map((cli) => {
+                const isInstalled = true;
+                return (
+                  <div
                 key={cli.id}
                 style={{
                   padding: '14px',
@@ -691,7 +696,8 @@ export const AIChatTab: React.FC = () => {
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
 
         {/* CLI Test Output Terminal */}
         {cliResult && (

@@ -5,8 +5,6 @@ import {
   Trash2, 
   Copy, 
   Check, 
-  Mic, 
-  MicOff, 
   Square, 
   Sparkles, 
   Bot, 
@@ -20,7 +18,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useLuluStore } from '../../stores/useLuluStore';
-import { voiceManager } from '../../features/voice/VoiceManager';
 import { getConversations, getMessages, saveMessage, createConversation } from '../../services/storageService';
 import { aiProviderManager } from '../../features/ai/AIProviderManager';
 import { AiCliService, AiCliStatus } from '../../features/ai/AiCliService';
@@ -119,7 +116,6 @@ export const CompactChatWindow: React.FC = () => {
     clearChat,
     personality,
     character,
-    voiceState,
   } = useLuluStore();
 
   const [input, setInput] = useState('');
@@ -340,14 +336,6 @@ export const CompactChatWindow: React.FC = () => {
     } finally {
       setIsTestingAgy(false);
       setTimeout(() => setTestAgyFeedback(null), 4000);
-    }
-  };
-
-  const toggleMic = () => {
-    if (voiceState.isListening) {
-      voiceManager.stopListening();
-    } else {
-      voiceManager.startListening();
     }
   };
 
@@ -939,27 +927,6 @@ export const CompactChatWindow: React.FC = () => {
         )}
       </div>
 
-      {/* Voice Status Pill if active */}
-      {voiceState.isListening && (
-        <div
-          style={{
-            padding: '6px 12px',
-            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            borderTop: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#EF4444',
-            fontSize: '11px',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#EF4444', animation: 'pulse 1s infinite' }} />
-          <span>Listening... {voiceState.transcript || 'Speak into microphone'}</span>
-        </div>
-      )}
-
       {/* Input Bar */}
       <form
         onSubmit={handleSend}
@@ -973,19 +940,6 @@ export const CompactChatWindow: React.FC = () => {
           flexShrink: 0,
         }}
       >
-        <button
-          type="button"
-          onClick={toggleMic}
-          title={voiceState.isListening ? 'Stop Listening' : 'Voice Input (Push to Talk)'}
-          style={{
-            ...iconBtnStyle,
-            color: voiceState.isListening ? '#EF4444' : 'var(--lulu-muted, #94A3B8)',
-            marginBottom: '2px',
-          }}
-        >
-          {voiceState.isListening ? <MicOff size={16} /> : <Mic size={16} />}
-        </button>
-
         <textarea
           ref={textareaRef}
           value={input}

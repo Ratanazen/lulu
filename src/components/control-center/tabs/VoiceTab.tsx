@@ -58,7 +58,7 @@ export const VoiceTab: React.FC = () => {
         </div>
         <h2 style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>Speech Engine & Audio</h2>
         <p style={{ fontSize: '13px', color: 'var(--color-text-muted, #94A3B8)', marginTop: '2px' }}>
-          Configure text-to-speech voice models, pitch, and voice recognition for hands-free conversations.
+          Configure text-to-speech voice models, pitch, and speech playback speed.
         </p>
       </div>
 
