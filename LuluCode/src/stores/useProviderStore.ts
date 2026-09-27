@@ -39,11 +39,11 @@ function setStored(key: string, val: string) {
 }
 
 export const useProviderStore = create<ProviderStore>((set, get) => ({
-  activeType: (getStored('type', 'LOCAL_OLLAMA') as ProviderType),
-  endpoint: getStored('endpoint', 'http://localhost:11434'),
+  activeType: (getStored('type', 'GOOGLE_GEMINI') as ProviderType),
+  endpoint: getStored('endpoint', 'https://generativelanguage.googleapis.com'),
   apiKey: getStored('api_key', ''),
-  selectedModel: getStored('model', 'qwen2.5-coder:latest'),
-  availableModels: [],
+  selectedModel: getStored('model', 'gemini-2.0-flash'),
+  availableModels: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
   ollamaStatus: {
     is_available: false,
     status: 'OFFLINE',

@@ -138,6 +138,21 @@ StartupNotify=true
   fs.writeFileSync(path.join(appsDir, 'lulu-code.desktop'), luluCodeDesktop, 'utf8');
   console.log('   [PASS] Registered .desktop launchers for Lulu & Lulu Code');
 
+  // 6e. Ensure 'gemini' CLI command is linked to 'agy'
+  const agyBin = path.join(binDir, 'agy');
+  const geminiBin = path.join(binDir, 'gemini');
+  if (fs.existsSync(agyBin)) {
+    try {
+      if (fs.existsSync(geminiBin)) {
+        try { fs.unlinkSync(geminiBin); } catch {}
+      }
+      fs.symlinkSync(agyBin, geminiBin);
+      console.log(`   [PASS] Linked Gemini CLI: ${geminiBin} -> ${agyBin}`);
+    } catch (e) {
+      console.log(`   [NOTE] Could not symlink gemini: ${e.message}`);
+    }
+  }
+
   // 6e. Sway Compositor Rules
   const swayConfigDir = path.join(home, '.config', 'sway', 'config.d');
   if (fs.existsSync(swayConfigDir)) {

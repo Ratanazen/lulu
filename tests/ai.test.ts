@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AIProviderManager } from '../src/features/ai/AIProviderManager';
-import { OpenAIProvider } from '../src/features/ai/providers/OpenAIProvider';
-import { OllamaProvider } from '../src/features/ai/providers/OllamaProvider';
 
 describe('AIProviderManager', () => {
   let manager: AIProviderManager;
@@ -10,13 +8,10 @@ describe('AIProviderManager', () => {
     manager = new AIProviderManager();
   });
 
-  it('registers all standard providers by default', () => {
+  it('registers all standard Gemini and AGY providers by default', () => {
+    expect(manager.getProvider('hybrid_gemini_agy')).toBeDefined();
     expect(manager.getProvider('agy')).toBeDefined();
-    expect(manager.getProvider('ollama')).toBeDefined();
-    expect(manager.getProvider('openai')).toBeDefined();
     expect(manager.getProvider('gemini')).toBeDefined();
-    expect(manager.getProvider('anthropic')).toBeDefined();
-    expect(manager.getProvider('custom')).toBeDefined();
   });
 
   it('allows switching active provider', () => {
@@ -32,23 +27,20 @@ describe('AIProviderManager', () => {
     expect(ids).toContain('agy');
     expect(ids).toContain('gemini');
     expect(ids).toContain('offline');
-    expect(ids).not.toContain('openai');
-    expect(ids).not.toContain('anthropic');
-    expect(ids).not.toContain('ollama');
   });
 
-  it('returns valid default configs for all providers', () => {
+  it('returns valid default configs for Gemini and AGY providers', () => {
     const configs = manager.getAllConfigs();
-    expect(configs.ollama.baseUrl).toBe('http://localhost:11434');
-    expect(configs.openai.selectedModel).toBe('gpt-4o-mini');
+    expect(configs.hybrid_gemini_agy.selectedModel).toBe('auto');
+    expect(configs.agy.selectedModel).toBe('gemini-3.8-flash-low');
     expect(configs.gemini.selectedModel).toBe('gemini-1.5-flash');
-    expect(configs.anthropic.selectedModel).toBe('claude-3-5-haiku-20241022');
+    expect(configs.offline.selectedModel).toBe('built-in-rules');
   });
 
   it('updates provider config correctly', () => {
-    manager.updateConfig('openai', { apiKey: 'sk-test-key-123', temperature: 0.9 });
-    const updated = manager.getConfig('openai');
-    expect(updated.apiKey).toBe('sk-test-key-123');
+    manager.updateConfig('gemini', { apiKey: 'test-gemini-key', temperature: 0.9 });
+    const updated = manager.getConfig('gemini');
+    expect(updated.apiKey).toBe('test-gemini-key');
     expect(updated.temperature).toBe(0.9);
   });
 

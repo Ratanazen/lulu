@@ -420,8 +420,8 @@ export const AIChatTab: React.FC = () => {
           </div>
         )}
 
-        {/* API Key (if cloud provider requiring keys or hybrid) */}
-        {(activeProvider === 'hybrid_gemini_agy' || (activeProvider !== 'ollama' && activeProvider !== 'offline' && activeProvider !== 'agy')) && (
+        {/* API Key (for Google Gemini API or hybrid backup) */}
+        {(activeProvider === 'hybrid_gemini_agy' || activeProvider === 'gemini') && (
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted, #94A3B8)', marginBottom: '6px' }}>
               {activeProvider === 'hybrid_gemini_agy' ? 'Gemini Cloud API Key (Optional — Cloud Backup when AGY CLI is busy/offline)' : 'API Key (stored locally and encrypted)'}
@@ -591,14 +591,14 @@ export const AIChatTab: React.FC = () => {
         </div>
 
         {/* CLI Providers Grid */}
-        {cliProviders.filter((cli) => cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING').length === 0 ? (
+        {cliProviders.filter((cli) => (cli.id === 'agy' || cli.id === 'gemini') && (cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING')).length === 0 ? (
           <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px dashed #334155', color: '#94A3B8', fontSize: '13px', textAlign: 'center' }}>
-            No external AI CLI tools found in system $PATH. Built-in engines and API connections remain ready.
+            No Gemini CLI tool detected in system $PATH. Direct Google Gemini API connection remains ready.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
             {cliProviders
-              .filter((cli) => cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING')
+              .filter((cli) => (cli.id === 'agy' || cli.id === 'gemini') && (cli.status === 'INSTALLED' || cli.status === 'AUTHENTICATED' || cli.status === 'RUNNING'))
               .map((cli) => {
                 const isInstalled = true;
                 return (

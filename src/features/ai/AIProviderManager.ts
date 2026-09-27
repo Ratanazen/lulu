@@ -1,9 +1,5 @@
 import { AIProvider, AIProviderId, ChatRequest, ChatResponse, ProviderConfig } from './types';
-import { OpenAIProvider } from './providers/OpenAIProvider';
 import { GeminiProvider } from './providers/GeminiProvider';
-import { AnthropicProvider } from './providers/AnthropicProvider';
-import { OllamaProvider } from './providers/OllamaProvider';
-import { CustomProvider } from './providers/CustomProvider';
 import { AgyProvider } from './providers/AgyProvider';
 import { CombinedGeminiAgyProvider } from './providers/CombinedGeminiAgyProvider';
 import { StorageService } from '../../services/storageService';
@@ -46,27 +42,6 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<AIProviderId, ProviderConfig> = {
     temperature: 0.7,
     maxTokens: 1024,
   },
-  ollama: {
-    id: 'ollama',
-    name: 'Ollama (Local AI)',
-    enabled: true,
-    baseUrl: 'http://localhost:11434',
-    selectedModel: 'llama3.2:latest',
-    availableModels: ['llama3.2:latest', 'mistral:latest', 'qwen2.5:latest', 'phi3:latest'],
-    temperature: 0.7,
-    maxTokens: 1024,
-  },
-  openai: {
-    id: 'openai',
-    name: 'OpenAI',
-    enabled: true,
-    apiKey: '',
-    baseUrl: 'https://api.openai.com/v1',
-    selectedModel: 'gpt-4o-mini',
-    availableModels: ['gpt-4o-mini', 'gpt-4o', 'o1-mini'],
-    temperature: 0.7,
-    maxTokens: 1024,
-  },
   gemini: {
     id: 'gemini',
     name: 'Google Gemini',
@@ -74,27 +49,6 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<AIProviderId, ProviderConfig> = {
     apiKey: '',
     selectedModel: 'gemini-1.5-flash',
     availableModels: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'],
-    temperature: 0.7,
-    maxTokens: 1024,
-  },
-  anthropic: {
-    id: 'anthropic',
-    name: 'Anthropic Claude',
-    enabled: true,
-    apiKey: '',
-    baseUrl: 'https://api.anthropic.com/v1',
-    selectedModel: 'claude-3-5-haiku-20241022',
-    availableModels: ['claude-3-5-haiku-20241022', 'claude-3-5-sonnet-20241022'],
-    temperature: 0.7,
-    maxTokens: 1024,
-  },
-  custom: {
-    id: 'custom',
-    name: 'Custom Endpoint',
-    enabled: true,
-    baseUrl: 'http://localhost:1234/v1',
-    selectedModel: 'local-model',
-    availableModels: ['local-model'],
     temperature: 0.7,
     maxTokens: 1024,
   },
@@ -117,11 +71,7 @@ export class AIProviderManager {
   constructor() {
     this.registerProvider(new CombinedGeminiAgyProvider());
     this.registerProvider(new AgyProvider());
-    this.registerProvider(new OllamaProvider());
-    this.registerProvider(new OpenAIProvider());
     this.registerProvider(new GeminiProvider());
-    this.registerProvider(new AnthropicProvider());
-    this.registerProvider(new CustomProvider());
   }
 
   async loadSettings(): Promise<void> {
@@ -131,20 +81,11 @@ export class AIProviderManager {
       DEFAULT_PROVIDER_CONFIGS
     );
 
-    if (!savedActive || savedActive === 'ollama' || savedActive === 'agy') {
-      try {
-        const { AiCliService } = await import('./AiCliService');
-        const agyStatus = await AiCliService.getProviderStatus('agy');
-        if (agyStatus && agyStatus.status !== 'NOT_INSTALLED') {
-          this.activeProviderId = 'hybrid_gemini_agy';
-        } else {
-          this.activeProviderId = savedActive || 'hybrid_gemini_agy';
-        }
-      } catch {
-        this.activeProviderId = savedActive || 'hybrid_gemini_agy';
-      }
+    const validIds: AIProviderId[] = ['hybrid_gemini_agy', 'agy', 'gemini', 'offline'];
+    if (!savedActive || !validIds.includes(savedActive as AIProviderId)) {
+      this.activeProviderId = 'hybrid_gemini_agy';
     } else {
-      this.activeProviderId = savedActive;
+      this.activeProviderId = savedActive as AIProviderId;
     }
 
     this.configs = { ...DEFAULT_PROVIDER_CONFIGS, ...savedConfigs };

@@ -21,6 +21,7 @@ import { useLuluStore } from '../../stores/useLuluStore';
 import { getConversations, getMessages, saveMessage, createConversation } from '../../services/storageService';
 import { aiProviderManager } from '../../features/ai/AIProviderManager';
 import { AiCliService, AiCliStatus } from '../../features/ai/AiCliService';
+import { googleOAuthService, GoogleAccountProfile } from '../../services/googleOAuthService';
 import { copyToClipboard } from '../../utils/clipboard';
 
 interface CodeBlockProps {
@@ -128,6 +129,15 @@ export const CompactChatWindow: React.FC = () => {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Google Account profile & OAuth status
+  const [googleProfile, setGoogleProfile] = useState<GoogleAccountProfile | null>(
+    googleOAuthService.getAccountProfile()
+  );
+  const [googleStatus, setGoogleStatus] = useState<string>(googleOAuthService.getStatus());
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [isSyncingAccount, setIsSyncingAccount] = useState(false);
+  const [accountFeedback, setAccountFeedback] = useState<string | null>(null);
+
   // AGY Interface status state
   const [agyInfo, setAgyInfo] = useState<AiCliStatus | null>(null);
   const [showAgyDrawer, setShowAgyDrawer] = useState(false);
@@ -139,6 +149,60 @@ export const CompactChatWindow: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const savedMessageIds = useRef<Set<string>>(new Set());
   const initialLoadDone = useRef(false);
+
+  useEffect(() => {
+    const unsub = googleOAuthService.subscribe((status) => {
+      setGoogleStatus(status);
+      setGoogleProfile(googleOAuthService.getAccountProfile());
+    });
+    if (googleOAuthService.getStatus() !== 'CONNECTED') {
+      googleOAuthService.syncLocalGoogleAccount().then((res) => {
+        if (res.success && res.profile) {
+          setGoogleProfile(res.profile);
+          setGoogleStatus('CONNECTED');
+        }
+      });
+    }
+    return () => unsub();
+  }, []);
+
+  const handleSyncGoogle = async () => {
+    setIsSyncingAccount(true);
+    setAccountFeedback(null);
+    try {
+      const res = await googleOAuthService.syncLocalGoogleAccount();
+      setAccountFeedback(res.message);
+      if (res.profile) {
+        setGoogleProfile(res.profile);
+        setGoogleStatus('CONNECTED');
+      }
+    } catch (e: any) {
+      setAccountFeedback(e?.message || 'Sync failed');
+    } finally {
+      setIsSyncingAccount(false);
+      setTimeout(() => setAccountFeedback(null), 4000);
+    }
+  };
+
+  const handleLoginGoogle = async () => {
+    setIsSyncingAccount(true);
+    try {
+      const res = await googleOAuthService.connectGoogle();
+      if (!res.success) {
+        await handleSyncGoogle();
+      }
+    } finally {
+      setIsSyncingAccount(false);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    await googleOAuthService.disconnectGoogle();
+    setGoogleProfile(null);
+    setGoogleStatus('DISCONNECTED');
+    setAccountFeedback('Disconnected Google account');
+    setTimeout(() => setAccountFeedback(null), 3000);
+  };
 
   useEffect(() => {
     if (chatOpen) {
@@ -535,7 +599,7 @@ export const CompactChatWindow: React.FC = () => {
               cursor: 'pointer',
             }}
           >
-            <span>{activeProvider === 'hybrid_gemini_agy' ? '🔮 GEMINI+AGY' : activeProvider === 'agy' ? '🚀 AGY' : activeProvider.toUpperCase()}: {selectedModel === 'auto' ? 'Auto-Route' : selectedModel.replace('gemini-', 'Gemini ').replace('claude-', 'Claude ').replace('-low', ' (Low)').replace('-high', ' (High)').replace('-medium', '')}</span>
+            <span>{activeProvider === 'hybrid_gemini_agy' ? '🔮 GEMINI+AGY' : activeProvider === 'agy' ? '🚀 GEMINI CLI' : activeProvider.toUpperCase()}: {selectedModel === 'auto' ? 'Auto-Route' : selectedModel.replace('gemini-', 'Gemini ').replace('-low', ' (Low)').replace('-high', ' (High)')}</span>
             <ChevronDown size={11} />
           </button>
 
@@ -597,11 +661,9 @@ export const CompactChatWindow: React.FC = () => {
                 🚀 DEDICATED AGY CLI MODELS
               </div>
               {[
-                { id: 'gemini-3.8-flash-low', label: 'Gemini 3.8 Flash (Low)' },
-                { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)' },
+                { id: 'gemini-3.8-flash-low', label: 'Gemini 3.8 Flash (Low / Fast)' },
+                { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High / Smart)' },
                 { id: 'gemini-3.7-flash-high', label: 'Gemini 3.7 Flash (High)' },
-                { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Thinking)' },
-                { id: 'gpt-oss-120b-medium', label: 'GPT-OSS 120B (Medium)' },
               ].map((m) => (
                 <button
                   key={m.id}
@@ -694,6 +756,155 @@ export const CompactChatWindow: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Google Account Login / Status Badge */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAccountModal(!showAccountModal);
+              }}
+              title={googleProfile ? `Google Account: ${googleProfile.email}` : 'Sign in with Google Account'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                backgroundColor: googleStatus === 'CONNECTED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                border: `1px solid ${googleStatus === 'CONNECTED' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+                color: googleStatus === 'CONNECTED' ? '#10B981' : '#F59E0B',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {googleProfile?.avatarUrl ? (
+                <img
+                  src={googleProfile.avatarUrl}
+                  alt="Google"
+                  style={{ width: '13px', height: '13px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              ) : (
+                <span style={{ fontWeight: 800, fontSize: '11px' }}>G</span>
+              )}
+              <span style={{ maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {googleProfile ? googleProfile.email.split('@')[0] : 'Login'}
+              </span>
+            </button>
+
+            {showAccountModal && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  backgroundColor: 'var(--lulu-panel, #131B2E)',
+                  border: '1px solid var(--lulu-border, #FF7A00)',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  zIndex: 10001,
+                  boxShadow: '0 12px 30px rgba(0, 0, 0, 0.8)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  minWidth: '230px',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                  {googleProfile?.avatarUrl ? (
+                    <img
+                      src={googleProfile.avatarUrl}
+                      alt="Google"
+                      style={{ width: '28px', height: '28px', borderRadius: '50%' }}
+                    />
+                  ) : (
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#4285F4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700 }}>
+                      G
+                    </div>
+                  )}
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {googleProfile?.displayName || 'Google Account'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#94A3B8', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {googleProfile?.email || 'Not connected'}
+                    </div>
+                  </div>
+                </div>
+
+                {accountFeedback && (
+                  <div style={{ fontSize: '10px', color: '#38BDF8', padding: '2px 4px' }}>
+                    {accountFeedback}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <button
+                    type="button"
+                    onClick={handleSyncGoogle}
+                    disabled={isSyncingAccount}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #10B981',
+                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                      color: '#10B981',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: isSyncingAccount ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                    }}
+                  >
+                    <RotateCcw size={11} className={isSyncingAccount ? 'spin' : ''} />
+                    <span>{isSyncingAccount ? 'Syncing...' : 'Sync Local Google Account'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleLoginGoogle}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #4285F4',
+                      backgroundColor: 'rgba(66, 133, 244, 0.15)',
+                      color: '#4285F4',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Sign in with Google
+                  </button>
+
+                  {googleProfile && (
+                    <button
+                      type="button"
+                      onClick={handleDisconnectGoogle}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(239, 68, 68, 0.5)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        color: '#EF4444',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                      }}
+                    >
+                      Disconnect Account
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={handleNewConversation}

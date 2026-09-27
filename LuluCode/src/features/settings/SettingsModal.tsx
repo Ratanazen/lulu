@@ -95,10 +95,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     onChange={(e) => setActiveType(e.target.value as ProviderType)}
                     className="w-full bg-[#12141a] border border-[#2b313e] rounded-lg px-3 py-2 text-gray-100 outline-none focus:border-blue-500"
                   >
-                    <option value="LOCAL_OLLAMA">Local Ollama (Offline First, 0 Cloud)</option>
-                    <option value="OPENAI">OpenAI / Codex API (GPT-4o, o1, Codex)</option>
-                    <option value="GOOGLE_GEMINI">Google Gemini API (Gemini 1.5/2.0 Flash & Pro)</option>
-                    <option value="OPENAI_COMPATIBLE">OpenAI-Compatible (DeepSeek, OpenRouter, vLLM)</option>
+                    <option value="GOOGLE_GEMINI">Google Gemini API (Gemini 2.0 / 1.5 Flash & Pro)</option>
                     <option value="CUSTOM">Standalone Deterministic Offline Heuristics</option>
                   </select>
                 </div>

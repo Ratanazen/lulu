@@ -1,6 +1,6 @@
 // AI Provider Subsystem Types
 
-export type AIProviderId = 'hybrid_gemini_agy' | 'agy' | 'openai' | 'gemini' | 'anthropic' | 'ollama' | 'custom' | 'offline';
+export type AIProviderId = 'hybrid_gemini_agy' | 'agy' | 'gemini' | 'offline';
 
 export interface ChatMessage {
   id: string;
@@ -27,13 +27,6 @@ export interface ChatResponse {
     totalTokens: number;
   };
   finishReason?: string;
-}
-
-export interface OllamaModelInfo {
-  name: string;
-  size: number;
-  digest: string;
-  modifiedAt: string;
 }
 
 export interface ProviderConfig {
