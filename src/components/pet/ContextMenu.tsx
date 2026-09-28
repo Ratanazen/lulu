@@ -24,6 +24,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
     clean,
     interact,
     patPet,
+    playWithPet,
     setControlCenterOpen,
     setActiveTab,
     setChatOpen,
@@ -55,9 +56,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
     await DesktopWindowService.setPosition(100, 100);
   };
 
-  // Safe window bounding calculation (ensures menu is never offscreen or clipped)
-  const menuWidth = 224;
-  const menuHeight = 248;
+  // Safe window bounding calculation (ensures menu fits window cleanly)
+  const menuWidth = 248;
+  const menuHeight = 308;
   const posX = Math.max(6, Math.min(x, window.innerWidth - menuWidth - 6));
   const posY = Math.max(6, Math.min(y, window.innerHeight - menuHeight - 6));
 
@@ -80,11 +81,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
         width: `${menuWidth}px`,
         maxHeight: `${Math.min(menuHeight, window.innerHeight - 12)}px`,
         zIndex: 9999,
-        backgroundColor: 'var(--color-bg-card, #1E293B)',
-        border: '1px solid var(--color-border, #334155)',
-        borderRadius: '14px',
-        padding: '6px',
-        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.65)',
+        backgroundColor: 'rgba(15, 23, 42, 0.96)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 122, 0, 0.45)',
+        borderRadius: '16px',
+        padding: '6px 8px',
+        boxShadow: '0 20px 48px rgba(0, 0, 0, 0.8), 0 0 16px rgba(255, 122, 0, 0.15)',
         fontSize: '11px',
         color: 'var(--color-text, #F8FAFC)',
         userSelect: 'none',
@@ -97,10 +100,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
       {/* Header with Title and Close Esc */}
       <div
         style={{
-          padding: '4px 6px 6px',
+          padding: '4px 6px 8px',
           fontWeight: 700,
-          color: 'var(--color-primary, #818CF8)',
-          borderBottom: '1px solid var(--color-border, #334155)',
+          color: 'var(--color-primary, #FF7A00)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -134,13 +137,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
 
       {/* Category Filter Tabs Bar */}
       <div
+        className="no-scrollbar"
         style={{
           display: 'flex',
-          gap: '3px',
+          gap: '4px',
           overflowX: 'auto',
-          padding: '4px 0',
-          borderBottom: '1px solid var(--color-border, #334155)',
+          padding: '6px 2px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           flexShrink: 0,
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
         }}
       >
         {categories.map((cat) => (
@@ -148,15 +154,17 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
             style={{
-              padding: '2px 5px',
+              padding: '3px 8px',
               border: 'none',
               borderRadius: '6px',
-              backgroundColor: activeCategory === cat.id ? 'var(--color-primary, #818CF8)' : 'rgba(255,255,255,0.05)',
+              backgroundColor: activeCategory === cat.id ? 'var(--color-primary, #FF7A00)' : 'rgba(255,255,255,0.06)',
               color: activeCategory === cat.id ? '#FFFFFF' : '#94A3B8',
               fontSize: '10px',
               fontWeight: activeCategory === cat.id ? 700 : 500,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              flexShrink: 0,
+              boxShadow: activeCategory === cat.id ? '0 2px 6px rgba(255, 122, 0, 0.35)' : 'none',
               transition: 'all 0.15s ease',
             }}
           >
@@ -167,6 +175,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
 
       {/* Scrollable Action List */}
       <div
+        className="no-scrollbar"
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -255,7 +264,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
         {/* CARE & VITALITY */}
         {(activeCategory === 'all' || activeCategory === 'care') && (
           <>
-            {activeCategory === 'all' && <div style={categoryHeaderStyle}>🍓 Pet Care</div>}
+            {activeCategory === 'all' && <div style={categoryHeaderStyle}>🐾 Pet Care & Hub</div>}
+            <button
+              style={{ ...menuItemStyle, color: 'var(--color-primary, #FF7A00)', fontWeight: 600 }}
+              onClick={() =>
+                handleAction(() => {
+                  setControlCenterOpen(true);
+                  setActiveTab('pet_hub');
+                })
+              }
+            >
+              <span>🐾 Pet Hub & Customize</span>
+              <kbd style={kbdStyle}>Hub</kbd>
+            </button>
             <button
               style={menuItemStyle}
               onClick={() => handleAction(() => feed(25))}
@@ -271,7 +292,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose }) => {
             </button>
             <button
               style={menuItemStyle}
-              onClick={() => handleAction(() => interact())}
+              onClick={() => handleAction(() => playWithPet(25))}
             >
               <span>🎾 Play & Affection</span>
               <kbd style={kbdStyle}>P</kbd>
@@ -461,26 +482,26 @@ const menuItemStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   width: '100%',
-  padding: '4px 6px',
+  padding: '5px 8px',
   background: 'none',
   border: 'none',
-  borderRadius: '5px',
+  borderRadius: '6px',
   color: 'inherit',
   fontSize: '11px',
   textAlign: 'left',
   cursor: 'pointer',
-  transition: 'background 0.12s ease',
+  transition: 'all 0.12s ease',
 };
 
 const categoryHeaderStyle: React.CSSProperties = {
-  fontSize: '9px',
+  fontSize: '10px',
   fontWeight: 700,
-  color: 'var(--color-primary, #818CF8)',
+  color: 'var(--color-primary, #FF7A00)',
   textTransform: 'uppercase',
   letterSpacing: '0.5px',
-  padding: '6px 6px 2px',
-  marginTop: '2px',
-  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+  padding: '6px 8px 3px',
+  marginTop: '4px',
+  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
 };
 
 const kbdStyle: React.CSSProperties = {
