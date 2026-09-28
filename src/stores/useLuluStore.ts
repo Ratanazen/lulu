@@ -148,6 +148,7 @@ interface LuluStoreState {
   setFrame: (frame: number) => void;
   updateNeeds: () => void;
   feed: (amount?: number) => void;
+  playWithPet: (funAmount?: number) => void;
   playGame: (funAmount?: number) => void;
   clean: () => void;
   sleep: () => void;
@@ -449,6 +450,11 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         voiceManager.initialize(),
       ]);
 
+      // Automatically detect and connect AGY CLI / Gemini CLI with Google OAuth
+      aiProviderManager.autoInitializeAgyCli().catch((err) => {
+        console.warn('LuluStore: AGY CLI auto-discovery note:', err);
+      });
+
       voiceManager.onStateChange((vState) => {
         set({ voiceState: vState });
         if (vState.isListening) {
@@ -626,7 +632,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       setTimeout(() => get().setAnimation('idle'), 2000);
     },
 
-    playGame: (funAmount = 30) => {
+    playWithPet: (funAmount = 30) => {
       const { needsEngine, character, preferences } = get();
       needsEngine.play(funAmount);
       const needs = needsEngine.getNeeds();
@@ -647,6 +653,10 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       get().addXp(35);
       get().progressAchievement('caring_friend', 1);
       setTimeout(() => get().setAnimation('idle'), 2500);
+    },
+
+    playGame: (funAmount = 30) => {
+      get().playWithPet(funAmount);
     },
 
     clean: () => {

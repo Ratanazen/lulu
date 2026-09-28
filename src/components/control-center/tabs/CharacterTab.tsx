@@ -259,7 +259,7 @@ export const CharacterTab: React.FC = () => {
       updateCharacterCustomization({ accessories: withAcc });
       speak(`Unlocked ${accId}! Looks splendid! 🌟`);
     } else {
-      speak('Not enough stars yet! Play games or complete achievements! ⭐');
+      speak('Not enough stars yet! Interact with your pet or complete achievements! ⭐');
     }
   };
 

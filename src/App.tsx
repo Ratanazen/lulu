@@ -18,7 +18,7 @@ export const App: React.FC = () => {
     quickActionsOpen,
     setQuickActionsOpen,
     feed,
-    playGame,
+    playWithPet,
     wander,
     sleep,
     settings,
@@ -128,7 +128,7 @@ export const App: React.FC = () => {
           feed(25);
         } else if (k === 'p') {
           e.preventDefault();
-          playGame(25);
+          playWithPet(25);
         } else if (k === 'w') {
           e.preventDefault();
           wander();
@@ -164,7 +164,7 @@ export const App: React.FC = () => {
     quickActionsOpen,
     setQuickActionsOpen,
     feed,
-    playGame,
+    playWithPet,
     wander,
     sleep,
     settings,

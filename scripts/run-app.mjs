@@ -67,8 +67,8 @@ const child = spawn(binaryToRun, process.argv.slice(2), {
   stdio: 'inherit',
   env: {
     ...process.env,
-    // Enable Wayland and X11 compat
-    GDK_BACKEND: process.env.GDK_BACKEND || 'x11,wayland',
+    // Enable Wayland and X11 compat, prioritizing Wayland when running under Wayland compositors
+    GDK_BACKEND: process.env.GDK_BACKEND || (process.env.WAYLAND_DISPLAY ? 'wayland,x11' : 'x11'),
   },
 });
 

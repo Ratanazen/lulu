@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 
 console.log('\n🚀 ========================================================');
 console.log('   LULU SUITE — FULL SYSTEM APPLICATION UPDATE PIPELINE   ');
@@ -176,9 +176,16 @@ for_window [app_id="com.lulu.code"] floating disable, border pixel 1
   if (isLuluRunning) {
     console.log('   Restarting active Lulu companion instance...');
     execSync('killall -9 lulu 2>/dev/null || true');
-    setTimeout(() => {
-      execSync(`${luluTargetBinary} &`);
-    }, 800);
+    const child = spawn(luluTargetBinary, [], {
+      detached: true,
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        GDK_BACKEND: process.env.WAYLAND_DISPLAY ? 'wayland,x11' : 'x11',
+      },
+    });
+    child.unref();
+    console.log('   [PASS] Relaunched Lulu with Wayland/X11 display support.');
   } else {
     console.log('   No active background instances to restart.');
   }

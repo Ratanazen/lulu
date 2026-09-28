@@ -92,4 +92,12 @@ describe('AIProviderManager', () => {
     expect(chatRes).toBeDefined();
     expect(chatRes?.message.role).toBe('assistant');
   });
+
+  it('auto-initializes AGY CLI and promotes default provider when detected', async () => {
+    manager.setActiveProviderId('offline');
+    const result = await manager.autoInitializeAgyCli();
+    expect(result.detected).toBe(true);
+    expect(result.provider).toBe('hybrid_gemini_agy');
+    expect(manager.getActiveProviderId()).toBe('hybrid_gemini_agy');
+  });
 });

@@ -7,7 +7,7 @@ export const BehaviorTab: React.FC = () => {
 
   const modes: { id: BehaviorMode; label: string; desc: string }[] = [
     { id: 'NORMAL', label: 'Balanced Normal', desc: 'Natural balanced blend of idle resting and occasional exploring.' },
-    { id: 'PLAYFUL', label: 'Playful & Active', desc: 'Frequent exploration, invitations to play mini-games, cheerful reactions.' },
+    { id: 'PLAYFUL', label: 'Playful & Active', desc: 'Frequent exploration, lively pet interactions, cheerful reactions.' },
     { id: 'CALM', label: 'Calm & Gentle', desc: 'Slow, relaxed wanderings, peaceful resting, lower movement speed.' },
     { id: 'FOCUSED', label: 'Deep Focus Companion', desc: 'Quiet, minimal movement, stays by your side as a study/work partner.' },
     { id: 'QUIET', label: 'Muted Quiet', desc: 'No spontaneous speech bubbles, static or resting posture.' },

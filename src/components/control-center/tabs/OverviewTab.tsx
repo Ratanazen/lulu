@@ -15,7 +15,7 @@ export const OverviewTab: React.FC = () => {
     mediaStatus,
     musicState,
     feed,
-    playGame,
+    playWithPet,
     clean,
     sleep,
     wander,
@@ -186,9 +186,9 @@ export const OverviewTab: React.FC = () => {
           <span style={{ fontSize: '20px' }}>🎵</span>
           <span style={{ fontSize: '12px', fontWeight: 600 }}>Music & Lyrics</span>
         </button>
-        <button onClick={() => setActiveTab('games')} style={quickActionBtnStyle}>
-          <span style={{ fontSize: '20px' }}>🎮</span>
-          <span style={{ fontSize: '12px', fontWeight: 600 }}>Mini-Games</span>
+        <button onClick={() => setActiveTab('pet_hub')} style={quickActionBtnStyle}>
+          <span style={{ fontSize: '20px' }}>🐾</span>
+          <span style={{ fontSize: '12px', fontWeight: 600 }}>Pet Hub</span>
         </button>
         <button onClick={() => setActiveTab('system')} style={quickActionBtnStyle}>
           <span style={{ fontSize: '20px' }}>⚙️</span>
@@ -313,7 +313,7 @@ export const OverviewTab: React.FC = () => {
           <span style={{ fontWeight: 600 }}>Feed Berry</span>
           <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>+25 Hunger</span>
         </button>
-        <button onClick={() => playGame(25)} style={careBtnStyle}>
+        <button onClick={() => playWithPet(25)} style={careBtnStyle}>
           <span style={{ fontSize: '22px' }}>🎾</span>
           <span style={{ fontWeight: 600 }}>Play Time</span>
           <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>+25 Fun</span>
@@ -411,11 +411,11 @@ export const OverviewTab: React.FC = () => {
             <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Move to home position</div>
           </div>
         </button>
-        <button onClick={() => setActiveTab('games')} style={actionCardBtnStyle}>
-          <span style={{ fontSize: '20px' }}>🎯</span>
+        <button onClick={() => setActiveTab('pet_hub')} style={actionCardBtnStyle}>
+          <span style={{ fontSize: '20px' }}>🐾</span>
           <div>
-            <div style={{ fontWeight: 600 }}>Mini-Games Arcade</div>
-            <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>8 playable games</div>
+            <div style={{ fontWeight: 600 }}>Pet Hub & Customize</div>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Choose & style pets</div>
           </div>
         </button>
       </div>

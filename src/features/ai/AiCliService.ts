@@ -138,6 +138,7 @@ export class AiCliService {
         return await invoke<AiCliExecutionResult>('execute_ai_cli', {
           provider,
           args,
+          prompt: args.join(' '),
           workspace,
         });
       }
@@ -159,6 +160,29 @@ export class AiCliService {
       exitCode: 0,
       executionTimeMs: 42,
     };
+  }
+
+  /**
+   * Warms up and verifies the AGY CLI executable.
+   */
+  public static async warmupAgyCli(): Promise<{ ready: boolean; version?: string; error?: string }> {
+    try {
+      const res = await this.executeCli('agy', ['--version']);
+      if (res.success || res.exitCode === 0) {
+        return { ready: true, version: res.stdout.trim() };
+      }
+      return { ready: false, error: res.stderr || 'AGY warmup returned non-zero code' };
+    } catch (err: any) {
+      return { ready: false, error: err?.message || String(err) };
+    }
+  }
+
+  public static async detectAll(forceRefresh = false): Promise<AiCliStatus[]> {
+    return this.detectProviders(forceRefresh);
+  }
+
+  public static async getGoogleSession(): Promise<GoogleAccountSession | null> {
+    return this.getGoogleAccountSession();
   }
 
   /**

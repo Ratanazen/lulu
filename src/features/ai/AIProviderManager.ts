@@ -5,6 +5,7 @@ import { CombinedGeminiAgyProvider } from './providers/CombinedGeminiAgyProvider
 import { StorageService } from '../../services/storageService';
 import { personalityEngine } from '../personality/personalityEngine';
 import { memoryManager } from '../memory/MemoryManager';
+import { AiCliService } from './AiCliService';
 
 export const DEFAULT_PROVIDER_CONFIGS: Record<AIProviderId, ProviderConfig> = {
   hybrid_gemini_agy: {
@@ -103,6 +104,50 @@ export class AIProviderManager {
     await StorageService.set('ai_provider_configs', this.configs);
   }
 
+  /**
+   * Automatically discovers AGY CLI / Gemini CLI and Google OAuth session on startup.
+   * If detected, warms up the process and sets the active provider to hybrid_gemini_agy or agy.
+   */
+  async autoInitializeAgyCli(): Promise<{ detected: boolean; authenticated: boolean; provider: AIProviderId }> {
+    try {
+      const googleSession = await AiCliService.getGoogleSession();
+      const cliStatuses = await AiCliService.detectAll();
+      const agyCli = cliStatuses.find((c) => c.id === 'agy' || c.id === 'gemini');
+
+      const isAgyInstalled = Boolean(agyCli && agyCli.executablePath);
+      const isAuthenticated = Boolean(googleSession?.isAuthenticated || agyCli?.isAuthenticated);
+
+      if (isAgyInstalled || isAuthenticated) {
+        // Warm up CLI asynchronously
+        AiCliService.warmupAgyCli().then((warmup) => {
+          if (warmup.ready) {
+            console.log(`[AIProviderManager] AGY CLI warmed up successfully: ${warmup.version}`);
+          }
+        }).catch(() => {});
+
+        // If current provider is offline or empty, promote to hybrid_gemini_agy
+        if (!this.activeProviderId || this.activeProviderId === 'offline') {
+          this.activeProviderId = 'hybrid_gemini_agy';
+          await this.saveSettings();
+        }
+
+        return {
+          detected: true,
+          authenticated: isAuthenticated,
+          provider: this.activeProviderId,
+        };
+      }
+    } catch (err) {
+      console.warn('[AIProviderManager] autoInitializeAgyCli check warning:', err);
+    }
+
+    return {
+      detected: false,
+      authenticated: false,
+      provider: this.activeProviderId,
+    };
+  }
+
   registerProvider(provider: AIProvider): void {
     this.providers.set(provider.id, provider);
   }
@@ -194,7 +239,7 @@ export class AIProviderManager {
       return "🖥️ **Host Computer Specifications & Hardware Telemetry**:\n• **CPU**: AMD Ryzen 5 7520U with Radeon Graphics (4 Cores / 8 Threads)\n• **RAM**: 15.2 GB Total Physical Memory\n• **GPU**: AMD Mendocino [Radeon 610M] (amdgpu driver, 512 MB VRAM)\n• **Desktop**: SwayFX Wayland Compositor (100% Desktop Transparency Active)\n• **Power**: Battery (Charging) / AC Mains Connected\n\nOpen **Control Center (Ctrl+Shift+C) -> System Monitor** to view real-time per-thread gauges, memory graphs, and GPU thermals! ⚡";
     }
     if (prompt.includes('help') || prompt.includes('what can you do')) {
-      return "I can chat with you, track your focus with Pomodoro timers, do math, keep scratchpad notes, play 8 mini-games, and learn your habits! (Tip: Set up an AI provider in Settings -> AI & Chat for deep intelligence).";
+      return "I can chat with you, track your focus with Pomodoro timers, do math, keep scratchpad notes, choose and customize companion pets in Pet Hub, and learn your habits! (Powered by Google Gemini & Antigravity CLI).";
     }
 
     return `*nods thoughtfully* I hear you! To give you a fully comprehensive response on "${userPrompt.slice(0, 30)}...", please connect an AI provider like local Ollama, OpenAI, or Gemini in Settings ⚙️. Meanwhile, I'm here cheering you on! ✨`;

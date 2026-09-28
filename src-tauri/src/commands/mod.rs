@@ -206,10 +206,19 @@ pub fn detect_ai_cli_providers() -> Result<Vec<crate::ai::AiCliStatus>, String> 
 #[tauri::command]
 pub fn execute_ai_cli(
     provider: String,
-    prompt: String,
+    prompt: Option<String>,
+    args: Option<Vec<String>>,
     workspace: Option<String>,
 ) -> Result<crate::ai::AiCliExecutionResult, String> {
-    crate::ai::AiCliService::execute_cli(&provider, &[&prompt], workspace.as_deref())
+    let final_args: Vec<String> = if let Some(a) = args {
+        a
+    } else if let Some(p) = prompt {
+        vec![p]
+    } else {
+        Vec::new()
+    };
+    let str_args: Vec<&str> = final_args.iter().map(|s| s.as_str()).collect();
+    crate::ai::AiCliService::execute_cli(&provider, &str_args, workspace.as_deref())
 }
 
 #[tauri::command]
