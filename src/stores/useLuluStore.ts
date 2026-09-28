@@ -55,8 +55,8 @@ import { CapabilityService, RuntimeCapability, EffectiveCapability } from '../se
 import { calculateMessageDuration } from '../utils/readingTime';
 
 export const DEFAULT_SETTINGS: LuluSettings = {
-  theme: 'madara-shinobi',
-  characterId: 'madara_shinobi',
+  theme: 'classic-lulu',
+  characterId: 'lulu',
   characterScale: 1.0,
   animationFps: 60,
   renderFps: 60,
@@ -213,7 +213,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     movementEngine,
     speechSystem,
 
-    character: characterManager.getRoster().find((c) => c.id === 'madara_shinobi') || characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
+    character: LULU_DEFAULT_CHARACTER,
     characters: characterManager.getRoster(),
     animationState: 'idle',
     animationFrame: 0,
@@ -242,7 +242,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     monitors: [],
     systemMetrics: null,
     controlCenterOpen: false,
-    activeTab: 'overview',
+    activeTab: 'pet_hub',
     onboardingCompleted: false,
     chatOpen: false,
     quickActionsOpen: false,
@@ -278,24 +278,12 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
       const settingsMap = new Map(allSettings);
 
       const rawTheme = settingsMap.get('theme') as ThemeId;
-      const themeStr = rawTheme as string;
-      const theme = (!rawTheme || themeStr === 'anime-naruto' || themeStr === 'naruto-sage' || themeStr === 'midnight-neon')
-        ? 'madara-shinobi'
-        : rawTheme;
+      const theme = rawTheme || 'classic-lulu';
       get().setTheme(theme);
 
-      const rawCharId = settingsMap.get('activeCharacterId');
-      const activeCharacterId = (!rawCharId || rawCharId === 'naruto_shinobi' || rawCharId === 'lulu')
-        ? 'madara_shinobi'
-        : rawCharId;
+      const rawCharId = settingsMap.get('activeCharacterId') as string;
+      const activeCharacterId = rawCharId || 'lulu';
       get().setCharacter(activeCharacterId);
-
-      if (rawCharId !== activeCharacterId || rawTheme !== theme) {
-        setSettingsBulk([
-          ['activeCharacterId', activeCharacterId],
-          ['theme', theme],
-        ]).catch(console.error);
-      }
 
       const behaviorMode = settingsMap.get('behaviorMode') as BehaviorMode;
       if (behaviorMode) get().updateSettings({ behaviorMode });
@@ -383,12 +371,11 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
     initialize: async () => {
       // 1. Load settings & progression from SQLite storage
       const savedSettings = await StorageService.get<LuluSettings>('settings', DEFAULT_SETTINGS);
-      if (!savedSettings.characterId || savedSettings.characterId === 'naruto_shinobi' || savedSettings.characterId === 'lulu') {
-        savedSettings.characterId = 'madara_shinobi';
+      if (!savedSettings.characterId) {
+        savedSettings.characterId = 'lulu';
       }
-      const savedThemeStr = savedSettings.theme as string;
-      if (!savedSettings.theme || savedThemeStr === 'anime-naruto' || savedThemeStr === 'naruto-sage' || savedThemeStr === 'midnight-neon') {
-        savedSettings.theme = 'madara-shinobi';
+      if (!savedSettings.theme) {
+        savedSettings.theme = 'classic-lulu';
       }
       StorageService.set('settings', savedSettings).catch(console.error);
 
@@ -432,7 +419,7 @@ export const useLuluStore = create<LuluStoreState>((set, get) => {
         settings: savedSettings,
         progression: savedProg,
         preferences: loadedPrefs,
-        character: savedCustomChar || characterManager.getRoster().find((c) => c.id === savedSettings.characterId) || OFFICIAL_CHARACTERS.find((c) => c.id === savedSettings.characterId) || characterManager.getRoster().find((c) => c.id === 'madara_shinobi') || characterManager.getRoster().find((c) => c.id === 'naruto_shinobi') || LULU_DEFAULT_CHARACTER,
+        character: savedCustomChar || characterManager.getRoster().find((c) => c.id === savedSettings.characterId) || OFFICIAL_CHARACTERS.find((c) => c.id === savedSettings.characterId) || LULU_DEFAULT_CHARACTER,
         needs: needsEngine.getNeeds(),
         onboardingCompleted: onboardingDone,
       });

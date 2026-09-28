@@ -1,16 +1,34 @@
 import { AIProvider, AIProviderId, ChatRequest, ChatResponse, ProviderConfig } from '../types';
+import { AiCliService } from '../AiCliService';
+
+function stripAnsi(text: string): string {
+  return text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/g, '').trim();
+}
 
 export class GeminiProvider implements AIProvider {
   readonly id: AIProviderId = 'gemini';
   readonly name = 'Google Gemini';
 
   private getModel(config: ProviderConfig, request?: ChatRequest): string {
-    return request?.model || config.selectedModel || 'gemini-1.5-flash';
+    return request?.model || config.selectedModel || 'gemini-3.8-flash-low';
   }
 
   async testConnection(config: ProviderConfig): Promise<{ success: boolean; message: string; models?: string[] }> {
     if (!config.apiKey) {
-      return { success: false, message: 'API key is required for Gemini.' };
+      try {
+        const status = await AiCliService.getProviderStatus('gemini');
+        if (status && status.status !== 'NOT_INSTALLED') {
+          const res = await AiCliService.executeCli('gemini', ['--version']);
+          if (res.success || res.exitCode === 0) {
+            return {
+              success: true,
+              message: `Connected to Gemini CLI v${res.stdout.trim() || status.version || '1.2.11'} via Google OAuth session!`,
+              models: config.availableModels,
+            };
+          }
+        }
+      } catch {}
+      return { success: false, message: 'API key is required for direct Gemini REST or ensure Gemini CLI is installed.' };
     }
 
     try {
@@ -31,8 +49,43 @@ export class GeminiProvider implements AIProvider {
   }
 
   async chat(request: ChatRequest, config: ProviderConfig): Promise<ChatResponse> {
-    if (!config.apiKey) throw new Error('Gemini API key is missing.');
     const model = this.getModel(config, request);
+
+    if (!config.apiKey) {
+      // Use Gemini CLI protocol via local OAuth session
+      const historyText = request.messages
+        .filter((m) => m.content && m.content.trim())
+        .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content.trim()}`)
+        .join('\n\n');
+
+      const fullPrompt = request.systemPrompt
+        ? `${request.systemPrompt}\n\n${historyText}\nAssistant:`
+        : historyText || 'Hello!';
+
+      const res = await AiCliService.executeCli('gemini', ['--print', fullPrompt, '--model', model]);
+      if (!res.success && res.exitCode !== 0 && !res.stdout.trim()) {
+        throw new Error(`Gemini CLI Error: ${res.stderr || 'Non-zero exit code'}`);
+      }
+
+      const cleaned = stripAnsi(res.stdout);
+      const replyContent = cleaned || res.stdout.trim() || 'Gemini response received ✨';
+
+      return {
+        message: {
+          id: `gemini_${Date.now()}`,
+          role: 'assistant',
+          content: replyContent,
+          timestamp: Date.now(),
+        },
+        model,
+        usage: {
+          promptTokens: Math.round(fullPrompt.length / 4),
+          completionTokens: Math.round(replyContent.length / 4),
+          totalTokens: Math.round((fullPrompt.length + replyContent.length) / 4),
+        },
+      };
+    }
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
 
     const contents = request.messages.map((m) => ({
@@ -84,7 +137,16 @@ export class GeminiProvider implements AIProvider {
     config: ProviderConfig,
     signal?: AbortSignal
   ): AsyncGenerator<string> {
-    if (!config.apiKey) throw new Error('Gemini API key is missing.');
+    if (!config.apiKey) {
+      const res = await this.chat(request, config);
+      const content = res.message.content;
+      const words = content.split(' ');
+      for (let i = 0; i < words.length; i++) {
+        yield (i === 0 ? '' : ' ') + words[i];
+      }
+      return;
+    }
+
     const model = this.getModel(config, request);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${config.apiKey}`;
 

@@ -163,6 +163,27 @@ export class Skeletal2DRenderer implements ICharacterRenderer {
     ctx.beginPath();
     ctx.ellipse(0, 2, 11, 13, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Accessory: Backpack
+    if (character.accessories?.includes('backpack')) {
+      ctx.fillStyle = '#B45309'; // Rich leather amber
+      ctx.beginPath();
+      ctx.roundRect(-16, -10, 32, 24, 7);
+      ctx.fill();
+      ctx.fillStyle = '#D97706';
+      ctx.beginPath();
+      ctx.roundRect(-12, -4, 24, 15, 5);
+      ctx.fill();
+      // Buckle & Straps
+      ctx.fillStyle = '#FDE68A';
+      ctx.fillRect(-4, 0, 8, 4);
+      ctx.strokeStyle = '#78350F';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-10, -10); ctx.lineTo(-10, 8);
+      ctx.moveTo(10, -10);  ctx.lineTo(10, 8);
+      ctx.stroke();
+    }
     ctx.restore();
 
     // 5. Arms / Paws Bones
@@ -233,6 +254,60 @@ export class Skeletal2DRenderer implements ICharacterRenderer {
     ctx.beginPath();
     ctx.ellipse(0, 0, 26, 23, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Accessory: Hat
+    if (character.accessories?.includes('hat') || character.accessories?.includes('wizard_hat')) {
+      ctx.fillStyle = '#4C1D95';
+      ctx.beginPath();
+      ctx.ellipse(0, -18, 28, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#5B21B6';
+      ctx.beginPath();
+      ctx.moveTo(-18, -18);
+      ctx.quadraticCurveTo(-4, -42, 6, -46);
+      ctx.quadraticCurveTo(8, -34, 18, -18);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#F59E0B';
+      ctx.beginPath();
+      ctx.ellipse(0, -19, 19, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FDE68A';
+      ctx.beginPath();
+      ctx.arc(6, -46, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Accessory: Headset
+    if (character.accessories?.includes('headset')) {
+      ctx.strokeStyle = '#0284C7';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(0, -12, 26, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+      ctx.fillStyle = '#0369A1';
+      ctx.beginPath();
+      ctx.roundRect(-29, -8, 7, 18, 3);
+      ctx.fill();
+      ctx.fillStyle = '#38BDF8';
+      ctx.fillRect(-27, -5, 3, 12);
+      ctx.fillStyle = '#0369A1';
+      ctx.beginPath();
+      ctx.roundRect(22, -8, 7, 18, 3);
+      ctx.fill();
+      ctx.fillStyle = '#38BDF8';
+      ctx.fillRect(24, -5, 3, 12);
+      ctx.strokeStyle = '#64748B';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-26, 6);
+      ctx.lineTo(-14, 13);
+      ctx.stroke();
+      ctx.fillStyle = '#EF4444';
+      ctx.beginPath();
+      ctx.arc(-14, 13, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Starlight Forehead Mark / Leaf Headband
     if (character.accessories?.includes('leaf_headband') || character.id === 'naruto_shinobi') {
@@ -319,6 +394,31 @@ export class Skeletal2DRenderer implements ICharacterRenderer {
       ctx.beginPath();
       ctx.arc(-11, -2, 2, 0, Math.PI * 2);
       ctx.arc(9, -2, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Accessory: Glasses
+    if (character.accessories?.includes('glasses') || character.accessories?.includes('star_glasses')) {
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 2.2;
+      // Left frame
+      ctx.beginPath();
+      ctx.roundRect(-16, -6, 12, 11, 3);
+      ctx.stroke();
+      // Right frame
+      ctx.beginPath();
+      ctx.roundRect(4, -6, 12, 11, 3);
+      ctx.stroke();
+      // Bridge
+      ctx.beginPath();
+      ctx.moveTo(-4, -1);
+      ctx.lineTo(4, -1);
+      ctx.stroke();
+      // Lens shine
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.beginPath();
+      ctx.arc(-12, -3, 3, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.arc(8, -3, 3, 0.2 * Math.PI, 0.8 * Math.PI);
       ctx.fill();
     }
 

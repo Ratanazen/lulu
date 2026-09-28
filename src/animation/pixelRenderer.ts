@@ -277,8 +277,8 @@ export class PixelRenderer {
       ctx.ellipse(0, earY - 7, 6 * pixelSize, 2 * pixelSize, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
-    if (accessories?.includes('star_glasses')) {
-      // Cute star glasses
+    if (accessories?.includes('star_glasses') || accessories?.includes('glasses')) {
+      // Cute glasses
       ctx.strokeStyle = '#F59E0B';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(-6 * pixelSize, (eyeY - 2) * pixelSize, 4 * pixelSize, 4 * pixelSize);
@@ -301,12 +301,28 @@ export class PixelRenderer {
       drawPixel(3, earY - 1, '#FB7185');
       drawPixel(7, earY - 1, '#FB7185');
     }
-    if (accessories?.includes('wizard_hat')) {
+    if (accessories?.includes('wizard_hat') || accessories?.includes('hat')) {
       // Celestial wizard hat with gold star
       drawRect(-5, earY - 3, 10, 2, '#4338CA');
       drawRect(-3, earY - 6, 6, 3, '#4338CA');
       drawRect(-2, earY - 9, 4, 3, '#6366F1');
       drawPixel(-1, earY - 11, '#FDE68A');
+    }
+    if (accessories?.includes('headset')) {
+      // Audio headset
+      ctx.strokeStyle = '#0284C7';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, earY - 2, 6 * pixelSize, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+      drawRect(-7, earY, 2, 4, '#38BDF8');
+      drawRect(5, earY, 2, 4, '#38BDF8');
+    }
+    if (accessories?.includes('backpack')) {
+      // Adventurer backpack
+      drawRect(-4, 2, 8, 5, '#B45309');
+      drawRect(-3, 4, 6, 3, '#D97706');
+      drawPixel(0, 5, '#FDE68A');
     }
     if (accessories?.includes('leaf_headband') || accessories?.includes('naruto_headband')) {
       // Hidden Leaf Forehead Protector

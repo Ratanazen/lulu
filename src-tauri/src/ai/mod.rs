@@ -189,19 +189,55 @@ impl AiCliService {
     pub fn detect_all() -> Vec<AiCliStatus> {
         let mut results = Vec::new();
 
+        let google_oauth_exists = std::env::var("HOME")
+            .ok()
+            .map(|h| {
+                let p1 = std::path::PathBuf::from(&h).join(".gemini/antigravity-cli/antigravity-oauth-token");
+                let p2 = std::path::PathBuf::from(&h).join(".gemini/oauth_credentials.json");
+                p1.exists() || p2.exists()
+            })
+            .unwrap_or(false);
+
         // 1. Gemini CLI
-        let gemini_path = Self::probe_binary("gemini");
+        let gemini_path = Self::probe_binary("gemini").or_else(|| {
+            std::env::var("HOME").ok().map(|h| std::path::PathBuf::from(h).join(".local/bin/gemini")).and_then(|p| {
+                if p.exists() {
+                    Some(p.to_string_lossy().to_string())
+                } else {
+                    None
+                }
+            })
+        });
         let gemini_ver = gemini_path.as_ref().and_then(|_| Self::get_version("gemini"));
         let gemini_installed = gemini_path.is_some();
+        let gemini_auth = google_oauth_exists || std::env::var("GEMINI_API_KEY").is_ok();
+        let gemini_status = if gemini_installed {
+            if gemini_auth {
+                "AUTHENTICATED".to_string()
+            } else {
+                "INSTALLED".to_string()
+            }
+        } else {
+            "NOT_INSTALLED".to_string()
+        };
+
         results.push(AiCliStatus {
             id: "gemini".to_string(),
             name: "Gemini CLI".to_string(),
-            status: if gemini_installed { "INSTALLED".to_string() } else { "NOT_INSTALLED".to_string() },
+            status: gemini_status,
             executable_path: gemini_path,
             version: gemini_ver,
-            is_authenticated: false,
-            install_guidance: "Install official Gemini CLI via `npm install -g @google/gemini-cli` or Google Cloud SDK.".to_string(),
-            capabilities: vec!["chat".to_string(), "streaming".to_string(), "code_generation".to_string()],
+            is_authenticated: gemini_auth,
+            install_guidance: "Official Gemini CLI linked to Google account / Antigravity session.".to_string(),
+            capabilities: vec![
+                "gemini-3.8-flash".to_string(),
+                "gemini-3.7-flash".to_string(),
+                "gemini-2.0-flash-exp".to_string(),
+                "chat".to_string(),
+                "streaming".to_string(),
+                "code_generation".to_string(),
+                "google_oauth_session".to_string(),
+            ],
         });
 
         // 2. Codex CLI
@@ -308,7 +344,17 @@ impl AiCliService {
         workspace: Option<&str>,
     ) -> Result<AiCliExecutionResult, String> {
         let binary_path = match provider {
-            "gemini" => "gemini".to_string(),
+            "gemini" => {
+                Self::probe_binary("gemini").or_else(|| {
+                    std::env::var("HOME").ok().map(|h| std::path::PathBuf::from(h).join(".local/bin/gemini")).and_then(|p| {
+                        if p.exists() {
+                            Some(p.to_string_lossy().to_string())
+                        } else {
+                            None
+                        }
+                    })
+                }).unwrap_or_else(|| "gemini".to_string())
+            }
             "codex" => "codex".to_string(),
             "claude" => "claude".to_string(),
             "ollama" => "ollama".to_string(),

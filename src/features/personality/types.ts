@@ -2,10 +2,12 @@
 
 export type PersonalityArchetype =
   | 'friendly'
+  | 'calm'
+  | 'playful'
+  | 'focused'
   | 'cute'
   | 'professional'
   | 'funny'
-  | 'calm'
   | 'energetic'
   | 'study_buddy'
   | 'coding_buddy'

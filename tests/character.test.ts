@@ -110,4 +110,22 @@ describe('Multi-Renderer Character Engine & Anime Character Platform', () => {
       expect(c.personality.tone).toBeDefined();
     }
   });
+
+  it('includes all 6 official Lulu Pet Hub companion characters', () => {
+    const petIds = ['lulu', 'neko', 'robo', 'mochi', 'pixel', 'sprout'];
+    const officialIds = OFFICIAL_CHARACTERS.map((c) => c.id);
+    for (const id of petIds) {
+      expect(officialIds).toContain(id);
+    }
+
+    const officialPets = OFFICIAL_CHARACTERS.filter((c) => petIds.includes(c.id));
+    expect(officialPets).toHaveLength(6);
+    for (const pet of officialPets) {
+      expect(pet.name).toBeDefined();
+      expect(pet.displayName).toBeDefined();
+      expect(pet.description).toBeDefined();
+      expect(pet.personality).toBeDefined();
+      expect(pet.palette).toBeDefined();
+    }
+  });
 });

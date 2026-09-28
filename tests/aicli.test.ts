@@ -26,8 +26,9 @@ describe('AI CLI Detection & Execution Service', () => {
     expect(claude?.executablePath).toBe('/home/reny/.local/bin/claude');
 
     const gemini = providers.find((p) => p.id === 'gemini');
-    expect(gemini?.status).toBe('NOT_INSTALLED');
-    expect(gemini?.installGuidance).toContain('npm install -g @google/gemini-cli');
+    expect(gemini?.status).toBe('AUTHENTICATED');
+    expect(gemini?.executablePath).toBe('/home/reny/.local/bin/gemini');
+    expect(gemini?.isAuthenticated).toBe(true);
 
     const ollama = providers.find((p) => p.id === 'ollama');
     expect(ollama?.installGuidance).toContain('curl -fsSL https://ollama.com/install.sh');

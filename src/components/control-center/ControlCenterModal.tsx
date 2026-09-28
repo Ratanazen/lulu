@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLuluStore } from '../../stores/useLuluStore';
+const PetHubTab = React.lazy(() => import('./tabs/PetHubTab').then((m) => ({ default: m.PetHubTab })));
 const OverviewTab = React.lazy(() => import('./tabs/OverviewTab').then((m) => ({ default: m.OverviewTab })));
 const CharacterTab = React.lazy(() => import('./tabs/CharacterTab').then((m) => ({ default: m.CharacterTab })));
 const BehaviorTab = React.lazy(() => import('./tabs/BehaviorTab').then((m) => ({ default: m.BehaviorTab })));
@@ -34,6 +35,7 @@ export const ControlCenterModal: React.FC = () => {
   if (!controlCenterOpen) return null;
 
   const navItems = [
+    { id: 'pet_hub', label: 'Pet Hub', icon: '🐾' },
     { id: 'overview', label: 'Overview', icon: '🏠' },
     { id: 'ai_chat', label: 'AI & Models', icon: '🤖' },
     { id: 'agents', label: 'AI Agents & Teams', icon: '👥' },
@@ -57,6 +59,7 @@ export const ControlCenterModal: React.FC = () => {
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      case 'pet_hub': return <PetHubTab />;
       case 'overview': return <OverviewTab />;
       case 'ai_chat': return <AIChatTab />;
       case 'agents': return <AgentsTab />;
