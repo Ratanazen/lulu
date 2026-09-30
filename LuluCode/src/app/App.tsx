@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '../components/layout/Header';
 import { WorkspacePanel } from '../features/workspace/WorkspacePanel';
-import { CodeEditor } from '../features/editor/CodeEditor';
 import { ChatPanel } from '../features/chat/ChatPanel';
 import { InspectorPanel } from '../features/diagnostics/InspectorPanel';
 import { TerminalPanel } from '../features/terminal/TerminalPanel';
@@ -9,14 +8,13 @@ import { PermissionDialog } from '../features/permissions/PermissionDialog';
 import { SettingsModal } from '../features/settings/SettingsModal';
 import { useWorkspaceStore } from '../stores/useWorkspaceStore';
 import { useProviderStore } from '../stores/useProviderStore';
-import { Code2, MessageSquare, PanelBottomClose, PanelBottomOpen } from 'lucide-react';
+import { PanelBottomClose, PanelBottomOpen } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [centerView, setCenterView] = useState<'editor' | 'chat' | 'split'>('split');
   const [isTerminalOpen, setIsTerminalOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const { openWorkspace, rootPath } = useWorkspaceStore();
+  const { openWorkspace } = useWorkspaceStore();
   const { detectOllama } = useProviderStore();
 
   useEffect(() => {
@@ -24,6 +22,15 @@ export const App: React.FC = () => {
     const initialPath = '/home/reny/Documents/Lulu/LuluCode';
     openWorkspace(initialPath);
     detectOllama();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        setIsSettingsOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openWorkspace, detectOllama]);
 
   return (
@@ -31,81 +38,41 @@ export const App: React.FC = () => {
       {/* Top Header */}
       <Header onOpenSettings={() => setIsSettingsOpen(true)} />
 
-      {/* Main Workspace + Editor/Chat + Inspector */}
+      {/* Main Workspace + Agent Chat + Inspector */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Workspace Panel (Files / Search / Git / Tasks) */}
         <WorkspacePanel />
 
-        {/* Center: Editor / Agent Chat */}
+        {/* Center: Agent Chat + Embedded Terminal */}
         <div className="flex-1 flex flex-col min-w-0 bg-[#12141a]">
-          {/* Center Mode Switcher Bar */}
+          {/* Subheader / Terminal toggle */}
           <div className="h-8 bg-[#181b22] border-b border-[#2b313e] flex items-center justify-between px-3 shrink-0 select-none">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCenterView('editor')}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs transition ${
-                  centerView === 'editor'
-                    ? 'bg-[#1f232d] text-blue-400 font-medium'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <Code2 size={13} /> Editor
-              </button>
-              <button
-                onClick={() => setCenterView('chat')}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs transition ${
-                  centerView === 'chat'
-                    ? 'bg-[#1f232d] text-blue-400 font-medium'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <MessageSquare size={13} /> Agent Chat
-              </button>
-              <button
-                onClick={() => setCenterView('split')}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs transition ${
-                  centerView === 'split'
-                    ? 'bg-[#1f232d] text-blue-400 font-medium'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                Split View
-              </button>
-            </div>
-
+            <span className="text-xs font-semibold text-gray-300">Agent & Chat</span>
             <button
               onClick={() => setIsTerminalOpen(!isTerminalOpen)}
-              className="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-[#1f232d] transition"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs text-gray-400 hover:text-gray-200 hover:bg-[#1f232d] transition"
               title="Toggle Terminal"
             >
-              {isTerminalOpen ? <PanelBottomClose size={14} /> : <PanelBottomOpen size={14} />}
+              {isTerminalOpen ? <PanelBottomClose size={13} /> : <PanelBottomOpen size={13} />}
+              <span>{isTerminalOpen ? 'Hide Terminal' : 'Show Terminal'}</span>
             </button>
           </div>
 
-          {/* Center Viewports */}
-          <div className="flex-1 flex min-h-0">
-            {(centerView === 'editor' || centerView === 'split') && (
-              <div className="flex-1 min-w-0 h-full border-r border-[#2b313e]/50">
-                <CodeEditor />
-              </div>
-            )}
-            {(centerView === 'chat' || centerView === 'split') && (
-              <div className="flex-1 min-w-0 h-full">
-                <ChatPanel />
-              </div>
-            )}
+          {/* Center Chat Viewport */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ChatPanel onOpenSettings={() => setIsSettingsOpen(true)} />
           </div>
 
-          {/* Bottom: Terminal / Logs */}
+          {/* Embedded Bottom Terminal */}
           {isTerminalOpen && (
-            <div className="h-60 shrink-0">
+            <div className="h-60 shrink-0 border-t border-[#2b313e]">
               <TerminalPanel />
             </div>
           )}
         </div>
 
-        {/* Right: Inspector (Plan, Diagnostics) */}
-        <InspectorPanel />
+        {/* Right: Inspector (Plan, Diagnostics, System Hardware) */}
+        <InspectorPanel onOpenSettings={() => setIsSettingsOpen(true)} />
       </div>
 
       {/* Global Modals */}

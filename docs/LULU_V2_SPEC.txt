@@ -1,0 +1,1920 @@
+<USER_REQUEST>
+# LULU — FULL NATIVE DESKTOP COMPANION
+# V2 — UNIFIED ALL-IN-ONE SYSTEM
+# 0% → 100%
+#
+# IMPORTANT:
+# - Remove AI completely
+# - Remove Games completely
+# - Combine all remaining functionality into one coherent Lulu system
+# - Native desktop application
+# - Linux-first
+# - Original Lulu character
+# - Do not clone Bubu
+# - Do not copy copyrighted characters/assets from visual references
+
+============================================================
+0. PRODUCT DEFINITION
+============================================================
+
+Project Name:
+Lulu
+
+Package:
+lulu-desktop
+
+Identifier:
+com.ratana.lulu
+
+Version:
+0.2.0
+
+Architecture:
+
+Tauri 2
+Rust
+React
+TypeScript
+Vite
+SQLite
+
+Lulu is a native desktop companion/pet that lives on the desktop.
+
+It is NOT:
+
+- a web application
+- a browser application
+- an AI chatbot
+- an AI agent
+- a game
+- a cloud service
+
+Core principle:
+
+ONE LULU
+ONE DESKTOP COMPANION
+ONE UNIFIED EVENT SYSTEM
+
+All functionality must communicate through one internal event/state architecture.
+
+============================================================
+1. REMOVE AI COMPLETELY
+============================================================
+
+DELETE all AI-related functionality.
+
+Remove:
+
+src/features/chat/
+src/features/ai/
+src-tauri/src/ai/
+Ollama
+OpenAI
+Gemini
+Anthropic
+LLM providers
+API keys
+AI settings
+AI chat UI
+AI memory
+AI prompts
+AI agent
+AI tools
+AI model selection
+AI streaming
+AI provider abstraction
+
+Remove dependencies that only exist for AI.
+
+There must be:
+
+NO AI API
+NO AI AGENT
+NO CLOUD AI
+NO OLLAMA
+
+Do not leave fake/placeholder AI functionality.
+
+If old AI files exist:
+remove them safely.
+
+Update:
+
+package.json
+Cargo.toml
+Cargo.lock
+README.md
+settings
+menus
+commands
+tests
+
+============================================================
+2. REMOVE GAMES COMPLETELY
+============================================================
+
+DELETE:
+
+src/features/games/
+src-tauri/src/games/
+
+Remove:
+
+games
+game engine
+mini-games
+game state
+game rewards
+game points
+game achievements related to games
+
+Do not leave Game buttons in the UI.
+
+============================================================
+3. FINAL LULU FUNCTION MAP
+============================================================
+
+Lulu must contain these major systems:
+
+1. Desktop Pet
+2. Character System
+3. Animation System
+4. Movement System
+5. Desktop Window System
+6. Multi-Monitor System
+7. Notification Companion
+8. Music / MPRIS System
+9. Lyrics System
+10. Speech Bubble / Message System
+11. Interaction System
+12. Desktop Awareness
+13. System Status
+14. Tray / Menu System
+15. Control Center
+16. Screen Map
+17. Settings
+18. Local SQLite Storage
+19. Event Bus
+20. Privacy Controls
+21. Performance Manager
+22. Theme / Appearance
+23. Startup / Background Service
+24. Diagnostics / Capability Detection
+25. Linux Integration
+26. Import / Export
+27. Backup / Restore
+28. Logging
+29. Update-ready architecture
+30. Packaging / Distribution
+
+Everything must work together.
+
+============================================================
+4. DESKTOP PET
+============================================================
+
+Lulu must exist as a real native desktop pet.
+
+Window:
+
+transparent
+frameless
+always-on-top
+decorations disabled
+click-through configurable
+drag enabled
+resizable only through settings if required
+
+Default:
+
+Always Visible
+Always On Top
+
+Modes:
+
+ALWAYS_VISIBLE
+ALWAYS_ON_TOP
+NORMAL
+HIDE_ON_FULLSCREEN
+HIDDEN
+
+Lulu must remain visible while the user opens:
+
+Chrome
+Firefox
+VS Code
+Terminal
+File Manager
+Discord
+Telegram
+Spotify
+other normal applications
+
+Do not fake this.
+
+If the compositor/window manager does not support a capability:
+
+return:
+
+UNSUPPORTED
+
+and show the actual reason.
+
+============================================================
+5. CHARACTER SYSTEM
+============================================================
+
+Create an ORIGINAL Lulu character.
+
+Visual direction:
+
+chibi anime-inspired
+clean silhouette
+expressive face
+large readable eyes
+small body
+distinct hairstyle
+original clothing
+original accessories
+
+The uploaded image can be treated only as a general visual reference for:
+
+- proportions
+- anime/chibi feeling
+- expressive face
+- color balance
+- silhouette quality
+
+DO NOT reproduce:
+
+- exact face
+- exact hairstyle
+- exact clothing
+- exact markings
+- exact character
+- copyrighted artwork
+
+Lulu must have its own identity.
+
+Character configuration:
+
+character_id
+name
+style
+body
+hair
+eyes
+clothing
+accessories
+expressions
+animations
+
+============================================================
+6. ANIMATION SYSTEM
+============================================================
+
+States:
+
+IDLE
+WALKING
+RUNNING
+SITTING
+SLEEPING
+JUMPING
+HAPPY
+SAD
+SURPRISED
+ANGRY
+CURIOUS
+DANCING
+NOTIFICATION
+MUSIC
+THINKING
+DRAGGING
+HOVER
+CLICKED
+HIDDEN
+
+Animation system must be event-driven.
+
+Example:
+
+notification received
+→ NOTIFICATION animation
+
+music playing
+→ MUSIC animation
+
+music paused
+→ IDLE
+
+mouse hover
+→ CURIOUS
+
+click
+→ HAPPY
+
+no activity
+→ IDLE
+
+sleep timeout
+→ SLEEPING
+
+============================================================
+7. DESKTOP MOVEMENT
+============================================================
+
+Lulu can walk around the usable desktop area.
+
+Features:
+
+random walking
+direction change
+idle pauses
+edge detection
+screen boundary detection
+smooth movement
+walk speed
+run speed
+movement enabled/disabled
+
+Do not move Lulu outside the usable screen.
+
+Respect:
+
+panels
+taskbars
+docks
+work areas
+reserved screen regions
+
+Movement modes:
+
+OFF
+CALM
+NORMAL
+ACTIVE
+
+Settings:
+
+movement_enabled
+movement_speed
+idle_time
+edge_behavior
+random_walk
+follow_cursor
+
+============================================================
+8. MULTI-MONITOR
+============================================================
+
+Detect all monitors.
+
+Store:
+
+monitor_id
+x
+y
+width
+height
+scale_factor
+primary
+
+Lulu can:
+
+stay on current monitor
+follow active monitor
+choose random monitor
+remember last monitor
+
+If multi-monitor support is unavailable:
+
+show:
+
+UNSUPPORTED
+
+Never fake coordinates.
+
+============================================================
+9. DRAGGING
+============================================================
+
+User can drag Lulu.
+
+During drag:
+
+state = DRAGGING
+
+On release:
+
+save position.
+
+Store:
+
+monitor
+x
+y
+
+After restart:
+
+restore position.
+
+If monitor no longer exists:
+
+move Lulu safely to primary monitor.
+
+============================================================
+10. CLICK INTERACTION
+============================================================
+
+Single click:
+
+small reaction.
+
+Double click:
+
+open Control Center.
+
+Right click:
+
+context menu.
+
+Example:
+
+Lulu
+├── Show Control Center
+├── Pause Movement
+├── Resume Movement
+├── Notifications
+├── Music
+├── Lyrics
+├── Appearance
+├── Settings
+├── Hide Lulu
+└── Quit
+
+No AI menu.
+No Game menu.
+
+============================================================
+11. HOVER INTERACTION
+============================================================
+
+Hover:
+
+Lulu looks toward cursor if supported.
+
+Show subtle animation.
+
+Do not spam speech bubbles.
+
+Use cooldown.
+
+Example:
+
+hover
+→ CURIOUS
+
+long hover
+→ small reaction
+
+leave
+→ IDLE
+
+============================================================
+12. NOTIFICATION COMPANION
+============================================================
+
+Use native Linux notifications.
+
+Primary:
+
+D-Bus
+
+org.freedesktop.Notifications
+
+Lulu should detect:
+
+application name
+notification title
+notification body if permission allows
+timestamp
+
+Default privacy:
+
+listener = ON
+app_name = ON
+title = ON
+body = OFF
+send_external = OFF
+voice = OFF
+
+IMPORTANT:
+
+Never upload notification data.
+
+Never send notification data to AI.
+
+There is no AI anyway.
+
+============================================================
+13. NOTIFICATION UI
+============================================================
+
+Example:
+
+Telegram:
+
+"មានសារថ្មីពី Telegram"
+
+Discord:
+
+"មាន Notification ថ្មីពី Discord"
+
+Chrome:
+
+"Chrome បានផ្ញើ Notification ថ្មី"
+
+Unknown:
+
+"Unknown Application បានផ្ញើ Notification ថ្មី"
+
+Never guess application names.
+
+Message lifecycle:
+
+notification event
+→ notification state
+→ Lulu animation
+→ speech bubble
+→ queue
+→ fade out
+
+============================================================
+14. NOTIFICATION SETTINGS
+============================================================
+
+Per application:
+
+enabled
+disabled
+
+Example:
+
+Telegram ON
+Discord ON
+Chrome OFF
+VS Code ON
+
+Settings:
+
+notification_listener
+show_app_name
+show_title
+show_body
+sound
+animation
+speech_bubble
+privacy_mode
+cooldown
+
+============================================================
+15. MUSIC SYSTEM
+============================================================
+
+Use:
+
+MPRIS
+D-Bus
+
+No AI.
+
+Detect media players.
+
+Possible players:
+
+Firefox
+Chrome
+Chromium
+Spotify
+VLC
+other MPRIS-compatible applications
+
+Detect:
+
+player
+title
+artist
+album
+playback state
+position
+duration
+volume if available
+
+States:
+
+NO_PLAYER
+PLAYER_FOUND
+PLAYING
+PAUSED
+STOPPED
+UNAVAILABLE
+
+============================================================
+16. MUSIC BEHAVIOR
+============================================================
+
+When music starts:
+
+Lulu wakes.
+
+Animation:
+
+MUSIC
+
+When playing:
+
+subtle dancing.
+
+When paused:
+
+stop dancing.
+
+When stopped:
+
+return IDLE.
+
+When player changes:
+
+update music state.
+
+Do not use aggressive polling.
+
+Use MPRIS events whenever possible.
+
+============================================================
+17. MUSIC UI
+============================================================
+
+Optional compact overlay:
+
+Now Playing
+
+Title
+Artist
+Album
+
+Controls:
+
+Play/Pause
+Previous
+Next
+
+Only expose controls when MPRIS reports support.
+
+If unsupported:
+
+disable control.
+
+Do not fake buttons.
+
+============================================================
+18. LYRICS SYSTEM
+============================================================
+
+NO online scraping.
+
+NO copyrighted lyric scraping.
+
+Primary source:
+
+LOCAL .LRC FILE
+
+User can import:
+
+song.lrc
+
+Parser must support:
+
+[00:12.50]text
+[01:25.00]text
+
+Metadata:
+
+[ar:Artist]
+[ti:Title]
+[al:Album]
+[by:Author]
+[offset:+500]
+
+Support:
+
+multiple timestamps
+UTF-8
+Khmer
+English
+mixed language
+offset
+empty lines
+metadata
+
+============================================================
+19. LYRICS MATCHING
+============================================================
+
+Match by:
+
+title
+artist
+album
+
+Priority:
+
+exact title + artist
+exact title
+manual selection
+
+If no match:
+
+"Lyrics unavailable"
+
+Do not invent lyrics.
+
+============================================================
+20. LYRICS SYNC
+============================================================
+
+Synchronize current lyric with:
+
+MPRIS position
+
+Example:
+
+Music position:
+01:25.400
+
+Current lyric:
+
+"Hello..."
+
+Highlight current line.
+
+Previous line:
+smaller opacity
+
+Current:
+main
+
+Next:
+smaller opacity
+
+Smooth scrolling.
+
+============================================================
+21. SPEECH BUBBLE SYSTEM
+============================================================
+
+This is very important.
+
+Messages must NOT disappear too quickly.
+
+States:
+
+HIDDEN
+SHOWING
+TYPING
+VISIBLE
+PAUSED
+FADING
+QUEUED
+
+Duration:
+
+minimum = 4000ms
+
+short:
+4–5 sec
+
+medium:
+6–8 sec
+
+long:
+8–10 sec
+
+very long:
+10–12 sec
+
+Typewriter:
+
+30–45ms per character.
+
+Do not start the hide timer before typing finishes.
+
+Hover:
+
+PAUSE
+
+Leave:
+
+RESUME
+
+Click:
+
+PAUSE / RESUME
+
+Double click:
+
+reopen latest message
+
+============================================================
+22. MESSAGE QUEUE
+============================================================
+
+Central message manager.
+
+All Lulu messages go through:
+
+MessageManager
+
+Sources:
+
+notification
+music
+lyrics
+system
+interaction
+startup
+error
+
+Example:
+
+Notification
+→ queue
+
+Music
+→ queue
+
+System
+→ queue
+
+No overlapping speech bubbles.
+
+Deduplicate repeated events.
+
+Maximum normal queue:
+
+5
+
+Critical events may interrupt.
+
+============================================================
+23. UNIFIED EVENT BUS
+============================================================
+
+Create one internal event bus.
+
+Events:
+
+pet:state_changed
+
+pet:moved
+
+pet:clicked
+
+pet:hovered
+
+pet:drag_started
+
+pet:drag_finished
+
+notification:received
+
+notification:cleared
+
+music:player_detected
+
+music:metadata_changed
+
+music:playback_changed
+
+music:position_changed
+
+lyrics:loaded
+
+lyrics:line_changed
+
+message:queued
+
+message:shown
+
+message:paused
+
+message:hidden
+
+window:shown
+
+window:hidden
+
+monitor:changed
+
+settings:changed
+
+system:capability_changed
+
+============================================================
+24. ONE UNIFIED LULU STATE
+============================================================
+
+Create a central state model.
+
+Example:
+
+LuluState:
+
+pet
+window
+movement
+monitor
+notification
+music
+lyrics
+message
+system
+settings
+
+Do NOT create disconnected feature logic.
+
+Everything should communicate through the central event/state layer.
+
+============================================================
+25. CONTROL CENTER
+============================================================
+
+Create one Control Center.
+
+Sections:
+
+Overview
+Pet
+Notifications
+Music
+Lyrics
+Appearance
+Desktop
+Monitors
+Privacy
+System
+Storage
+Diagnostics
+About
+
+No:
+
+AI
+Games
+
+============================================================
+26. CONTROL CENTER — OVERVIEW
+============================================================
+
+Show:
+
+Lulu status
+current animation
+current monitor
+position
+movement
+notification status
+current music
+lyrics status
+system capabilities
+
+Example:
+
+Lulu:
+ACTIVE
+
+Movement:
+ON
+
+Monitor:
+1
+
+Music:
+Playing
+
+Lyrics:
+Available
+
+Notifications:
+ON
+
+============================================================
+27. SCREEN MAP
+============================================================
+
+Create a visual desktop map.
+
+Show:
+
+Monitor 1
+Monitor 2
+Monitor 3
+
+Show:
+
+Lulu position
+screen boundaries
+primary monitor
+active monitor
+
+Allow:
+
+drag Lulu position
+
+Allow:
+
+move Lulu to monitor
+
+Do not fake unsupported Wayland APIs.
+
+============================================================
+28. DESKTOP AWARENESS
+============================================================
+
+Detect when possible:
+
+active application
+fullscreen state
+workspace
+monitor
+window state
+
+Supported environments:
+
+Hyprland
+Sway
+Niri
+KDE Plasma
+GNOME
+X11
+
+Use environment-specific adapters.
+
+Architecture:
+
+PlatformCapabilities
+
+Linux
+├── Wayland
+│   ├── Hyprland
+│   ├── Sway
+│   ├── Niri
+│   ├── KDE
+│   └── GNOME
+└── X11
+
+If capability unavailable:
+
+UNSUPPORTED
+
+Do not invent data.
+
+============================================================
+29. SYSTEM STATUS
+============================================================
+
+Show optional:
+
+CPU usage
+RAM usage
+battery
+network state
+disk usage
+
+Keep it lightweight.
+
+Do not poll every 10ms.
+
+Recommended:
+
+1–2 second updates.
+
+When Control Center is closed:
+
+reduce update frequency.
+
+============================================================
+30. TRAY SYSTEM
+============================================================
+
+Linux tray/menu integration where supported.
+
+Menu:
+
+Show Lulu
+Hide Lulu
+Control Center
+Movement
+Notifications
+Music
+Lyrics
+Settings
+About
+Quit
+
+If tray unsupported:
+
+provide alternative native menu behavior.
+
+============================================================
+31. STARTUP
+============================================================
+
+Support:
+
+Start with system
+
+Linux desktop entry.
+
+Do not require:
+
+terminal
+Node
+Python
+Docker
+browser
+
+after installation.
+
+============================================================
+32. SETTINGS
+============================================================
+
+Settings categories:
+
+General
+Pet
+Movement
+Window
+Notifications
+Music
+Lyrics
+Appearance
+Privacy
+Monitors
+Performance
+Startup
+Storage
+Diagnostics
+
+Store in SQLite.
+
+============================================================
+33. SQLITE
+============================================================
+
+Use SQLite.
+
+Tables:
+
+settings
+
+pet_state
+
+pet_position
+
+notification_settings
+
+notification_history
+
+music_tracks
+
+lyrics_files
+
+lyrics_metadata
+
+app_preferences
+
+capabilities
+
+logs
+
+Do not store notification body by default.
+
+Respect privacy settings.
+
+============================================================
+34. PRIVACY
+============================================================
+
+Privacy-first.
+
+Never:
+
+record microphone
+record screen
+upload notifications
+upload music metadata
+upload lyrics
+send data to cloud
+track browsing history
+
+unless a future explicit feature is added and user enables it.
+
+Current Lulu must be fully local.
+
+============================================================
+35. PERFORMANCE
+============================================================
+
+Lulu must run smoothly on older computers.
+
+Rules:
+
+event-driven architecture
+
+no 10ms polling
+
+no busy loops
+
+no unnecessary React renders
+
+pause unnecessary animation when hidden
+
+reduce system monitoring when Control Center is closed
+
+cleanup listeners
+
+cleanup timers
+
+avoid memory leaks
+
+Target:
+
+low idle CPU
+low RAM
+smooth animation
+
+============================================================
+36. DATABASE MIGRATIONS
+============================================================
+
+Use versioned migrations.
+
+Example:
+
+001_initial
+002_notifications
+003_music
+004_lyrics
+005_pet
+006_settings
+007_capabilities
+
+Migration must be safe.
+
+Do not destroy existing user data.
+
+============================================================
+37. LOGGING
+============================================================
+
+Implement structured logs.
+
+Levels:
+
+DEBUG
+INFO
+WARN
+ERROR
+
+Never log:
+
+notification body by default
+private user content
+credentials
+tokens
+
+Diagnostics page should show:
+
+platform
+desktop
+display server
+compositor
+supported capabilities
+D-Bus
+MPRIS
+notifications
+tray
+multi-monitor
+fullscreen detection
+
+============================================================
+38. CAPABILITY MATRIX
+============================================================
+
+Every platform feature must report:
+
+SUPPORTED
+PARTIAL
+UNSUPPORTED
+
+Example:
+
+Notification D-Bus:
+SUPPORTED
+
+MPRIS:
+SUPPORTED
+
+Wayland global window control:
+PARTIAL
+
+Screen map:
+PARTIAL
+
+Tray:
+SUPPORTED
+
+Fullscreen detection:
+UNSUPPORTED
+
+Never fake support.
+
+============================================================
+39. PROJECT STRUCTURE
+============================================================
+
+Lulu/
+
+├── src/
+│   ├── app/
+│   ├── components/
+│   ├── features/
+│   │   ├── pet/
+│   │   ├── character/
+│   │   ├── animation/
+│   │   ├── movement/
+│   │   ├── notifications/
+│   │   ├── music/
+│   │   ├── lyrics/
+│   │   ├── messages/
+│   │   ├── desktop/
+│   │   ├── monitors/
+│   │   ├── system/
+│   │   ├── settings/
+│   │   ├── privacy/
+│   │   ├── diagnostics/
+│   │   └── control-center/
+│   │
+│   ├── services/
+│   │   ├── event-bus/
+│   │   ├── message-manager/
+│   │   ├── capability-manager/
+│   │   └── storage/
+│   │
+│   ├── stores/
+│   ├── hooks/
+│   ├── types/
+│   ├── utils/
+│   ├── assets/
+│   └── styles/
+│
+├── src-tauri/
+│   ├── src/
+│   │   ├── main.rs
+│   │   ├── commands/
+│   │   ├── database/
+│   │   ├── pet/
+│   │   ├── character/
+│   │   ├── animation/
+│   │   ├── movement/
+│   │   ├── notifications/
+│   │   ├── music/
+│   │   ├── lyrics/
+│   │   ├── messages/
+│   │   ├── window/
+│   │   ├── monitors/
+│   │   ├── system/
+│   │   ├── tray/
+│   │   ├── platform/
+│   │   ├── capabilities/
+│   │   └── logging/
+│   │
+│   ├── capabilities/
+│   ├── icons/
+│   └── tauri.conf.json
+│
+├── characters/
+├── lyrics/
+├── themes/
+├── tests/
+├── docs/
+├── scripts/
+├── package.json
+├── Cargo.toml
+├── README.md
+└── LICENSE
+
+============================================================
+40. DELETE OLD MODULES
+============================================================
+
+Remove completely:
+
+AI
+Chat
+Games
+Agent
+Ollama
+API clients
+AI memory
+Game UI
+Game database tables
+Game assets
+
+Then run dependency cleanup.
+
+============================================================
+41. UI DESIGN
+============================================================
+
+Main Lulu:
+
+small
+clean
+modern
+cute
+professional
+
+Speech bubble:
+
+rounded
+readable
+adaptive width
+adaptive height
+
+Do not make it huge.
+
+Control Center:
+
+modern desktop application UI.
+
+Use consistent:
+
+spacing
+typography
+cards
+toggles
+tabs
+status indicators
+
+Avoid unnecessary visual noise.
+
+============================================================
+42. ORIGINAL CHARACTER ASSET SYSTEM
+============================================================
+
+Use local assets.
+
+Example:
+
+characters/lulu/
+
+idle
+walk
+run
+sit
+sleep
+happy
+sad
+surprised
+angry
+dance
+notification
+music
+
+Support:
+
+PNG
+WebP
+SVG where appropriate
+
+Use sprite sheets or optimized assets when beneficial.
+
+Do not embed copyrighted character assets.
+
+============================================================
+43. IMPORT / EXPORT
+============================================================
+
+Allow user to export:
+
+settings
+pet position
+appearance
+lyrics index
+preferences
+
+Format:
+
+JSON
+
+Import:
+
+validate schema
+backup current settings
+apply safely
+
+Never execute imported data as code.
+
+============================================================
+44. BACKUP / RESTORE
+============================================================
+
+Create local backup.
+
+Backup:
+
+SQLite database
+settings
+character configuration
+lyrics metadata
+
+Do not automatically upload backup.
+
+============================================================
+45. ERROR HANDLING
+============================================================
+
+Examples:
+
+D-Bus unavailable:
+
+Notifications:
+UNSUPPORTED
+
+MPRIS unavailable:
+
+Music:
+UNSUPPORTED
+
+No lyrics:
+
+Lyrics:
+NOT AVAILABLE
+
+Monitor unavailable:
+
+move Lulu to primary monitor.
+
+Database failure:
+
+show readable error
+attempt safe recovery
+never silently corrupt data.
+
+============================================================
+46. TESTING
+============================================================
+
+Unit tests:
+
+message duration
+message queue
+LRC parser
+LRC timestamp
+lyrics matching
+pet state machine
+movement boundaries
+notification parser
+MPRIS metadata parser
+settings
+database migration
+capability detection
+
+Integration tests:
+
+notification → Lulu
+music → Lulu
+music → lyrics
+message → speech bubble
+monitor → Lulu position
+settings → runtime
+
+============================================================
+47. MANUAL TEST
+============================================================
+
+Test on Linux.
+
+1. Start Lulu.
+
+2. Open Chrome.
+
+3. Open VS Code.
+
+4. Open Terminal.
+
+5. Lulu remains visible.
+
+6. Drag Lulu.
+
+7. Restart Lulu.
+
+8. Position is restored.
+
+9. Trigger a notification.
+
+10. Lulu reacts.
+
+11. Play music.
+
+12. Lulu reacts.
+
+13. Pause music.
+
+14. Lulu stops dancing.
+
+15. Import LRC.
+
+16. Play song.
+
+17. Verify lyric synchronization.
+
+18. Hover speech bubble.
+
+19. Verify timer pauses.
+
+20. Move mouse away.
+
+21. Verify timer resumes.
+
+22. Open Control Center.
+
+23. Verify Screen Map.
+
+24. Check monitor detection.
+
+25. Check Diagnostics.
+
+26. Disable notifications.
+
+27. Verify notifications stop.
+
+28. Disable movement.
+
+29. Verify Lulu stops walking.
+
+============================================================
+48. BUILD
+============================================================
+
+Run:
+
+pnpm install
+
+pnpm typecheck
+
+pnpm lint
+
+pnpm test
+
+cargo check
+
+cargo test
+
+pnpm tauri build
+
+Build:
+
+AppImage
+Debian package
+
+Expected:
+
+src-tauri/target/release/bundle/
+
+Verify actual launch.
+
+Do NOT claim build success without testing the generated application.
+
+============================================================
+49. README
+============================================================
+
+README must explain:
+
+What Lulu is
+Features
+Architecture
+Supported Linux environments
+Installation
+Development
+Build
+Notification system
+Music/MPRIS
+Lyrics
+Privacy
+Limitations
+Wayland limitations
+Troubleshooting
+
+Clearly state:
+
+Lulu does not require AI.
+
+Lulu does not contain games.
+
+Lulu works locally.
+
+============================================================
+50. FINAL FEATURE LIST
+============================================================
+
+FINAL LULU:
+
+✓ Native desktop pet
+✓ Always visible
+✓ Always on top
+✓ Transparent window
+✓ Frameless window
+✓ Drag
+✓ Click
+✓ Double click
+✓ Hover
+✓ Walking
+✓ Idle
+✓ Sleeping
+✓ Expressions
+✓ Animations
+✓ Multi-monitor
+✓ Screen map
+✓ Position persistence
+✓ Notifications
+✓ Per-app notification settings
+✓ Privacy controls
+✓ Music detection
+✓ MPRIS
+✓ Play/pause state
+✓ Track metadata
+✓ Lyrics
+✓ LRC import
+✓ Lyrics synchronization
+✓ Speech bubble
+✓ Smart message duration
+✓ Message queue
+✓ Message pause
+✓ Desktop awareness
+✓ System information
+✓ Tray
+✓ Control Center
+✓ Settings
+✓ SQLite
+✓ Capability detection
+✓ Diagnostics
+✓ Logging
+✓ Backup
+✓ Import/export
+✓ Startup
+✓ Linux packaging
+✓ Performance optimization
+
+REMOVED:
+
+✗ AI
+✗ AI Agent
+✗ Ollama
+✗ Cloud API
+✗ Chat
+✗ Games
+✗ Game engine
+✗ Game rewards
+✗ AI memory
+
+============================================================
+51. DEVELOPMENT RULE
+============================================================
+
+Do not implement everything blindly at once.
+
+Use:
+
+AUDIT
+↓
+CLEAN
+↓
+ARCHITECTURE
+↓
+MVP
+↓
+IMPLEMENT
+↓
+COMPILE
+↓
+TEST
+↓
+FIX
+↓
+VERIFY
+↓
+NEXT FEATURE
+
+After every major feature:
+
+1. inspect code
+2. implement
+3. compile
+4. test
+5. run
+6. verify actual behavior
+7. fix errors
+8. continue
+
+Never leave fake buttons.
+
+Never leave placeholder functions pretending to work.
+
+Never claim:
+
+SUPPORTED
+
+unless it actually works.
+
+Use:
+
+SUPPORTED
+PARTIAL
+UNSUPPORTED
+
+============================================================
+52. FINAL ACCEPTANCE
+============================================================
+
+Lulu V0.2.0 is complete when:
+
+[ ] AI completely removed
+[ ] Games completely removed
+[ ] Native Tauri app works
+[ ] Lulu character works
+[ ] Animation works
+[ ] Movement works
+[ ] Drag works
+[ ] Always-on-top works
+[ ] Notifications work where supported
+[ ] MPRIS works where supported
+[ ] Lyrics work with local LRC
+[ ] Speech bubble is readable
+[ ] Message queue works
+[ ] Multi-monitor works where supported
+[ ] Screen Map works where supported
+[ ] Control Center works
+[ ] Settings persist
+[ ] SQLite works
+[ ] Privacy settings work
+[ ] Diagnostics works
+[ ] Capability detection works
+[ ] No fake features
+[ ] No AI dependencies
+[ ] No game dependencies
+[ ] No unnecessary network dependency
+[ ] Tests pass
+[ ] Linux build succeeds
+[ ] AppImage tested
+[ ] Debian package tested
+
+FINAL REPORT:
+
+Implemented:
+...
+
+Removed:
+...
+
+Tested:
+...
+
+Supported:
+...
+
+Partial:
+...
+
+Unsupported:
+...
+
+Known limitations:
+...
+
+Build artifacts:
+...
+
+Next recommended development task:
+...
+
+DO NOT MARK COMPLETE UNTIL THE REAL APPLICATION HAS BEEN BUILT AND TESTED.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-28T18:21:38+07:00.
+</ADDITIONAL_METADATA>

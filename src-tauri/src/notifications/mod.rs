@@ -1,134 +1,222 @@
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 
+use crate::pet_storage::StorageManager;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DesktopNotificationEvent {
+pub struct NotificationItem {
     pub id: String,
     pub app_name: String,
-    pub app_icon: String,
-    pub summary: String,
-    pub body: String,
-    pub timestamp: u64,
+    pub title: String,
+    pub body: Option<String>,
+    pub timestamp: i64,
 }
 
-pub struct NotificationService;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotificationSettings {
+    pub listener_enabled: bool,
+    pub show_app_name: bool,
+    pub show_title: bool,
+    pub show_body: bool, // Default false for strict privacy
+    pub sound: bool,
+    pub privacy_mode: bool,
+    pub cooldown_ms: u64,
+}
 
-impl NotificationService {
-    /// Spawns a dedicated background thread monitoring Linux D-Bus notifications
-    pub fn start_listener(app: AppHandle) {
-        #[cfg(target_os = "linux")]
-        {
-            std::thread::Builder::new()
-                .name("dbus-notification-monitor".to_string())
-                .spawn(move || {
-                    Self::run_dbus_monitor(app);
-                })
-                .ok();
+impl Default for NotificationSettings {
+    fn default() -> Self {
+        Self {
+            listener_enabled: true,
+            show_app_name: true,
+            show_title: true,
+            show_body: false, // OFF by default per section 12 & 34
+            sound: false,
+            privacy_mode: true,
+            cooldown_ms: 2000,
         }
     }
+}
 
-    #[cfg(target_os = "linux")]
-    fn run_dbus_monitor(app: AppHandle) {
-        let mut child = match Command::new("dbus-monitor")
-            .arg("--session")
-            .arg("type='method_call',interface='org.freedesktop.Notifications',member='Notify'")
+static LISTENER_RUNNING: AtomicBool = AtomicBool::new(false);
+
+pub fn spawn_dbus_listener(app_handle: AppHandle, storage: Arc<StorageManager>) {
+    if LISTENER_RUNNING.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    std::thread::spawn(move || {
+        let child = Command::new("dbus-monitor")
+            .args([
+                "--session",
+                "type='method_call',interface='org.freedesktop.Notifications',member='Notify'",
+            ])
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
-            .spawn()
-        {
+            .spawn();
+
+        let mut child = match child {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("[NotificationService] Failed to spawn dbus-monitor: {}", e);
+                eprintln!("[Lulu D-Bus Notifications] Failed to spawn dbus-monitor: {}", e);
+                LISTENER_RUNNING.store(false, Ordering::SeqCst);
                 return;
             }
         };
 
         if let Some(stdout) = child.stdout.take() {
             let reader = BufReader::new(stdout);
-            let mut in_notify = false;
-            let mut string_idx = 0;
-            let mut current_app = String::new();
-            let mut current_icon = String::new();
-            let mut current_summary = String::new();
-            let mut current_body = String::new();
+            let mut pending_app = String::new();
+            let mut pending_title = String::new();
+            let mut pending_body = String::new();
+            let mut string_count = 0;
+            let mut in_notify_block = false;
 
-            for line_res in reader.lines() {
-                let Ok(line) = line_res else { break };
+            for line in reader.lines() {
+                let line = match line {
+                    Ok(l) => l,
+                    Err(_) => break,
+                };
+
                 let trimmed = line.trim();
 
                 if trimmed.contains("member=Notify") {
-                    in_notify = true;
-                    string_idx = 0;
-                    current_app.clear();
-                    current_icon.clear();
-                    current_summary.clear();
-                    current_body.clear();
+                    in_notify_block = true;
+                    string_count = 0;
+                    pending_app.clear();
+                    pending_title.clear();
+                    pending_body.clear();
                     continue;
                 }
 
-                if in_notify && trimmed.starts_with("string \"") {
-                    if let Some(first_quote) = trimmed.find('"') {
-                        if let Some(last_quote) = trimmed.rfind('"') {
-                            if last_quote > first_quote {
-                                let val = &trimmed[first_quote + 1..last_quote];
-                                match string_idx {
-                                    0 => current_app = val.to_string(),
-                                    1 => current_icon = val.to_string(),
-                                    2 => current_summary = val.to_string(),
+                if in_notify_block && trimmed.starts_with("string \"") {
+                    // Extract content inside string "..."
+                    if let Some(start) = trimmed.find('"') {
+                        if let Some(end) = trimmed.rfind('"') {
+                            if end > start {
+                                let val = &trimmed[start + 1..end];
+                                match string_count {
+                                    0 => pending_app = val.to_string(),
+                                    1 => {} // icon
+                                    2 => pending_title = val.to_string(),
                                     3 => {
-                                        current_body = val.to_string();
-                                        in_notify = false;
-
-                                        let now = std::time::SystemTime::now()
-                                            .duration_since(std::time::UNIX_EPOCH)
-                                            .unwrap_or_default()
-                                            .as_millis() as u64;
-
-                                        let event = DesktopNotificationEvent {
-                                            id: format!("notif_{}", now),
-                                            app_name: if current_app.is_empty() {
-                                                "Desktop App".to_string()
-                                            } else {
-                                                current_app.clone()
-                                            },
-                                            app_icon: current_icon.clone(),
-                                            summary: current_summary.clone(),
-                                            body: current_body.clone(),
-                                            timestamp: now,
-                                        };
-
-                                        let _ = app.emit("desktop-notification", event);
+                                        pending_body = val.to_string();
+                                        // Once we have body, dispatch notification
+                                        dispatch_notification(
+                                            &app_handle,
+                                            &storage,
+                                            &pending_app,
+                                            &pending_title,
+                                            &pending_body,
+                                        );
+                                        in_notify_block = false;
                                     }
                                     _ => {}
                                 }
-                                string_idx += 1;
+                                string_count += 1;
                             }
                         }
                     }
                 }
             }
         }
+
+        LISTENER_RUNNING.store(false, Ordering::SeqCst);
+    });
+}
+
+fn dispatch_notification(
+    app_handle: &AppHandle,
+    storage: &Arc<StorageManager>,
+    app_name: &str,
+    title: &str,
+    body: &str,
+) {
+    let settings = storage.load_notification_settings().unwrap_or_default();
+    if !settings.listener_enabled {
+        return;
     }
 
-    pub fn send_test_notification(app_name: &str, summary: &str, body: &str) -> Result<(), String> {
-        #[cfg(target_os = "linux")]
-        {
-            let res = Command::new("notify-send")
-                .arg(format!("[{}] {}", app_name, summary))
-                .arg(body)
-                .output();
+    let clean_app = if app_name.is_empty() {
+        "Unknown Application".to_string()
+    } else {
+        app_name.to_string()
+    };
 
-            match res {
-                Ok(_) => Ok(()),
-                Err(e) => Err(format!("Failed to run notify-send: {}", e)),
-            }
-        }
-        #[cfg(not(target_os = "linux"))]
-        {
-            Ok(())
-        }
-    }
+    let clean_title = if title.is_empty() {
+        "Notification".to_string()
+    } else {
+        title.to_string()
+    };
+
+    let sanitized_body = if settings.show_body && !settings.privacy_mode {
+        Some(body.to_string())
+    } else {
+        None
+    };
+
+    let item = NotificationItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        app_name: clean_app,
+        title: clean_title,
+        body: sanitized_body,
+        timestamp: chrono::Utc::now().timestamp(),
+    };
+
+    let _ = storage.save_notification(&item);
+    let _ = app_handle.emit("notification:received", &item);
+}
+
+#[tauri::command]
+pub fn get_notification_settings(
+    storage: tauri::State<'_, Arc<StorageManager>>,
+) -> Result<NotificationSettings, String> {
+    storage.load_notification_settings()
+}
+
+#[tauri::command]
+pub fn save_notification_settings(
+    settings: NotificationSettings,
+    storage: tauri::State<'_, Arc<StorageManager>>,
+) -> Result<(), String> {
+    storage.save_notification_settings(&settings)
+}
+
+#[tauri::command]
+pub fn get_notification_history(
+    limit: Option<usize>,
+    storage: tauri::State<'_, Arc<StorageManager>>,
+) -> Result<Vec<NotificationItem>, String> {
+    storage.load_notification_history(limit.unwrap_or(20))
+}
+
+#[tauri::command]
+pub fn clear_notification_history(
+    storage: tauri::State<'_, Arc<StorageManager>>,
+) -> Result<(), String> {
+    storage.clear_notification_history()
+}
+
+#[tauri::command]
+pub fn emit_test_notification(
+    app_name: String,
+    title: String,
+    body: Option<String>,
+    app_handle: AppHandle,
+    storage: tauri::State<'_, Arc<StorageManager>>,
+) -> Result<NotificationItem, String> {
+    let item = NotificationItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        app_name: if app_name.is_empty() { "TestApp".to_string() } else { app_name },
+        title: if title.is_empty() { "Test Notification".to_string() } else { title },
+        body,
+        timestamp: chrono::Utc::now().timestamp(),
+    };
+
+    let _ = storage.save_notification(&item);
+    let _ = app_handle.emit("notification:received", &item);
+    Ok(item)
 }

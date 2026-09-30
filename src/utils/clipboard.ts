@@ -1,14 +1,14 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invokeCommand } from '../services/tauriBridge';
 
 /**
- * Copies text to system clipboard with priority on native Wayland (wl-copy) / X11 (xsel)
- * before falling back to browser navigator.clipboard.
+ * Universal clipboard utility with Wayland (wl-copy) native priority,
+ * falling back to browser navigator.clipboard and execCommand.
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
   // 1. Try native backend command (vital for Wayland/Sway webviews)
   try {
     if (typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)) {
-      await invoke('copy_to_clipboard', { text });
+      await invokeCommand('copy_to_clipboard', { text });
       return true;
     }
   } catch (err) {

@@ -8,14 +8,29 @@ import { useProviderStore } from './useProviderStore';
 import { useDiagnosticsStore } from './useDiagnosticsStore';
 import { useEditorStore } from './useEditorStore';
 
+export type MessageRole =
+  | 'USER'
+  | 'ASSISTANT'
+  | 'LULU'
+  | 'SYSTEM'
+  | 'TOOL'
+  | 'ERROR'
+  | 'WARNING'
+  | 'PERMISSION'
+  | 'PLAN'
+  | 'RESULT';
+
 export interface ChatMessage {
   id: string;
-  role: 'USER' | 'LULU' | 'TOOL' | 'SYSTEM';
+  role: MessageRole;
   content: string;
   toolName?: string;
   exitCode?: number;
   durationMs?: number;
+  filePath?: string;
+  line?: number;
   timestamp: string;
+  isStreaming?: boolean;
 }
 
 interface AgentStore {
@@ -24,11 +39,16 @@ interface AgentStore {
   tasks: TaskRecord[];
   messages: ChatMessage[];
   timeline: AgentTimelineEvent[];
+  contextFiles: string[];
   isStopped: boolean;
 
   startTask: (prompt: string) => Promise<void>;
   stopTask: () => void;
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  clearMessages: () => void;
+  addContextFile: (path: string) => void;
+  removeContextFile: (path: string) => void;
+  clearContextFiles: () => void;
   updateStepStatus: (stepId: string, status: PlanStep['status'], output?: string) => void;
   loadTaskHistory: () => Promise<void>;
 }
@@ -100,6 +120,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   tasks: [],
   messages: [],
   timeline: [],
+  contextFiles: [],
   isStopped: false,
 
   addMessage: (msg) => {
@@ -110,6 +131,21 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     };
     set((state) => ({ messages: [...state.messages, newMsg] }));
   },
+
+  clearMessages: () => set({ messages: [] }),
+
+  addContextFile: (path) =>
+    set((state) => {
+      if (state.contextFiles.includes(path)) return state;
+      return { contextFiles: [...state.contextFiles, path] };
+    }),
+
+  removeContextFile: (path) =>
+    set((state) => ({
+      contextFiles: state.contextFiles.filter((p) => p !== path),
+    })),
+
+  clearContextFiles: () => set({ contextFiles: [] }),
 
   updateStepStatus: (stepId, status, output) => {
     set((state) => {

@@ -8,7 +8,7 @@ pub struct Diagnostic {
     pub column: usize,
     pub severity: String, // "error" | "warning" | "info"
     pub message: String,
-    pub source: String,   // "rustc" | "tsc" | "pytest" | "compiler"
+    pub source: String,   // "rustc" | "tsc" | "pytest" | "gcc" | "clang" | "cmake" | "make" | "linker"
 }
 
 pub struct DiagnosticParser;
@@ -17,7 +17,117 @@ impl DiagnosticParser {
     pub fn parse_output(output: &str) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
-        // 1. Rust compiler pattern:
+        // 1. GCC / Clang / Clang++ errors and warnings:
+        // src/main.cpp:42:15: error: 'vector' was not declared in this scope
+        // include/player.hpp:10:5: warning: unused variable 'hp' [-Wunused-variable]
+        let gcc_re = Regex::new(r"^([^\s:(]+):(\d+):(\d+):\s*(fatal error|error|warning|note):\s*(.*)").unwrap();
+        for line in output.lines() {
+            let trimmed = line.trim();
+            if let Some(caps) = gcc_re.captures(trimmed) {
+                let file = caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let col_num: usize = caps.get(3).unwrap().as_str().parse().unwrap_or(1);
+                let sev_str = caps.get(4).unwrap().as_str();
+                let severity = if sev_str.contains("error") {
+                    "error".to_string()
+                } else if sev_str == "warning" {
+                    "warning".to_string()
+                } else {
+                    "info".to_string()
+                };
+                let message = caps.get(5).unwrap().as_str().to_string();
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: col_num,
+                    severity,
+                    message,
+                    source: "gcc/clang".to_string(),
+                });
+            }
+        }
+
+        // 2. CMake error pattern:
+        // CMake Error at CMakeLists.txt:24 (add_executable):
+        let cmake_re = Regex::new(r"CMake Error at ([^\s:]+):(\d+)\s*\(([^)]+)\):\s*(.*)").unwrap();
+        let cmake_simple_re = Regex::new(r"CMake Error at ([^\s:]+):(\d+)").unwrap();
+        for (i, line) in output.lines().enumerate() {
+            let trimmed = line.trim();
+            if let Some(caps) = cmake_re.captures(trimmed) {
+                let file = caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let msg = format!("{}: {}", caps.get(3).unwrap().as_str(), caps.get(4).unwrap().as_str());
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: msg,
+                    source: "cmake".to_string(),
+                });
+            } else if let Some(caps) = cmake_simple_re.captures(trimmed) {
+                let file = caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let next_msg = output.lines().nth(i + 1).unwrap_or("CMake configuration failed").trim();
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: next_msg.to_string(),
+                    source: "cmake".to_string(),
+                });
+            }
+        }
+
+        // 3. Make error pattern:
+        // Makefile:14: *** missing separator.  Stop.
+        let make_re = Regex::new(r"^([^\s:]*(?:Makefile|[^\s:]+\.mk)):(\d+):\s*\*\*\*\s*(.*)").unwrap();
+        for line in output.lines() {
+            if let Some(caps) = make_re.captures(line.trim()) {
+                diagnostics.push(Diagnostic {
+                    file: caps.get(1).unwrap().as_str().to_string(),
+                    line: caps.get(2).unwrap().as_str().parse().unwrap_or(1),
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: caps.get(3).unwrap().as_str().to_string(),
+                    source: "make".to_string(),
+                });
+            }
+        }
+
+        // 4. Linker error pattern:
+        // undefined reference to `Player::takeDamage(int)'
+        // /usr/bin/ld: cannot find -lboost_system: No such file or directory
+        let ld_re = Regex::new(r"(?:/usr/bin/ld|lld|mold|collect2):\s*(error:\s*)?(.*)").unwrap();
+        let undef_re = Regex::new(r"undefined reference to `([^']+)'").unwrap();
+        for line in output.lines() {
+            let trimmed = line.trim();
+            if let Some(caps) = undef_re.captures(trimmed) {
+                diagnostics.push(Diagnostic {
+                    file: "linker".to_string(),
+                    line: 1,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: format!("Undefined reference to '{}'", caps.get(1).unwrap().as_str()),
+                    source: "linker".to_string(),
+                });
+            } else if let Some(caps) = ld_re.captures(trimmed) {
+                diagnostics.push(Diagnostic {
+                    file: "linker".to_string(),
+                    line: 1,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: caps.get(2).unwrap().as_str().to_string(),
+                    source: "linker".to_string(),
+                });
+            }
+        }
+
+        // 5. Rust compiler pattern:
         // error[E0308]: mismatched types
         //   --> src/main.rs:14:5
         let rust_loc_re = Regex::new(r"-->\s+([^\s:]+):(\d+):(\d+)").unwrap();
@@ -30,7 +140,6 @@ impl DiagnosticParser {
                 let line_num: usize = loc_caps.get(2).unwrap().as_str().parse().unwrap_or(1);
                 let col_num: usize = loc_caps.get(3).unwrap().as_str().parse().unwrap_or(1);
 
-                // Look backward a few lines for the error message
                 let mut message = "Compilation issue".to_string();
                 let mut severity = "error".to_string();
                 for prev in lines[..i].iter().rev().take(3) {
@@ -52,9 +161,7 @@ impl DiagnosticParser {
             }
         }
 
-        // 2. TypeScript / tsc pattern:
-        // src/app/App.tsx(12,3): error TS2322: Type 'string' is not assignable to type 'number'.
-        // src/app/App.tsx:12:3 - error TS2322: ...
+        // 6. TypeScript / tsc pattern:
         let ts_re = Regex::new(r"([^\s:(]+)[:\(](\d+)[:,](\d+)\)?\s*-\s*(error|warning)\s+([A-Z0-9]+):\s+(.*)").unwrap();
         for line in &lines {
             if let Some(caps) = ts_re.captures(line) {
@@ -69,15 +176,12 @@ impl DiagnosticParser {
             }
         }
 
-        // 3. Python traceback / pytest pattern:
-        // File "src/auth.py", line 45, in test_login
+        // 7. Python traceback / pytest pattern:
         let py_re = Regex::new(r#"File "([^"]+)", line (\d+)(?:, in (.*))?"#).unwrap();
         for (i, line) in lines.iter().enumerate() {
             if let Some(caps) = py_re.captures(line) {
                 let file = caps.get(1).unwrap().as_str().to_string();
                 let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
-                
-                // Check next line for error message
                 let next_msg = lines.get(i + 2).or_else(|| lines.get(i + 1)).map(|s| s.trim()).unwrap_or("Test failure");
 
                 diagnostics.push(Diagnostic {
@@ -101,29 +205,74 @@ mod tests {
 
     #[test]
     fn test_parse_rust_error() {
-        let output = r#"
+        let sample = r#"
 error[E0308]: mismatched types
-  --> src/auth.rs:42:13
+  --> src/main.rs:14:5
    |
-42 |     let x: u32 = "hello";
-        "#;
-        let diags = DiagnosticParser::parse_output(output);
+14 |     true
+   |     ^^^^ expected `()`, found `bool`
+"#;
+        let diags = DiagnosticParser::parse_output(sample);
         assert_eq!(diags.len(), 1);
-        assert_eq!(diags[0].file, "src/auth.rs");
-        assert_eq!(diags[0].line, 42);
-        assert_eq!(diags[0].column, 13);
+        assert_eq!(diags[0].file, "src/main.rs");
+        assert_eq!(diags[0].line, 14);
+        assert_eq!(diags[0].column, 5);
+        assert_eq!(diags[0].severity, "error");
         assert_eq!(diags[0].source, "rustc");
-        assert!(diags[0].message.contains("mismatched types"));
     }
 
     #[test]
     fn test_parse_tsc_error() {
-        let output = "src/components/Editor.tsx:25:9 - error TS2304: Cannot find name 'foo'.";
-        let diags = DiagnosticParser::parse_output(output);
+        let sample = "src/app/App.tsx:12:3 - error TS2322: Type 'string' is not assignable to type 'number'.";
+        let diags = DiagnosticParser::parse_output(sample);
         assert_eq!(diags.len(), 1);
-        assert_eq!(diags[0].file, "src/components/Editor.tsx");
-        assert_eq!(diags[0].line, 25);
-        assert_eq!(diags[0].column, 9);
+        assert_eq!(diags[0].file, "src/app/App.tsx");
+        assert_eq!(diags[0].line, 12);
         assert_eq!(diags[0].source, "tsc");
+    }
+
+    #[test]
+    fn test_parse_gcc_cpp_error() {
+        let sample = "src/main.cpp:42:15: error: 'vector' was not declared in this scope\ninclude/player.hpp:10:5: warning: unused variable 'hp' [-Wunused-variable]";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 2);
+        assert_eq!(diags[0].file, "src/main.cpp");
+        assert_eq!(diags[0].line, 42);
+        assert_eq!(diags[0].column, 15);
+        assert_eq!(diags[0].severity, "error");
+        assert!(diags[0].message.contains("vector"));
+
+        assert_eq!(diags[1].file, "include/player.hpp");
+        assert_eq!(diags[1].line, 10);
+        assert_eq!(diags[1].severity, "warning");
+    }
+
+    #[test]
+    fn test_parse_cmake_error() {
+        let sample = "CMake Error at CMakeLists.txt:24 (add_executable): Cannot find source file: main.cpp";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].file, "CMakeLists.txt");
+        assert_eq!(diags[0].line, 24);
+        assert_eq!(diags[0].source, "cmake");
+    }
+
+    #[test]
+    fn test_parse_make_error() {
+        let sample = "Makefile:14: *** missing separator. Stop.";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].file, "Makefile");
+        assert_eq!(diags[0].line, 14);
+        assert_eq!(diags[0].source, "make");
+    }
+
+    #[test]
+    fn test_parse_linker_error() {
+        let sample = "/usr/bin/ld: undefined reference to `Player::takeDamage(int)'";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].source, "linker");
+        assert!(diags[0].message.contains("takeDamage"));
     }
 }

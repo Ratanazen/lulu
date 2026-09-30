@@ -1,273 +1,143 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAgentStore, ChatMessage } from '../../stores/useAgentStore';
-import { copyToClipboard } from '../../utils/clipboard';
+import { useAgentStore } from '../../stores/useAgentStore';
+import { MessageCard } from './MessageCard';
+import { ChatComposer } from './ChatComposer';
 import {
-  Send,
-  Square,
-  Terminal,
-  User,
   Bot,
-  AlertTriangle,
-  CheckCircle,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  Check,
-  Code2,
+  Trash2,
+  ArrowDown,
+  Sparkles,
+  Terminal,
+  FileCode2,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
-const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, language }) => {
-  const [copied, setCopied] = useState(false);
+interface ChatPanelProps {
+  onOpenSettings?: () => void;
+}
 
-  const handleCopy = async () => {
-    await copyToClipboard(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+export const ChatPanel: React.FC<ChatPanelProps> = ({ onOpenSettings }) => {
+  const { messages, activeTask, state, clearMessages } = useAgentStore();
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isAutoScrollLockedRef = useRef<boolean>(true);
+
+  // Smart auto-scroll handling
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight <= 80;
+    isAutoScrollLockedRef.current = isAtBottom;
+    setShowScrollBottom(!isAtBottom);
   };
 
-  return (
-    <div className="my-2 rounded-lg border border-[#2b313e] bg-[#0d0f14] overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1 bg-[#161922] border-b border-[#2b313e] text-[10px] text-gray-400 select-none">
-        <div className="flex items-center gap-1.5">
-          <Code2 size={11} className="text-cyan-400" />
-          <span className="font-mono uppercase text-cyan-300 font-semibold">{language || 'code'}</span>
-        </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-white/10 text-gray-300 hover:text-white transition"
-          title="Copy Code"
-        >
-          {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-          <span>{copied ? 'Copied!' : 'Copy Code'}</span>
-        </button>
-      </div>
-      <pre className="p-3 font-mono text-[11px] text-gray-200 overflow-x-auto whitespace-pre leading-relaxed select-text">
-        {code}
-      </pre>
-    </div>
-  );
-};
-
-const ToolMessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
-  const [collapsed, setCollapsed] = useState(true);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyOutput = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await copyToClipboard(msg.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior,
+      });
+      isAutoScrollLockedRef.current = true;
+      setShowScrollBottom(false);
+    }
   };
-
-  return (
-    <div className="bg-[#14161d] border border-[#2b313e] rounded-lg overflow-hidden my-1 text-xs">
-      <div
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-between px-3 py-1.5 bg-[#181b22] cursor-pointer hover:bg-[#1f232d] transition select-none"
-      >
-        <div className="flex items-center gap-2">
-          <Terminal size={12} className="text-cyan-400" />
-          <span className="font-mono text-cyan-300 font-medium">{msg.toolName || 'Tool Call'}</span>
-          {msg.exitCode !== undefined && (
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded ${
-                msg.exitCode === 0
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              }`}
-            >
-              exit {msg.exitCode}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyOutput}
-            className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-gray-200 transition"
-            title="Copy Output"
-          >
-            {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-          </button>
-          {collapsed ? <ChevronRight size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />}
-        </div>
-      </div>
-
-      {!collapsed && (
-        <pre className="p-3 font-mono text-[11px] text-gray-300 bg-[#101217] overflow-x-auto whitespace-pre-wrap max-h-48 select-text">
-          {msg.content}
-        </pre>
-      )}
-    </div>
-  );
-};
-
-export const ChatPanel: React.FC = () => {
-  const { messages, state, startTask, stopTask } = useAgentStore();
-  const [prompt, setPrompt] = useState('');
-  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isAutoScrollLockedRef.current) {
+      scrollToBottom('smooth');
+    }
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim() || isAgentActive) return;
-    const p = prompt.trim();
-    setPrompt('');
-    startTask(p);
-  };
-
-  const handleCopyMessage = async (id: string, text: string) => {
-    await copyToClipboard(text);
-    setCopiedMsgId(id);
-    setTimeout(() => setCopiedMsgId(null), 2000);
-  };
-
-  const renderContent = (content: string) => {
-    const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(
-          <span key={lastIndex} className="whitespace-pre-wrap leading-relaxed select-text">
-            {content.slice(lastIndex, match.index)}
-          </span>
-        );
-      }
-      const lang = match[1] || 'code';
-      const code = match[2];
-      parts.push(<CodeBlock key={match.index} code={code} language={lang} />);
-      lastIndex = match.index + match[0].length;
-    }
-
-    if (lastIndex < content.length) {
-      parts.push(
-        <span key={lastIndex} className="whitespace-pre-wrap leading-relaxed select-text">
-          {content.slice(lastIndex)}
-        </span>
-      );
-    }
-
-    return parts.length > 0 ? parts : <span className="whitespace-pre-wrap leading-relaxed select-text">{content}</span>;
-  };
-
-  const isAgentActive =
-    state === 'PLANNING' ||
-    state === 'INSPECTING' ||
-    state === 'EXECUTING' ||
-    state === 'TESTING' ||
-    state === 'ANALYZING' ||
-    state === 'FIXING' ||
-    state === 'VERIFYING';
+  // Live status badge styling
+  const statusConfig = {
+    IDLE: { label: 'Idle', color: 'text-gray-400', dot: 'bg-gray-400' },
+    PLANNING: { label: 'Planning', color: 'text-cyan-400', dot: 'bg-cyan-400 animate-pulse' },
+    INSPECTING: { label: 'Inspecting', color: 'text-blue-400', dot: 'bg-blue-400 animate-pulse' },
+    EXECUTING: { label: 'Executing', color: 'text-amber-400', dot: 'bg-amber-400 animate-pulse' },
+    TESTING: { label: 'Testing', color: 'text-purple-400', dot: 'bg-purple-400 animate-pulse' },
+    ANALYZING: { label: 'Analyzing', color: 'text-indigo-400', dot: 'bg-indigo-400 animate-pulse' },
+    FIXING: { label: 'Fixing', color: 'text-orange-400', dot: 'bg-orange-400 animate-pulse' },
+    VERIFYING: { label: 'Verifying', color: 'text-teal-400', dot: 'bg-teal-400 animate-pulse' },
+    COMPLETE: { label: 'Complete', color: 'text-emerald-400', dot: 'bg-emerald-400' },
+    RECOVERY: { label: 'Recovery', color: 'text-rose-400', dot: 'bg-rose-400 animate-pulse' },
+    CANCELLED: { label: 'Cancelled', color: 'text-red-400', dot: 'bg-red-400' },
+  }[state] || { label: state, color: 'text-gray-400', dot: 'bg-gray-400' };
 
   return (
-    <div className="flex flex-col h-full bg-[#14161d]">
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-500 text-xs select-none">
-            <Bot size={32} className="text-blue-400 mb-2 opacity-80" />
-            <p className="font-medium text-gray-300">Lulu Code Agent</p>
-            <p className="text-[11px] text-gray-500 max-w-xs mt-1">
-              Ask Lulu to inspect code, run tests, fix compiler errors, refactor, or explain project architecture.
-            </p>
+    <div className="flex flex-col h-full bg-[#12141a] text-gray-200 overflow-hidden relative">
+      {/* Task Header Bar */}
+      <div className="h-10 bg-[#161922] border-b border-[#2b313e] flex items-center justify-between px-3.5 shrink-0 select-none">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-1.5 font-medium text-xs text-gray-200 truncate">
+            <Bot size={14} className="text-blue-400 shrink-0" />
+            <span className="truncate">{activeTask ? activeTask.title : 'Lulu Code Session'}</span>
           </div>
-        ) : (
-          messages.map((m) => {
-            if (m.role === 'TOOL') {
-              return <ToolMessageCard key={m.id} msg={m} />;
-            }
 
-            const isUser = m.role === 'USER';
-            const isSystem = m.role === 'SYSTEM';
+          <div className="flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 shrink-0">
+            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
+            <span className={`font-mono font-medium ${statusConfig.color}`}>{statusConfig.label}</span>
+          </div>
+        </div>
 
-            return (
-              <div
-                key={m.id}
-                className={`group flex gap-2.5 text-xs ${isUser ? 'justify-end' : 'justify-start'}`}
-              >
-                {!isUser && (
-                  <div className="w-6 h-6 rounded-md bg-blue-600/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5 border border-blue-500/30">
-                    <Bot size={13} />
-                  </div>
-                )}
-
-                <div
-                  className={`max-w-[85%] rounded-lg p-3 relative ${
-                    isUser
-                      ? 'bg-blue-600 text-white'
-                      : isSystem
-                      ? 'bg-amber-950/20 border border-amber-600/30 text-amber-200'
-                      : 'bg-[#181b22] border border-[#2b313e] text-gray-200'
-                  }`}
-                >
-                  <div>{renderContent(m.content)}</div>
-                  <div className="flex items-center justify-between mt-1 text-[9px] opacity-60">
-                    <button
-                      onClick={() => handleCopyMessage(m.id, m.content)}
-                      className="opacity-0 group-hover:opacity-100 flex items-center gap-1 hover:text-white transition"
-                      title="Copy full message text"
-                    >
-                      {copiedMsgId === m.id ? (
-                        <Check size={10} className="text-emerald-400" />
-                      ) : (
-                        <Copy size={10} />
-                      )}
-                      <span>{copiedMsgId === m.id ? 'Copied' : 'Copy'}</span>
-                    </button>
-                    <span className="ml-auto">{m.timestamp}</span>
-                  </div>
-                </div>
-
-                {isUser && (
-                  <div className="w-6 h-6 rounded-md bg-gray-700 text-gray-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <User size={13} />
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-        <div ref={chatEndRef} />
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={clearMessages}
+              className="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-white/10 transition"
+              title="Clear chat history"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Input Box */}
-      <form
-        onSubmit={handleSubmit}
-        className="p-3 bg-[#181b22] border-t border-[#2b313e] flex items-center gap-2 select-none"
+      {/* Messages Scroll Area */}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 space-y-3.5 relative"
       >
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={isAgentActive ? 'Lulu is working on the task...' : 'Ask Lulu (e.g. "Fix tests in auth.rs")...'}
-          disabled={isAgentActive}
-          className="flex-1 bg-[#12141a] border border-[#2b313e] rounded-lg px-3 py-2 text-xs text-gray-100 outline-none focus:border-blue-500 placeholder:text-gray-500"
-        />
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-500 text-xs select-none max-w-md mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-3 shadow-sm">
+              <Bot size={26} />
+            </div>
+            <h3 className="font-semibold text-gray-200 text-sm mb-1">Lulu Code Native Desktop Agent</h3>
+            <p className="text-[12px] text-gray-400 leading-relaxed mb-4">
+              Native autonomous engineering agent with zero-overhead C/C++ build diagnostics, process sandboxing, and safe patch application.
+            </p>
 
-        {isAgentActive ? (
-          <button
-            type="button"
-            onClick={stopTask}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition"
-          >
-            <Square size={13} fill="currentColor" /> Stop
-          </button>
+            <div className="grid grid-cols-2 gap-2 w-full text-[11.5px] text-left">
+              <div className="p-2.5 rounded-lg bg-[#181b24] border border-[#2b313e] text-gray-300">
+                <span className="font-semibold text-cyan-300 block mb-0.5">⚡ C/C++ Fast Fix</span>
+                <span className="text-gray-500">Detects GCC, Clang, CMake, and linker failures</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-[#181b24] border border-[#2b313e] text-gray-300">
+                <span className="font-semibold text-amber-300 block mb-0.5">🛡️ Safe Permissions</span>
+                <span className="text-gray-500">Prompts before executing shell or disk modifications</span>
+              </div>
+            </div>
+          </div>
         ) : (
-          <button
-            type="submit"
-            disabled={!prompt.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition disabled:opacity-40"
-          >
-            <Send size={13} /> Run
-          </button>
+          messages.map((m) => <MessageCard key={m.id} message={m} />)
         )}
-      </form>
+      </div>
+
+      {/* Floating Jump to Latest Button */}
+      {showScrollBottom && (
+        <button
+          onClick={() => scrollToBottom('smooth')}
+          className="absolute bottom-20 right-6 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-xl border border-blue-400/40 transition select-none cursor-pointer"
+        >
+          <ArrowDown size={13} />
+          <span>Jump to latest</span>
+        </button>
+      )}
+
+      {/* Bottom Composer */}
+      <ChatComposer onOpenSettings={onOpenSettings} />
     </div>
   );
 };

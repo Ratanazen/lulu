@@ -30,6 +30,14 @@ function detectLanguage(path: string): string {
   const ext = path.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'rs': return 'rust';
+    case 'c':
+    case 'h': return 'c';
+    case 'cpp':
+    case 'cc':
+    case 'cxx':
+    case 'hpp':
+    case 'hh':
+    case 'hxx': return 'cpp';
     case 'ts':
     case 'tsx': return 'typescript';
     case 'js':

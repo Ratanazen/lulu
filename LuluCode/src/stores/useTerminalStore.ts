@@ -43,12 +43,19 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       text,
       timestamp: new Date().toLocaleTimeString(),
     };
-    set((state) => ({
-      logs: {
-        ...state.logs,
-        [tab]: [...state.logs[tab], line],
-      },
-    }));
+    set((state) => {
+      const existing = state.logs[tab] || [];
+      const MAX_LINES = 5000;
+      const updated = existing.length >= MAX_LINES 
+        ? [...existing.slice(existing.length - MAX_LINES + 1), line]
+        : [...existing, line];
+      return {
+        logs: {
+          ...state.logs,
+          [tab]: updated,
+        },
+      };
+    });
   },
 
   clearTab: (tab) => {

@@ -1,12 +1,15 @@
 pub mod agent;
 pub mod ai;
 pub mod commands;
+pub mod config;
 pub mod database;
 pub mod diagnostics;
 pub mod filesystem;
 pub mod git;
+pub mod languages;
 pub mod permissions;
 pub mod security;
+pub mod system;
 pub mod terminal;
 pub mod workspace;
 
@@ -70,6 +73,13 @@ pub fn run() {
             commands::set_permission_level,
             commands::test_ai_connection,
             commands::copy_to_clipboard,
+            commands::get_system_info,
+            commands::get_system_report,
+            commands::get_c_cpp_toolchain,
+            commands::detect_c_cpp_project,
+            commands::format_c_cpp_file,
+            commands::get_app_config,
+            commands::save_app_config,
         ])
         .build(tauri::generate_context!())
         .expect("error while running lulu code application")

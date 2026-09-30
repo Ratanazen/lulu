@@ -1,17 +1,17 @@
 [package]
-name = "lulu"
-version = "0.1.0"
-description = "Lulu — Modern Offline-First Desktop Companion"
+name = "lulu-desktop"
+version = "0.2.0"
+description = "Lulu — Native Desktop Companion"
 authors = ["Lulu Team"]
 license = "MIT"
 edition = "2021"
 
 [lib]
-name = "lulu_lib"
+name = "lulu_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.0", default-features = false , features = [] }
+tauri-build = { version = "2.0", default-features = false, features = [] }
 
 [dependencies]
 tauri = { version = "2.1", features = ["tray-icon"] }
@@ -25,7 +25,10 @@ anyhow = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
-toml = "1.1.6"
+regex = "1.10"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+libc = "0.2"
+toml = "0.8"
 
 [profile.release]
 opt-level = "z"

@@ -1,79 +1,46 @@
-import { LuluEvent, LuluEventType } from '../types';
+export type EventCallback<T = any> = (payload: T) => void;
 
-type EventHandler<T = any> = (event: LuluEvent<T>) => void;
+class EventBus {
+  private listeners: Map<string, Set<EventCallback>> = new Map();
 
-class EventBusService {
-  private handlers: Map<string, Set<EventHandler>> = new Map();
-  private eventHistory: LuluEvent[] = [];
-  private readonly maxHistory = 150;
-
-  public subscribe<T = any>(type: LuluEventType | '*', handler: EventHandler<T>): () => void {
-    if (!this.handlers.has(type)) {
-      this.handlers.set(type, new Set());
+  on<T = any>(event: string, callback: EventCallback<T>): () => void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
     }
-    this.handlers.get(type)!.add(handler as EventHandler);
+    this.listeners.get(event)!.add(callback);
 
+    // Return unbind function
     return () => {
-      const set = this.handlers.get(type);
-      if (set) {
-        set.delete(handler as EventHandler);
-        if (set.size === 0) {
-          this.handlers.delete(type);
-        }
-      }
+      this.off(event, callback);
     };
   }
 
-  public on<T = any>(type: LuluEventType | '*', handler: EventHandler<T>): () => void {
-    return this.subscribe(type, handler);
-  }
-
-  public emit<T = any>(type: LuluEventType, source: string, payload: T): void {
-    const event: LuluEvent<T> = {
-      type,
-      source,
-      timestamp: Date.now(),
-      payload,
-    };
-
-    // Keep rolling history
-    this.eventHistory.unshift(event);
-    if (this.eventHistory.length > this.maxHistory) {
-      this.eventHistory.pop();
-    }
-
-    // Call specific handlers
-    const specificHandlers = this.handlers.get(type);
-    if (specificHandlers) {
-      for (const handler of specificHandlers) {
-        try {
-          handler(event);
-        } catch (err) {
-          console.error(`[EventBus] Error in handler for ${type}:`, err);
-        }
+  off<T = any>(event: string, callback: EventCallback<T>): void {
+    const set = this.listeners.get(event);
+    if (set) {
+      set.delete(callback);
+      if (set.size === 0) {
+        this.listeners.delete(event);
       }
     }
+  }
 
-    // Call wildcard handlers
-    const wildcardHandlers = this.handlers.get('*');
-    if (wildcardHandlers) {
-      for (const handler of wildcardHandlers) {
+  emit<T = any>(event: string, payload?: T): void {
+    const set = this.listeners.get(event);
+    if (set) {
+      for (const callback of set) {
         try {
-          handler(event);
+          callback(payload);
         } catch (err) {
-          console.error('[EventBus] Error in wildcard handler:', err);
+          console.error(`[EventBus] Error in listener for event "${event}":`, err);
         }
       }
     }
   }
 
-  public getHistory(): LuluEvent[] {
-    return [...this.eventHistory];
-  }
-
-  public clearHistory(): void {
-    this.eventHistory = [];
+  clear(): void {
+    this.listeners.clear();
   }
 }
 
-export const eventBus = new EventBusService();
+export const eventBus = new EventBus();

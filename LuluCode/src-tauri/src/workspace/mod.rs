@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use crate::languages::c_cpp::{CCppManager, CCppProjectDetails};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectMetadata {
@@ -12,6 +13,7 @@ pub struct ProjectMetadata {
     pub is_git: bool,
     pub has_lulu_spec: bool,
     pub lulu_instructions: Option<String>,
+    pub c_cpp_details: Option<CCppProjectDetails>,
 }
 
 pub struct WorkspaceDetector;
@@ -42,8 +44,11 @@ impl WorkspaceDetector {
             lulu_instructions = fs::read_to_string(&dot_lulu_inst).ok();
         }
 
+        // C/C++ Inspection
+        let c_cpp_details = CCppManager::inspect_project(root);
+
         // Framework / language detection
-        let (language, build_tool, test_runner) = Self::detect_project_type(root);
+        let (language, build_tool, test_runner) = Self::detect_project_type(root, &c_cpp_details);
 
         ProjectMetadata {
             name,
@@ -54,10 +59,11 @@ impl WorkspaceDetector {
             is_git,
             has_lulu_spec,
             lulu_instructions,
+            c_cpp_details,
         }
     }
 
-    fn detect_project_type(root: &Path) -> (String, String, String) {
+    fn detect_project_type(root: &Path, c_cpp: &Option<CCppProjectDetails>) -> (String, String, String) {
         // Rust
         if root.join("Cargo.toml").exists() {
             return ("Rust".into(), "cargo".into(), "cargo test".into());
@@ -88,6 +94,9 @@ impl WorkspaceDetector {
         }
 
         // C / C++
+        if let Some(details) = c_cpp {
+            return ("C/C++".into(), details.build_system.clone(), details.test_command.clone());
+        }
         if root.join("CMakeLists.txt").exists() {
             return ("C/C++".into(), "cmake".into(), "ctest".into());
         }
@@ -167,6 +176,19 @@ mod tests {
         let meta = WorkspaceDetector::inspect_workspace(&temp);
         assert_eq!(meta.language, "Python");
         assert_eq!(meta.test_runner, "pytest");
+
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn test_cpp_detection() {
+        let temp = std::env::temp_dir().join("test_detect_cpp");
+        let _ = fs::create_dir_all(&temp);
+        let _ = File::create(temp.join("CMakeLists.txt"));
+
+        let meta = WorkspaceDetector::inspect_workspace(&temp);
+        assert_eq!(meta.language, "C/C++");
+        assert!(meta.c_cpp_details.is_some());
 
         let _ = fs::remove_dir_all(temp);
     }

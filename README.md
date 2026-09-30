@@ -1,226 +1,109 @@
-# Lulu — Modern Offline-First Desktop Companion 🌟
+# Lulu — Full Native Desktop Companion (v0.2.0)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tauri: 2.0](https://img.shields.io/badge/Tauri-2.0-orange.svg)](https://v2.tauri.app/)
-[![React: 18](https://img.shields.io/badge/React-18.3-cyan.svg)](https://react.dev/)
-[![Rust: 2021](https://img.shields.io/badge/Rust-2021-red.svg)](https://www.rust-lang.org/)
-
-**Lulu** is an offline-first, native interactive desktop companion application built from zero with **Tauri 2**, **Rust**, **React**, **TypeScript**, **Vite**, and **SQLite**.
-
-Unlike web-based overlays or simulated pets, Lulu lives in a **real transparent, frameless native OS window**, moves across your operating system displays using real native coordinates, renders procedural pixel art, maintains autonomous behavior and vital needs, and runs 8 built-in mini-games completely offline.
+> **Lulu** is an offline-first, native Linux desktop companion and interactive pet built with **Tauri 2**, **Rust**, **React**, **TypeScript**, and **SQLite**.
+>
+> ⚡ **Zero AI • Zero Mini-Games • Zero Cloud Dependencies • 100% Local Privacy**
 
 ---
 
-## ✨ Core Pillars & Features
+## 🌟 Key Features
 
-- **Multi-Renderer Character Engine**:
-  - **Procedural 2D Pixel**: Retro pixel art with dynamic color palettes, auras, accessories, and viseme lip-sync.
-  - **Vector 2D Skeletal**: Dynamic bone hierarchy with smooth limb rotations and facial expressions.
-  - **WebGL / 3D VRM**: Hardware-accelerated 3D avatar adapter with runtime capability detection and automatic fallback.
-  - **Lip-Sync Engine**: Real-time viseme cadence tracking (`closed`, `small`, `medium`, `open`, `smile`) linked to speech audio.
-- **Original Anime Presets**:
-  - **Kage Shinobi**: Stealth ninja aesthetic, dark palette, disciplined persona.
-  - **Ren Cyber Ninja**: Neon cybernetic samurai with high-energy movement.
-  - **Takeshi Samurai**: Traditional katana master, bushido spirit, calm demeanor.
-  - **Aria Mage**: Celestial arcane spellcaster, cosmic violet palette.
-  - **Character Pack Validator**: Archive and manifest validator enforcing 50MB limits, allowed texture formats, and blocking executables.
-- **Native Host AI CLI Integration**:
-  - Direct host discovery for `gemini`, `codex`, `claude`, and `ollama`.
-  - Truthful status reporting (`INSTALLED` vs `NOT_INSTALLED`), path discovery, version probing, and execution streaming.
-  - Official installation guidance for missing CLI binaries.
-- **Multi-Agent Orchestrator & Workspace Boundary**:
-  - 10 Specialized Agents: *General Assistant*, *Architect Planner*, *Senior Coder*, *Code Reviewer*, *Test Engineer*, *Knowledge Researcher*, *Linux Specialist*, *DevOps & Packaging*, *Security Guardian*, and *UI/UX Designer*.
-  - Strict **Workspace Boundary Containment**: Enforces that all file modifications, script evaluations, and agent tools are restricted to a user-defined project directory, blocking directory traversals (`../`) and system escapes.
-- **Autonomous Resource Governor**:
-  - Automatic CPU/RAM safety throttling: dynamically reduces render pacing from 60 FPS to 15 FPS when host CPU usage exceeds 80% to protect gaming and compile workloads.
-- **Safe AI Tools & Confirmation Governance**:
-  - Read-only tools (`system_info`, `cpu_info`, `ram_info`, `disk_info`, `network_info`, `battery_info`, `open_application`, `open_folder`, `open_url`, `file_search`).
-  - Dangerous tools (`delete_file`, `kill_process`, `arbitrary_shell`) governed by mandatory user approval choices (`Allow Once`, `Allow Session`, `Deny`).
-- **Official Google OAuth 2.0 PKCE Architecture**:
-  - RFC 7636 Authorization Code flow with PKCE, least-privilege scopes (`openid email profile`), and zero client secret or credential scraping.
-- **Real Native OS Integration**:
-  - Transparent, borderless window with click-through and native dragging.
-  - Real window movement across multiple monitors, DPI scales, and negative coordinate spaces.
-  - Native System Tray integration (Show Lulu, Hide Lulu, Open Chat, Settings, Quit).
-  - Native OS autostart on user login (XDG `.desktop`).
-  - Native Linux Desktop Awareness: Wayland / X11 session detection, Sway / Hyprland tiling WM detection, and active workspace tracking.
-- **Linux Native Notifications Subsystem**:
-  - Background D-Bus listener monitoring `org.freedesktop.Notifications`.
-  - Deterministic originating application identification (Telegram ✈️, Discord 🎮, Slack 💼, Email ✉️, Browser 🌐, VS Code 💻, Terminal 🖥️, Music 🎵).
-  - Strict privacy protection: `Read Notification Content` is disabled by default, ensuring message bodies remain private.
-  - Whitelist filtering and native test notification generation via `notify-send`.
-- **Linux MPRIS Music & Synchronized Lyrics (.lrc)**:
-  - Real-time media playback tracking via Linux MPRIS D-Bus (`org.mpris.MediaPlayer2`) and `playerctl`.
-  - Automatic detection of Spotify, VLC, browser media, YouTube, and local players.
-  - High-precision `.lrc` lyrics parser supporting metadata (`[ti:]`, `[ar:]`, `[al:]`), multiple timestamps per line, and sub-second offsets.
-  - Real-time lyrics karaoke sync displaying active lyric lines in Lulu's speech bubbles and Control Center.
-- **Voice & Speech Synthesis**:
-  - Text-to-Speech (TTS) with system voice selection, pitch, rate, and volume controls.
-  - Push-to-talk Speech-to-Text (STT) voice recognition.
-  - Automatic character state sync (`LISTENING`, `THINKING`, `TALKING`).
-- **Autonomous Behavior & Vitality**:
-  - 8 vital needs (Energy, Happiness, Fun, Attention, Social, Hunger, Cleanliness, Health) with gentle, non-aggressive decay.
-  - Dynamic Mood Engine with 6 continuous dimensions (Happiness, Energy, Curiosity, Affection, Boredom, Stress).
-  - Contextual speech bubble dialogue system with 10 message pools.
-- **Modern Control Center (19 Hubs)**:
-  - **Overview**: Status, coordinates, quick care buttons, and 6-variable mood engine.
-  - **AI & Models**: Cloud LLMs and Native Host AI CLI Tools with live status badges.
-  - **AI Agents & Teams**: 10 specialized agents, task runner, and workspace boundary manager.
-  - **Memory Storage**: Fact browser, keyword search, and JSON export.
-  - **Voice & Audio**: TTS voice picker, pitch/speed controls, push-to-talk.
-  - **Character Studio**: Anime presets, 3 rendering engines, accessories, and pack validator.
-  - **Behavior & Personality**: Choose behavior modes and personality archetypes.
-  - **Needs & Care**: Detailed vitality breakdown and care triggers.
-  - **Mini-Games Arcade**: 8 isolated games (Quick Click, Speed Reaction, Memory Match, Star Catcher, Cosmic Dodge, Pet Care, Starlight Expedition, Custom Game API).
-  - **Music Reactions**: Acoustic awareness and dance simulation.
-  - **Theme Engine**: 10 built-in themes.
-  - **Screen Map**: Interactive multi-monitor visualizer with click-to-dispatch.
-  - **Achievements**: XP progression, leveling, and trophies.
-  - **Performance & FPS**: Resource Governor controls and live safety throttling.
-  - **System Monitor**: Native CPU, memory, GPU, disk, battery, process count, uptime telemetry.
-  - **Developer Tools**: Event stream inspector, live state inspector, real OS process table.
-  - **Lulu Doctor**: Diagnostic health suite testing native windows, display servers, storage, and overhead.
-  - **Privacy & Storage**: 100% offline guarantee, Google OAuth 2.0 PKCE, and 12-permission matrix.
-  - **About Lulu**: Version, platform, and architectural credits.
+### 1. Original Procedural Character Engine
+- **100% Pure Vector SVG Code Animation**: Zero static raster sprites or copyrighted assets. Ultra-crisp scaling at any resolution with fluid 60 FPS animation.
+- **17 Distinct Character Functions**:
+  1. **Idle**: Stoic breathing cadence, gentle hair sway, scanning environment.
+  2. **Walk**: Smooth horizontal stride with footstep physics.
+  3. **Run**: Aerodynamic sprint with speed dust puffs and forward tilt.
+  4. **Jump**: Ballistic vertical trajectory with ground shadow contraction.
+  5. **Sit**: Ground rest pose with arms resting on lap.
+  6. **Sleep**: Inactivity rest on a celestial crescent cushion with floating `Zzz`.
+  7. **Happy**: Victorious smile with blushed cheeks and affection hearts.
+  8. **Angry**: Fiery chakra flame aura, frowning brows, and manga anger mark (`💢`).
+  9. **Surprised**: Recoil pop with exclamation mark (`!`).
+  10. **Dance**: Rhythmic sway with musical notes (`♪ ♫ ♬`) during music playback.
+  11. **Think**: Thoughtful upward chin gaze with floating gear bubble (`💭 ⚙️`).
+  12. **Talk**: Speech bubble with emotion icons and typewriter cadence.
+  13. **Wave**: Friendly greeting wave on startup or command.
+  14. **Follow Cursor**: Mathematical real-time eye pupil and head tilt tracking.
+  15. **Drag**: Native `data-tauri-drag-region` with responsive grab physics.
+  16. **Protect Mode**: Translucent polygonal chakra barrier shield during critical system alerts.
+  17. **Notification Mode**: Alert badge and companion reaction bubble for incoming notifications.
+- **Selectable Character Styles**:
+  - **Shadow Shinobi**: Madara-inspired original chibi with spiky hair, crimson armor, Sharingan eye, and Gunbai fan.
+  - **Anime Chibi**: Blue-eyed cute anime companion.
+  - **Celestial Kitsune**: Pink kitsune companion.
+
+### 2. Native Linux Notifications Companion (D-Bus)
+- Listens directly to `org.freedesktop.Notifications` via session D-Bus.
+- Real-time reaction: Lulu alerts you when messages arrive from Telegram, Discord, Chrome, or other Linux desktop applications.
+- **Privacy-First**: Notification bodies are disabled (`OFF`) by default; never sent to any cloud server.
+
+### 3. MPRIS Media Player & Synchronized Lyrics Engine
+- **Player Detection**: Seamlessly integrates with Spotify, VLC, Firefox, Chrome, Chromium via `playerctl` and MPRIS D-Bus.
+- **Dance Mode**: Lulu automatically dances when music plays and calms down when paused or stopped.
+- **Playback Controls**: Play/pause, next, and previous track controls built into the Control Center.
+- **Local `.lrc` Parser**: Synchronizes with local `.lrc` files (supporting Khmer, English, multilingual lyrics, millisecond timestamps `[mm:ss.xx]`, and offset tags).
+
+### 4. Smart Speech Bubble & Central MessageManager
+- **Natural Typewriter Effect**: 30–45ms per character.
+- **Adaptive Duration**: Minimum 4000ms, scaling by text length (4s to 12s) to guarantee readability.
+- **Interactive Controls**:
+  - Hovering over a speech bubble **pauses** the hide timer.
+  - Moving mouse away **resumes** the countdown.
+  - Single click toggles **pause/resume**.
+  - Double click **re-opens** the latest message.
+- **Priority Queue**: Deduplicates repeated messages and handles up to 5 prioritized notifications.
+
+### 5. Unified Control Center V2
+- **Overview**: Live status of Lulu, mood, current monitor, coordinates, movement mode, and audio state.
+- **Pet & Animation Studio**: Vitals, mood status, affection actions ("Lulu Aime ❤️"), and one-click test buttons for all 17 character functions.
+- **Notifications**: Master toggle, per-app controls, privacy mode toggle, and recent notification history.
+- **Music & Lyrics**: Now Playing card, MPRIS controls, and smooth-scrolling synchronized lyrics viewer.
+- **Screen & Walk**: Movement behavior selector (`OFF`, `CALM`, `NORMAL`, `ACTIVE`), wander speed, and visual multi-monitor Screen Map.
+- **Privacy & Storage**: SQLite database metrics, JSON data export/backup, and restore capabilities.
+- **Diagnostics**: Platform capability matrix (`SUPPORTED`, `PARTIAL`, `UNSUPPORTED`) and automated system health doctor.
 
 ---
 
-## 🏗️ Architecture
+## 🔒 Privacy & Architecture
 
-```
-                ┌───────────────────────────────┐
-                │        Lulu Desktop UI        │
-                │    (React / TypeScript / Vite) │
-                └───────────────┬───────────────┘
-                                │
-                ┌───────────────▼───────────────┐
-                │       Zustand State Store     │
-                │        (useLuluStore)         │
-                └───────────────┬───────────────┘
-                                │
-      ┌─────────────────────────┼─────────────────────────┐
-      ▼                         ▼                         ▼
-Character Studio        Behavior & Needs Engine     Interaction & Speech
-      │                         │                         │
-      ▼                         ▼                         ▼
-Animation Engine           Mood System                EventBus
-(PixelRenderer)                 │                         │
-      │                         │                         │
-      └─────────────────────────┼─────────────────────────┘
-                                ▼
-                       Movement Engine
-                     (Physics Simulation)
-                                │
-               ┌────────────────┼────────────────┐
-               ▼                ▼                ▼
-     DesktopWindowService  MonitorService   SystemService
-               │                │                │
-               └────────────────┼────────────────┘
-                                ▼
-                    Tauri 2 IPC Command Layer
-                                │
-               ┌────────────────┼────────────────┐
-               ▼                ▼                ▼
-        winit/OS Window    Multi-Monitor     sysinfo / Git
-               │                │                │
-               └────────────────┼────────────────┘
-                                ▼
-                    Offline SQLite Storage
-```
+| Component | Policy / Implementation |
+|---|---|
+| **AI / LLMs** | **None.** No Ollama, OpenAI, API keys, or machine learning models. |
+| **Mini-Games** | **None.** No game engine, points, or game buttons. |
+| **Network** | **100% Offline.** Zero telemetry, zero analytics, zero external API calls. |
+| **Storage** | SQLite (`~/.local/share/lulu-desktop/lulu.db`) with versioned migrations. |
+| **Compositors** | Wayland (GNOME, KDE Plasma, Hyprland, Sway, Niri) & X11 supported. |
 
 ---
 
-## 🚀 Getting Started
+## 🛠️ Build & Installation
 
 ### Prerequisites
+- Node.js 18+ and `npm`
+- Rust 1.75+ and `cargo`
+- Linux libraries: `webkit2gtk-4.1`, `libssl-dev`, `dbus-monitor`, `playerctl`
 
-- **Node.js** >= 18 LTS
-- **Rust & Cargo** >= 1.70
-- On Linux (Arch / Debian / Fedora): `webkit2gtk-4.1`, `gtk3`, `libayatana-appindicator3`
-
-### Development
-
+### Build Native Application
 ```bash
-# Install frontend dependencies
+# 1. Install dependencies
 npm install
 
-# Run frontend in development server (port 1420)
-npm run dev
-
-# Run full desktop application with Tauri
-npm run tauri dev
-```
-
-### Verification & Testing
-
-```bash
-# Validate Machine-Readable Capability Matrix schema & generate build report
-npm run validate:capabilities
-
-# Run Vitest unit & integration test suite (79 tests across 17 suites)
+# 2. Run TypeScript checks and unit tests
+npm run typecheck
 npm run test
 
-# Run Rust backend unit tests (6 tests)
+# 3. Verify Rust backend tests
 cargo test --manifest-path src-tauri/Cargo.toml
 
-# Run type check and frontend production build
-npm run build
+# 4. Build native release binary
+npm run tauri:build -- --no-bundle
 
-# Run Lulu Doctor CLI diagnostic health suite (7 checks)
-npm run doctor
+# 5. Install to local user binaries
+npm run install:bin
 ```
 
-### Production Packaging & Standalone Desktop Binary
-
+### Launch Lulu
 ```bash
-# Compile standalone native release executable and Debian (.deb) package
-npx tauri build --bundles deb
-
-# Run the standalone native binary directly:
-./src-tauri/target/release/lulu
-
-# Install the Debian package system-wide:
-sudo dpkg -i src-tauri/target/release/bundle/deb/Lulu_0.1.0_amd64.deb
+lulu
 ```
-
----
-
-## ⌨️ Desktop Shortcuts & Controls
-
-- **`Ctrl + Shift + Space`**: Open / Close Floating Chat Window
-- **`Ctrl + Shift + L`**: Open / Close Quick Actions Dock
-- **`Ctrl + Shift + C`**: Open / Close Modern Control Center
-- **`Escape`**: Dismiss active floating overlay
-- **Right Click Lulu**: Context Menu (Chat, Quick Actions, Personality, Care, Settings, Hide, Quit)
-- **Click & Drag**: Move Lulu freely across screens and snap to screen boundaries
-- **System Tray**: Lulu icon in system tray for fast Show/Hide, Chat, Settings, and Quit
-
----
-
-## 🎮 Included Mini-Games
-
-1. **Quick Click**: Pop spawning star bubbles before they shrink, building combo multipliers.
-2. **Speed Reaction**: Millisecond reaction test measuring reflex speed when the signal turns green.
-3. **Memory Match**: Flip celestial cards and match pairs in minimal moves.
-4. **Star Catcher**: Catch falling starlight drops while dodging dark cosmic bombs.
-5. **Cosmic Dodge**: Survive in deep space by avoiding incoming meteor swarms.
-6. **Lulu Pet Care**: Interactive grooming, feeding, and resting simulation linked directly to Lulu's needs.
-7. **Starlight Expedition**: Mystery grid expedition uncovering ancient relics and stardust.
-8. **Custom Game API**: Extensible `IGameInstance` template for community and plugin game developers.
-
----
-
-## 🔒 Privacy & Security
-
-- **Zero Cloud Telemetry**: No network telemetry, analytics, or external calls by default.
-- **Local AI Sovereignty**: First-class support for local **Ollama** models running on `localhost:11434` — 100% offline intelligence.
-- **Offline Fallback Engine**: If no LLM or network is configured, Lulu's built-in heuristic dialogue engine continues responding seamlessly.
-- **Safe Persistence**: All settings, memories, companion history, and achievements are stored in a local SQLite database (`lulu.db`) with schema migrations.
-- **Structured Backups**: Export full snapshots as human-readable JSON files, with rollback-protected restore.
-
----
-
-## 📄 License
-
-Lulu is released under the [MIT License](LICENSE).
-

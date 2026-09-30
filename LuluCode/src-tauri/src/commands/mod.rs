@@ -3,11 +3,14 @@ use tauri::State;
 use serde::{Deserialize, Serialize};
 
 use crate::ai::{AiChatRequest, AiChatResponse, AiProviderManager, OllamaStatus};
+use crate::config::{ConfigManager, LuluAppConfig};
 use crate::database::{DbMessage, DbProject, DbTask, SharedDatabaseManager};
 use crate::diagnostics::{Diagnostic, DiagnosticParser};
 use crate::filesystem::{FileNode, FilesystemManager, SearchMatch};
 use crate::git::{GitCommitInfo, GitManager, GitStatus};
+use crate::languages::c_cpp::{CCppManager, CCppProjectDetails, CCppToolchainInfo};
 use crate::permissions::{PermissionLevel, SharedPermissionCenter};
+use crate::system::{ComprehensiveSystemInfo, SystemEngine};
 use crate::terminal::{CommandResult, SharedProcessManager};
 use crate::workspace::{ProjectMetadata, WorkspaceDetector};
 
@@ -310,5 +313,41 @@ pub fn copy_to_clipboard(text: String) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_system_info() -> Result<ComprehensiveSystemInfo, String> {
+    Ok(SystemEngine::probe_full())
+}
+
+#[tauri::command]
+pub fn get_system_report() -> Result<String, String> {
+    let info = SystemEngine::probe_full();
+    Ok(SystemEngine::generate_report(&info))
+}
+
+#[tauri::command]
+pub fn get_c_cpp_toolchain() -> Result<CCppToolchainInfo, String> {
+    Ok(CCppManager::probe_toolchain())
+}
+
+#[tauri::command]
+pub fn detect_c_cpp_project(path: String) -> Result<Option<CCppProjectDetails>, String> {
+    Ok(CCppManager::inspect_project(Path::new(&path)))
+}
+
+#[tauri::command]
+pub fn format_c_cpp_file(path: String) -> Result<String, String> {
+    CCppManager::format_file(Path::new(&path))
+}
+
+#[tauri::command]
+pub fn get_app_config() -> Result<LuluAppConfig, String> {
+    Ok(ConfigManager::load_or_default())
+}
+
+#[tauri::command]
+pub fn save_app_config(config: LuluAppConfig) -> Result<(), String> {
+    ConfigManager::save(&config)
 }
 

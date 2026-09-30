@@ -1,176 +1,278 @@
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
 
-use crate::monitors::MonitorService;
-use crate::storage::StorageService;
-use crate::system::SystemService;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DiagnosticResult {
-    pub name: String,
-    pub category: String,
-    pub status: String, // PASS, WARN, FAIL
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Diagnostic {
+    pub file: String,
+    pub line: usize,
+    pub column: usize,
+    pub severity: String, // "error" | "warning" | "info"
     pub message: String,
-    pub suggestion: Option<String>,
+    pub source: String,   // "rustc" | "tsc" | "pytest" | "gcc" | "clang" | "cmake" | "make" | "linker"
 }
 
-pub struct DiagnosticsService;
+pub struct DiagnosticParser;
 
-impl DiagnosticsService {
-    pub fn run_all(
-        app: &AppHandle,
-        storage: &StorageService,
-        system: &SystemService,
-    ) -> Vec<DiagnosticResult> {
-        let mut results = Vec::new();
+impl DiagnosticParser {
+    pub fn parse_output(output: &str) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
 
-        // 1. Window System Check
-        results.push(Self::check_window(app));
-
-        // 2. Monitors System Check
-        results.push(Self::check_monitors(app));
-
-        // 3. Storage System Check
-        results.push(Self::check_storage(storage));
-
-        // 4. Performance & System Check
-        results.push(Self::check_performance(system));
-
-        // 5. Plugins Check
-        results.push(DiagnosticResult {
-            name: "Plugin Sandbox Isolation".to_string(),
-            category: "plugins".to_string(),
-            status: "PASS".to_string(),
-            message: "Plugin execution engine active with strict IPC boundaries".to_string(),
-            suggestion: None,
-        });
-
-        results
-    }
-
-    pub fn check_window(app: &AppHandle) -> DiagnosticResult {
-        use tauri::Manager;
-        if let Some(win) = app.get_webview_window("main") {
-            let is_decor = win.is_decorated().unwrap_or(false);
-            if !is_decor {
-                DiagnosticResult {
-                    name: "Native Frameless Window".to_string(),
-                    category: "window".to_string(),
-                    status: "PASS".to_string(),
-                    message: "Desktop window initialized with borderless transparency".to_string(),
-                    suggestion: None,
-                }
-            } else {
-                DiagnosticResult {
-                    name: "Native Frameless Window".to_string(),
-                    category: "window".to_string(),
-                    status: "WARN".to_string(),
-                    message: "Decorations detected on desktop companion window".to_string(),
-                    suggestion: Some("Enable frameless mode in window settings".to_string()),
-                }
-            }
-        } else {
-            DiagnosticResult {
-                name: "Main Window Handle".to_string(),
-                category: "window".to_string(),
-                status: "FAIL".to_string(),
-                message: "Main window could not be resolved".to_string(),
-                suggestion: Some("Ensure the main window is declared in tauri.conf.json".to_string()),
-            }
-        }
-    }
-
-    pub fn check_monitors(app: &AppHandle) -> DiagnosticResult {
-        match MonitorService::get_all_monitors(app) {
-            Ok(mons) => {
-                if !mons.is_empty() {
-                    DiagnosticResult {
-                        name: "Multi-Monitor Detection".to_string(),
-                        category: "monitors".to_string(),
-                        status: "PASS".to_string(),
-                        message: format!("Successfully detected {} active display(s)", mons.len()),
-                        suggestion: None,
-                    }
+        // 1. GCC / Clang / Clang++ errors and warnings:
+        // src/main.cpp:42:15: error: 'vector' was not declared in this scope
+        // include/player.hpp:10:5: warning: unused variable 'hp' [-Wunused-variable]
+        let gcc_re = Regex::new(r"^([^\s:(]+):(\d+):(\d+):\s*(fatal error|error|warning|note):\s*(.*)").unwrap();
+        for line in output.lines() {
+            let trimmed = line.trim();
+            if let Some(caps) = gcc_re.captures(trimmed) {
+                let file = caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let col_num: usize = caps.get(3).unwrap().as_str().parse().unwrap_or(1);
+                let sev_str = caps.get(4).unwrap().as_str();
+                let severity = if sev_str.contains("error") {
+                    "error".to_string()
+                } else if sev_str == "warning" {
+                    "warning".to_string()
                 } else {
-                    DiagnosticResult {
-                        name: "Multi-Monitor Detection".to_string(),
-                        category: "monitors".to_string(),
-                        status: "WARN".to_string(),
-                        message: "No physical monitors returned, using virtual fallback".to_string(),
-                        suggestion: Some("Verify OS display server connection".to_string()),
+                    "info".to_string()
+                };
+                let message = caps.get(5).unwrap().as_str().to_string();
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: col_num,
+                    severity,
+                    message,
+                    source: "gcc/clang".to_string(),
+                });
+            }
+        }
+
+        // 2. CMake error pattern:
+        // CMake Error at CMakeLists.txt:24 (add_executable):
+        let cmake_re = Regex::new(r"CMake Error at ([^\s:]+):(\d+)\s*\(([^)]+)\):\s*(.*)").unwrap();
+        let cmake_simple_re = Regex::new(r"CMake Error at ([^\s:]+):(\d+)").unwrap();
+        for (i, line) in output.lines().enumerate() {
+            let trimmed = line.trim();
+            if let Some(caps) = cmake_re.captures(trimmed) {
+                let file = caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let msg = format!("{}: {}", caps.get(3).unwrap().as_str(), caps.get(4).unwrap().as_str());
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: msg,
+                    source: "cmake".to_string(),
+                });
+            } else if let Some(caps) = cmake_simple_re.captures(trimmed) {
+                let file = caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let next_msg = output.lines().nth(i + 1).unwrap_or("CMake configuration failed").trim();
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: next_msg.to_string(),
+                    source: "cmake".to_string(),
+                });
+            }
+        }
+
+        // 3. Make error pattern:
+        // Makefile:14: *** missing separator.  Stop.
+        let make_re = Regex::new(r"^([^\s:]*(?:Makefile|[^\s:]+\.mk)):(\d+):\s*\*\*\*\s*(.*)").unwrap();
+        for line in output.lines() {
+            if let Some(caps) = make_re.captures(line.trim()) {
+                diagnostics.push(Diagnostic {
+                    file: caps.get(1).unwrap().as_str().to_string(),
+                    line: caps.get(2).unwrap().as_str().parse().unwrap_or(1),
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: caps.get(3).unwrap().as_str().to_string(),
+                    source: "make".to_string(),
+                });
+            }
+        }
+
+        // 4. Linker error pattern:
+        // undefined reference to `Player::takeDamage(int)'
+        // /usr/bin/ld: cannot find -lboost_system: No such file or directory
+        let ld_re = Regex::new(r"(?:/usr/bin/ld|lld|mold|collect2):\s*(error:\s*)?(.*)").unwrap();
+        let undef_re = Regex::new(r"undefined reference to `([^']+)'").unwrap();
+        for line in output.lines() {
+            let trimmed = line.trim();
+            if let Some(caps) = undef_re.captures(trimmed) {
+                diagnostics.push(Diagnostic {
+                    file: "linker".to_string(),
+                    line: 1,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: format!("Undefined reference to '{}'", caps.get(1).unwrap().as_str()),
+                    source: "linker".to_string(),
+                });
+            } else if let Some(caps) = ld_re.captures(trimmed) {
+                diagnostics.push(Diagnostic {
+                    file: "linker".to_string(),
+                    line: 1,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: caps.get(2).unwrap().as_str().to_string(),
+                    source: "linker".to_string(),
+                });
+            }
+        }
+
+        // 5. Rust compiler pattern:
+        // error[E0308]: mismatched types
+        //   --> src/main.rs:14:5
+        let rust_loc_re = Regex::new(r"-->\s+([^\s:]+):(\d+):(\d+)").unwrap();
+        let rust_err_re = Regex::new(r"^(error|warning)(\[[A-Za-z0-9]+\])?:\s+(.*)").unwrap();
+
+        let lines: Vec<&str> = output.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            if let Some(loc_caps) = rust_loc_re.captures(line) {
+                let file = loc_caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = loc_caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let col_num: usize = loc_caps.get(3).unwrap().as_str().parse().unwrap_or(1);
+
+                let mut message = "Compilation issue".to_string();
+                let mut severity = "error".to_string();
+                for prev in lines[..i].iter().rev().take(3) {
+                    if let Some(err_caps) = rust_err_re.captures(prev.trim()) {
+                        severity = err_caps.get(1).unwrap().as_str().to_string();
+                        message = err_caps.get(3).unwrap().as_str().to_string();
+                        break;
                     }
                 }
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: col_num,
+                    severity,
+                    message,
+                    source: "rustc".to_string(),
+                });
             }
-            Err(e) => DiagnosticResult {
-                name: "Multi-Monitor Detection".to_string(),
-                category: "monitors".to_string(),
-                status: "FAIL".to_string(),
-                message: format!("Monitor query failed: {}", e),
-                suggestion: Some("Check display permissions and graphics driver".to_string()),
-            },
         }
+
+        // 6. TypeScript / tsc pattern:
+        let ts_re = Regex::new(r"([^\s:(]+)[:\(](\d+)[:,](\d+)\)?\s*-\s*(error|warning)\s+([A-Z0-9]+):\s+(.*)").unwrap();
+        for line in &lines {
+            if let Some(caps) = ts_re.captures(line) {
+                diagnostics.push(Diagnostic {
+                    file: caps.get(1).unwrap().as_str().to_string(),
+                    line: caps.get(2).unwrap().as_str().parse().unwrap_or(1),
+                    column: caps.get(3).unwrap().as_str().parse().unwrap_or(1),
+                    severity: caps.get(4).unwrap().as_str().to_string(),
+                    message: format!("{}: {}", caps.get(5).unwrap().as_str(), caps.get(6).unwrap().as_str()),
+                    source: "tsc".to_string(),
+                });
+            }
+        }
+
+        // 7. Python traceback / pytest pattern:
+        let py_re = Regex::new(r#"File "([^"]+)", line (\d+)(?:, in (.*))?"#).unwrap();
+        for (i, line) in lines.iter().enumerate() {
+            if let Some(caps) = py_re.captures(line) {
+                let file = caps.get(1).unwrap().as_str().to_string();
+                let line_num: usize = caps.get(2).unwrap().as_str().parse().unwrap_or(1);
+                let next_msg = lines.get(i + 2).or_else(|| lines.get(i + 1)).map(|s| s.trim()).unwrap_or("Test failure");
+
+                diagnostics.push(Diagnostic {
+                    file,
+                    line: line_num,
+                    column: 1,
+                    severity: "error".to_string(),
+                    message: next_msg.to_string(),
+                    source: "pytest".to_string(),
+                });
+            }
+        }
+
+        diagnostics
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_rust_error() {
+        let sample = r#"
+error[E0308]: mismatched types
+  --> src/main.rs:14:5
+   |
+14 |     true
+   |     ^^^^ expected `()`, found `bool`
+"#;
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].file, "src/main.rs");
+        assert_eq!(diags[0].line, 14);
+        assert_eq!(diags[0].column, 5);
+        assert_eq!(diags[0].severity, "error");
+        assert_eq!(diags[0].source, "rustc");
     }
 
-    pub fn check_storage(storage: &StorageService) -> DiagnosticResult {
-        match storage.set_kv("__diag_test__", "ok") {
-            Ok(_) => match storage.get_kv("__diag_test__") {
-                Ok(Some(val)) if val == "ok" => DiagnosticResult {
-                    name: "SQLite Persistence & Migration".to_string(),
-                    category: "storage".to_string(),
-                    status: "PASS".to_string(),
-                    message: "Database read/write & schema verification succeeded".to_string(),
-                    suggestion: None,
-                },
-                _ => DiagnosticResult {
-                    name: "SQLite Persistence & Migration".to_string(),
-                    category: "storage".to_string(),
-                    status: "WARN".to_string(),
-                    message: "Database test key retrieval mismatch".to_string(),
-                    suggestion: Some("Verify disk read/write permissions".to_string()),
-                },
-            },
-            Err(e) => DiagnosticResult {
-                name: "SQLite Persistence & Migration".to_string(),
-                category: "storage".to_string(),
-                status: "FAIL".to_string(),
-                message: format!("Database write error: {}", e),
-                suggestion: Some("Check disk free space and file write access".to_string()),
-            },
-        }
+    #[test]
+    fn test_parse_tsc_error() {
+        let sample = "src/app/App.tsx:12:3 - error TS2322: Type 'string' is not assignable to type 'number'.";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].file, "src/app/App.tsx");
+        assert_eq!(diags[0].line, 12);
+        assert_eq!(diags[0].source, "tsc");
     }
 
-    pub fn check_performance(system: &SystemService) -> DiagnosticResult {
-        match system.get_metrics() {
-            Ok(m) => {
-                if m.memory_percentage < 90.0 {
-                    DiagnosticResult {
-                        name: "System Resources & Overhead".to_string(),
-                        category: "performance".to_string(),
-                        status: "PASS".to_string(),
-                        message: format!(
-                            "Memory usage: {:.1}% ({} MB / {} MB), CPU: {:.1}%",
-                            m.memory_percentage, m.memory_used_mb, m.memory_total_mb, m.cpu_usage
-                        ),
-                        suggestion: None,
-                    }
-                } else {
-                    DiagnosticResult {
-                        name: "System Resources & Overhead".to_string(),
-                        category: "performance".to_string(),
-                        status: "WARN".to_string(),
-                        message: format!("High system memory load: {:.1}%", m.memory_percentage),
-                        suggestion: Some("Enable LOW performance profile in Lulu settings".to_string()),
-                    }
-                }
-            }
-            Err(e) => DiagnosticResult {
-                name: "System Resources & Overhead".to_string(),
-                category: "performance".to_string(),
-                status: "WARN".to_string(),
-                message: format!("Could not read system stats: {}", e),
-                suggestion: None,
-            },
-        }
+    #[test]
+    fn test_parse_gcc_cpp_error() {
+        let sample = "src/main.cpp:42:15: error: 'vector' was not declared in this scope\ninclude/player.hpp:10:5: warning: unused variable 'hp' [-Wunused-variable]";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 2);
+        assert_eq!(diags[0].file, "src/main.cpp");
+        assert_eq!(diags[0].line, 42);
+        assert_eq!(diags[0].column, 15);
+        assert_eq!(diags[0].severity, "error");
+        assert!(diags[0].message.contains("vector"));
+
+        assert_eq!(diags[1].file, "include/player.hpp");
+        assert_eq!(diags[1].line, 10);
+        assert_eq!(diags[1].severity, "warning");
+    }
+
+    #[test]
+    fn test_parse_cmake_error() {
+        let sample = "CMake Error at CMakeLists.txt:24 (add_executable): Cannot find source file: main.cpp";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].file, "CMakeLists.txt");
+        assert_eq!(diags[0].line, 24);
+        assert_eq!(diags[0].source, "cmake");
+    }
+
+    #[test]
+    fn test_parse_make_error() {
+        let sample = "Makefile:14: *** missing separator. Stop.";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].file, "Makefile");
+        assert_eq!(diags[0].line, 14);
+        assert_eq!(diags[0].source, "make");
+    }
+
+    #[test]
+    fn test_parse_linker_error() {
+        let sample = "/usr/bin/ld: undefined reference to `Player::takeDamage(int)'";
+        let diags = DiagnosticParser::parse_output(sample);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].source, "linker");
+        assert!(diags[0].message.contains("takeDamage"));
     }
 }
