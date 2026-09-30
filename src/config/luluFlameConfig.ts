@@ -94,6 +94,58 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
   },
 };
 
+export const DEFAULT_FLAME_SPEED_MULTIPLIER = 0.60; // -40% slow flame update speed
+
+export const FLAME_SPEED_PRESETS = {
+  slow: { id: 'slow', label: '🐢 Slow (-40% Flame)', multiplier: 0.60 },
+  normal: { id: 'normal', label: '⚡ Normal (100%)', multiplier: 1.0 },
+  turbo: { id: 'turbo', label: '🚀 Turbo (+40%)', multiplier: 1.40 },
+} as const;
+
+export function getEffectiveFps(baseFps: number, multiplier: number = DEFAULT_FLAME_SPEED_MULTIPLIER): number {
+  return Math.max(1, Math.round(baseFps * multiplier * 10) / 10);
+}
+
+export function getEffectiveFrameIntervalMs(baseFps: number, multiplier: number = DEFAULT_FLAME_SPEED_MULTIPLIER): number {
+  const fps = getEffectiveFps(baseFps, multiplier);
+  return Math.round(1000 / fps);
+}
+
+/**
+ * Tasks & Progression System: "in add tatk for unlock all"
+ */
+export interface LuluTask {
+  id: string;
+  title: string;
+  description: string;
+  isCompleted: boolean;
+  unlockedItems: string[];
+}
+
+export const LULU_TASKS: LuluTask[] = [
+  {
+    id: 'unlock_all_flames',
+    title: 'Unlock All Flames & Abilities',
+    description: 'Activate all 9 master flame animations, 17 shinobi katas, and combo synergies.',
+    isCompleted: true,
+    unlockedItems: Object.keys(LULU_FLAME_STYLES),
+  },
+  {
+    id: 'spotify_vocalist',
+    title: 'Spotify Realtime Vocalist',
+    description: 'Synchronize 20-frame singing lip-sync with live Spotify lyrics.',
+    isCompleted: true,
+    unlockedItems: ['spotify_sing', 'spotify_dance'],
+  },
+  {
+    id: 'continuous_sprint_master',
+    title: 'SHOW RUN Infinite Sprint',
+    description: 'Autonomous wall-to-wall 40-frame sprint with Wayland boundary bounce.',
+    isCompleted: true,
+    unlockedItems: ['sprint_dash'],
+  },
+];
+
 /**
  * Returns a valid combo partner style that seamlessly follows the current action.
  */
@@ -114,3 +166,4 @@ export function isValidFlameCombo(styleA: string, styleB: string): boolean {
   if (!style) return false;
   return style.comboWith.includes(styleB);
 }
+

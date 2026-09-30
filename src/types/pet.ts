@@ -83,6 +83,8 @@ export interface PetPreferences {
   behavior_mode: BehaviorMode;
   wander_speed: number;
   speech_enabled: boolean;
+  show_text?: boolean;
+  speed_multiplier?: number;
   sound_volume: number;
   always_on_top: boolean;
   fps_limit: number;

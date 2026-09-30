@@ -16,7 +16,7 @@ import {
   PetPreferences,
   NativeMonitorInfo,
 } from '../types/pet';
-import { Heart, Coffee, Moon, Settings, Sparkles, Footprints, Music, Bell, Compass, Zap } from 'lucide-react';
+import { Heart, Coffee, Moon, Settings, Sparkles, Footprints, Music, Bell, Compass, Zap, FileText } from 'lucide-react';
 import { spotifyLyricsService } from '../features/lyrics/spotifyLyricsService';
 import { ParsedLrc } from '../features/lyrics/lrcParser';
 
@@ -40,6 +40,10 @@ export const App: React.FC = () => {
   const [activeLyricText, setActiveLyricText] = useState<string | null>(null);
   const [currentSpotifyTrack, setCurrentSpotifyTrack] = useState<{ artist: string; title: string } | null>(null);
 
+  // Flame speed multiplier: default 0.60 (-40% slow flame update speed)
+  const [speedMultiplier, setSpeedMultiplier] = useState<number>(0.60);
+  const [showText, setShowText] = useState<boolean>(true);
+
   const [preferences, setPreferences] = useState<PetPreferences>({
     scale: 1.0,
     theme: 'Lulu Dark',
@@ -47,6 +51,8 @@ export const App: React.FC = () => {
     behavior_mode: 'NORMAL',
     wander_speed: 1.0,
     speech_enabled: true,
+    show_text: true,
+    speed_multiplier: 0.60,
     sound_volume: 0.8,
     always_on_top: true,
     fps_limit: 60,
@@ -55,6 +61,25 @@ export const App: React.FC = () => {
   const needSystemRef = useRef<NeedSystem>(new NeedSystem());
   const movementRef = useRef<MovementEngine>(new MovementEngine());
   const behaviorRef = useRef<BehaviorEngine>(new BehaviorEngine());
+
+  // Keep MovementEngine synchronized with speedMultiplier
+  useEffect(() => {
+    movementRef.current.setSpeedMultiplier(speedMultiplier);
+  }, [speedMultiplier]);
+
+  const getActionBadgeText = (anim: string, mult: number): string => {
+    const speedTag = mult === 0.60 ? ' (-40% Slow)' : mult === 1.40 ? ' (+40% Turbo)' : '';
+    if (anim.startsWith('run')) return `⚡ 40-Frame Sprint${speedTag}`;
+    if (anim.startsWith('walk')) return `🐾 Desktop Patrol${speedTag}`;
+    if (anim === 'sing') return `🎤 Singing Lip-Sync${speedTag}`;
+    if (anim === 'dance') return `💃 Chakra Dance${speedTag}`;
+    if (anim === 'happy') return `✨ Flame Celebration${speedTag}`;
+    if (anim === 'protect') return `🛡️ Susanoo Defense`;
+    if (anim === 'wave') return `👋 Ninja Salute`;
+    if (anim === 'sad') return `🧘 Deep Contemplation`;
+    if (anim === 'sleep') return `🌙 Peaceful Rest`;
+    return `🔥 ${anim}`;
+  };
 
   // 1. Initial Load & Persistence
   useEffect(() => {
@@ -524,7 +549,7 @@ export const App: React.FC = () => {
       />
 
       {/* Spotify Synced Live Lyrics Pill */}
-      {isMusicPlaying && activeLyricText && (
+      {showText && isMusicPlaying && activeLyricText && (
         <div
           className="absolute top-2 left-1/2 -translate-x-1/2 z-40 max-w-[245px] px-3 py-1.5 rounded-full bg-[#121212]/95 border border-[#1DB954]/70 shadow-[0_4px_18px_rgba(29,185,84,0.4)] flex items-center gap-2 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer"
           title={`${currentSpotifyTrack?.artist || 'Spotify'} - ${currentSpotifyTrack?.title || ''} (Click to open Control Center)`}
@@ -540,9 +565,19 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {/* Floating Action Text Badge ("config show txt and change flam update to get to slow -40%") */}
+      {showText && (!isMusicPlaying || !activeLyricText) && animation !== 'idle' && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 max-w-[240px] px-3 py-1 rounded-full bg-[#181825]/95 border border-amber-500/60 shadow-[0_4px_16px_rgba(245,158,11,0.3)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+          <span className="text-[10px] font-bold text-amber-200 truncate">
+            {getActionBadgeText(animation, speedMultiplier)}
+          </span>
+        </div>
+      )}
+
       {/* Thought & Speech Bubble */}
-      {preferences.speech_enabled && (
-        <SpeechBubble mood={mood} className={isMusicPlaying && activeLyricText ? 'top-11' : undefined} />
+      {showText && preferences.speech_enabled && (
+        <SpeechBubble mood={mood} className={isMusicPlaying && activeLyricText ? 'top-11' : animation !== 'idle' ? 'top-9' : undefined} />
       )}
 
       {/* Main Character Sprite & Love Hearts */}
@@ -571,6 +606,7 @@ export const App: React.FC = () => {
           showShadow={true}
           characterStyle={preferences.character_style || 'shadow_shinobi'}
           cursorOffset={cursorOffset}
+          speedMultiplier={speedMultiplier}
         />
       </div>
 
@@ -645,6 +681,22 @@ export const App: React.FC = () => {
             title={isContinuousRunning ? 'Stop SHOW RUN' : 'SHOW RUN (Continuous 40-Frame Sprint)'}
           >
             <Zap size={13} />
+          </button>
+
+          <button
+            onClick={() => {
+              setShowText((p) => {
+                const next = !p;
+                messageManager.enqueue(next ? 'Text & subtitles visible 💬' : 'Text hidden 🤫', 'normal', 'interaction');
+                return next;
+              });
+            }}
+            className={`p-1.5 rounded-full transition ${
+              showText ? 'bg-cyan-500/30 text-cyan-300' : 'hover:bg-white/20 text-gray-400'
+            }`}
+            title={showText ? 'Hide Text & Subtitles (Show Txt: ON)' : 'Show Text & Subtitles (Show Txt: OFF)'}
+          >
+            <FileText size={13} />
           </button>
 
           <button
@@ -734,6 +786,22 @@ export const App: React.FC = () => {
             <span>💬 Open Chat</span>
           </button>
 
+          {/* 💬 Toggle Text / Subtitles */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              setShowText((p) => {
+                const next = !p;
+                messageManager.enqueue(next ? 'Text & subtitles visible 💬' : 'Text hidden 🤫', 'normal', 'interaction');
+                return next;
+              });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 text-cyan-300 font-medium"
+          >
+            <FileText size={13} />
+            <span>{showText ? '💬 Hide Text' : '💬 Show Text'}</span>
+          </button>
+
           {/* Control Center */}
           <button
             onClick={() => {
@@ -814,6 +882,22 @@ export const App: React.FC = () => {
         isMovementPaused={movementPaused}
         currentDirection={movementRef.current.getState().runDirection}
         currentFrame={movementRef.current.getState().currentFrame}
+        showText={showText}
+        onToggleShowText={() => setShowText((p) => !p)}
+        speedMultiplier={speedMultiplier}
+        onSetSpeedMultiplier={(mult) => {
+          setSpeedMultiplier(mult);
+          movementRef.current.setSpeedMultiplier(mult);
+        }}
+        onUnlockAll={() => {
+          setAnimation('happy');
+          setShowLoveHearts(true);
+          messageManager.enqueue('🎉 All 9 Master Flames and Shinobi abilities are 100% Unlocked! 💥✨', 'high', 'interaction');
+          setTimeout(() => {
+            setShowLoveHearts(false);
+            setAnimation(isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle');
+          }, 3500);
+        }}
       />
     </div>
   );

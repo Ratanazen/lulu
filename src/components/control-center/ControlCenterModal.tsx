@@ -31,7 +31,9 @@ import {
   FileText,
   Volume2,
   Zap,
+  Unlock,
 } from 'lucide-react';
+import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
 
 interface ControlCenterModalProps {
   isOpen: boolean;
@@ -60,6 +62,11 @@ interface ControlCenterModalProps {
   isMovementPaused?: boolean;
   currentDirection?: 'left' | 'right' | 'idle';
   currentFrame?: number;
+  showText?: boolean;
+  onToggleShowText?: () => void;
+  speedMultiplier?: number;
+  onSetSpeedMultiplier?: (mult: number) => void;
+  onUnlockAll?: () => void;
 }
 
 type TabType =
@@ -98,6 +105,11 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   isMovementPaused = false,
   currentDirection = 'idle',
   currentFrame = 0,
+  showText = true,
+  onToggleShowText,
+  speedMultiplier = 0.60,
+  onSetSpeedMultiplier,
+  onUnlockAll,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
@@ -578,6 +590,109 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           : '0 / 40'}
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Text & Flame Speed Configuration ("config show txt and change flam update to get to slow -40%") */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-200 text-xs flex items-center gap-1.5">
+                        <FileText size={13} className="text-cyan-400" /> Show Text & Subtitles
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        Display active flame banners, thought bubbles, and lyric text
+                      </p>
+                    </div>
+                    <button
+                      onClick={onToggleShowText}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
+                        showText
+                          ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/20'
+                          : 'bg-white/10 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {showText ? '✓ Text Visible' : 'Hidden'}
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-gray-200 flex items-center gap-1.5">
+                        <Zap size={13} className="text-yellow-400" /> Flame Update Speed
+                      </p>
+                      <span className="text-[10px] font-mono text-amber-300 font-bold">
+                        {speedMultiplier === 0.60
+                          ? '🐢 Slow (-40%)'
+                          : speedMultiplier === 1.0
+                          ? '⚡ Normal (100%)'
+                          : '🚀 Turbo (+40%)'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {Object.values(FLAME_SPEED_PRESETS).map((preset) => (
+                        <button
+                          key={preset.id}
+                          onClick={() => {
+                            onSetSpeedMultiplier?.(preset.multiplier);
+                            messageManager.enqueue(`Flame update speed set to ${preset.label}`, 'normal', 'interaction');
+                          }}
+                          className={`py-1.5 px-2 rounded-lg border text-center transition text-[11px] font-bold ${
+                            Math.abs(speedMultiplier - preset.multiplier) < 0.05
+                              ? 'bg-amber-500/30 border-amber-400 text-amber-200 shadow-sm'
+                              : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tasks & Progression: Unlock All ("in add tatk for unlock all") */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-white text-xs flex items-center gap-1.5">
+                        <Unlock size={14} className="text-emerald-400" /> Tasks: Unlock All Flames & Abilities
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        100% Unlocked: All 9 Master Flames & 17 Shinobi Katas ready
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onUnlockAll?.();
+                        messageManager.enqueue('🎉 All 9 Master Flames and Shinobi abilities are 100% Unlocked!', 'high', 'interaction');
+                      }}
+                      className="py-1 px-3 rounded-lg bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-600/50 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
+                    >
+                      <Unlock size={12} className="text-emerald-300" />
+                      <span>Unlock All</span>
+                    </button>
+                  </div>
+
+                  {/* 9 Master Flame Styles Grid */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    {Object.values(LULU_FLAME_STYLES).map((flame) => (
+                      <button
+                        key={flame.id}
+                        onClick={() => {
+                          if (flame.id === 'sprint_dash') {
+                            onStart40sRun?.();
+                          } else {
+                            onTriggerAnimation?.(flame.animation);
+                          }
+                          messageManager.enqueue(`Triggering ${flame.name}!`, 'normal', 'interaction');
+                        }}
+                        className="p-1.5 rounded-lg bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-900/20 text-gray-300 hover:text-amber-200 transition text-left"
+                      >
+                        <div className="font-bold text-[11px] truncate">{flame.name}</div>
+                        <div className="text-[9px] text-gray-500">{flame.framesCount} frames • {flame.fps} FPS</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 

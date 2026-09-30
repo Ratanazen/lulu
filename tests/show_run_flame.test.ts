@@ -27,6 +27,7 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     vi.useFakeTimers();
     engine = new MovementEngine();
     engine.setMonitor(mockMonitor);
+    engine.setSpeedMultiplier(1.0);
   });
 
   afterEach(() => {
@@ -34,10 +35,11 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     vi.useRealTimers();
   });
 
-  it('1. verifies 25 FPS and 40ms frame timing', () => {
+  it('1. verifies 25 FPS and 40ms frame timing at standard speed', () => {
     // 1000ms / 25 = 40ms
     const state = engine.getState();
     expect(state.runSpeed).toBe(8);
+    expect(state.speedMultiplier).toBe(1.0);
   });
 
   it('2. verifies 40-frame loop progression (0 to 39 and wrap)', () => {
@@ -197,5 +199,33 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     const comboForSing = getFlameCombo('spotify_sing');
     expect(['spotify_dance', 'celebration_cheer', 'ninja_salute']).toContain(comboForSing.id);
   });
+
+  it('11. verifies -40% slow flame update speed multiplier and Tasks: Unlock All registry', async () => {
+    const { getEffectiveFps, getEffectiveFrameIntervalMs, LULU_TASKS, DEFAULT_FLAME_SPEED_MULTIPLIER } = await import('../src/config/luluFlameConfig');
+    
+    // Default multiplier is 0.60 (-40% slow)
+    expect(DEFAULT_FLAME_SPEED_MULTIPLIER).toBe(0.60);
+
+    // 25 FPS sprint slowed by -40% -> 15 FPS
+    expect(getEffectiveFps(25, 0.60)).toBe(15);
+    expect(getEffectiveFrameIntervalMs(25, 0.60)).toBe(67); // 1000 / 15 ≈ 67ms
+
+    // 10 FPS sing/dance slowed by -40% -> 6 FPS
+    expect(getEffectiveFps(10, 0.60)).toBe(6);
+    expect(getEffectiveFrameIntervalMs(10, 0.60)).toBe(167); // 1000 / 6 ≈ 167ms
+
+    // MovementEngine configured with -40% slow multiplier
+    engine.setSpeedMultiplier(0.60);
+    const state = engine.getState();
+    expect(state.runSpeed).toBe(5); // 8 * 0.6 = 4.8 -> 5
+    expect(state.speedMultiplier).toBe(0.60);
+
+    // Tasks system: Unlock All task is configured and active
+    const unlockAllTask = LULU_TASKS.find((t) => t.id === 'unlock_all_flames');
+    expect(unlockAllTask).toBeDefined();
+    expect(unlockAllTask?.isCompleted).toBe(true);
+    expect(unlockAllTask?.unlockedItems.length).toBe(9);
+  });
 });
+
 

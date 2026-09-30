@@ -13,6 +13,7 @@ export interface MovementState {
   runSpeed: number;
   currentFrame: number;
   isPaused: boolean;
+  speedMultiplier: number;
 }
 
 export interface MovementConfig {
@@ -40,15 +41,35 @@ export class MovementEngine {
   private activeMonitor: NativeMonitorInfo | null = null;
   private onPositionUpdate?: (x: number, y: number, isMoving: boolean, direction: 'left' | 'right' | 'idle', isRunning?: boolean) => void;
 
-  private config: MovementConfig = {
+  private baseConfig: MovementConfig = {
     walkSpeed: 4,
     runSpeed: 8,
     edgePadding: 50,
     tickIntervalMs: 40, // 25 FPS = 1000ms / 25 = 40ms frame timing
   };
 
+  private speedMultiplier: number = 0.60; // -40% slow flame update speed default
+
+  private config: MovementConfig = {
+    walkSpeed: 2.5,
+    runSpeed: 5,
+    edgePadding: 50,
+    tickIntervalMs: 66, // 15 FPS = 1000ms / 15 = ~66.7ms (-40% slow)
+  };
+
   constructor() {
     this.syncCurrentPosition();
+  }
+
+  public setSpeedMultiplier(multiplier: number) {
+    this.speedMultiplier = multiplier;
+    this.config.runSpeed = Math.max(1, Math.round(this.baseConfig.runSpeed * multiplier));
+    this.config.walkSpeed = Math.max(1, Math.round(this.baseConfig.walkSpeed * multiplier));
+    this.config.tickIntervalMs = Math.round(this.baseConfig.tickIntervalMs / multiplier);
+  }
+
+  public getSpeedMultiplier(): number {
+    return this.speedMultiplier;
   }
 
   public setListener(fn: (x: number, y: number, isMoving: boolean, direction: 'left' | 'right' | 'idle', isRunning?: boolean) => void) {
@@ -145,6 +166,7 @@ export class MovementEngine {
       runSpeed: this.config.runSpeed,
       currentFrame: this.currentFrame,
       isPaused: this.isPaused,
+      speedMultiplier: this.speedMultiplier,
     };
   }
 

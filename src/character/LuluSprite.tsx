@@ -40,6 +40,7 @@ interface LuluSpriteProps {
   cursorPos?: { x: number; y: number };
   cursorOffset?: { x: number; y: number };
   isDragging?: boolean;
+  speedMultiplier?: number;
 }
 
 export const LuluSprite: React.FC<LuluSpriteProps> = ({
@@ -51,6 +52,7 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
   cursorPos,
   cursorOffset,
   isDragging = false,
+  speedMultiplier = 0.60, // -40% slow flame update speed default
 }) => {
   const [frame, setFrame] = useState(0);
   const activeCursor = cursorPos || cursorOffset;
@@ -118,12 +120,13 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
       ? 5
       : 4;
 
+    const effectiveFps = Math.max(1, fps * (speedMultiplier || 0.60));
     const interval = setInterval(() => {
       setFrame((prev) => (prev + 1) % (activeLength || 1));
-    }, 1000 / fps);
+    }, 1000 / effectiveFps);
 
     return () => clearInterval(interval);
-  }, [animation, mood, isSleeping, isSitting, isRunning, isDancing, isSinging, isWalking, isThinking, isProtecting, isWaving]);
+  }, [animation, mood, isSleeping, isSitting, isRunning, isDancing, isSinging, isWalking, isThinking, isProtecting, isWaving, speedMultiplier]);
 
   // Dynamic physics offsets: smooth multi-frame playback without artificial jitter
   const breathY = (animation === 'idle' || isSleeping || isSitting) ? (frame % 2 === 0 ? 0 : 1) : 0;
