@@ -32,8 +32,53 @@ import {
   Volume2,
   Zap,
   Unlock,
+  CheckSquare,
 } from 'lucide-react';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
+import shinobiIdle from '../../assets/avatars/shinobi_idle.png';
+import shinobiRun from '../../assets/avatars/shinobi_run.png';
+import shinobiHappy from '../../assets/avatars/shinobi_happy.png';
+import shinobiSleep from '../../assets/avatars/shinobi_sleep.png';
+import shinobiSing from '../../assets/avatars/shinobi_sing.png';
+import shinobiSad from '../../assets/avatars/shinobi_sad.png';
+
+export const getTaskImage = (imageKey?: string) => {
+  switch (imageKey) {
+    case 'run':
+      return shinobiRun;
+    case 'happy':
+      return shinobiHappy;
+    case 'sleep':
+      return shinobiSleep;
+    case 'sing':
+      return shinobiSing;
+    case 'sad':
+      return shinobiSad;
+    case 'idle':
+    default:
+      return shinobiIdle;
+  }
+};
+
+export const getFlameImage = (id: string) => {
+  switch (id) {
+    case 'sprint_dash':
+    case 'desktop_patrol':
+      return shinobiRun;
+    case 'spotify_sing':
+      return shinobiSing;
+    case 'spotify_dance':
+    case 'celebration_cheer':
+      return shinobiHappy;
+    case 'peaceful_rest':
+    case 'deep_contemplate':
+      return shinobiSleep;
+    case 'susanoo_defense':
+    case 'ninja_salute':
+    default:
+      return shinobiIdle;
+  }
+};
 
 interface ControlCenterModalProps {
   isOpen: boolean;
@@ -71,6 +116,7 @@ interface ControlCenterModalProps {
 
 type TabType =
   | 'overview'
+  | 'tasks'
   | 'pet'
   | 'notifications'
   | 'music_lyrics'
@@ -342,6 +388,18 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('tasks')}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition ${
+                activeTab === 'tasks'
+                  ? 'bg-purple-600 text-white shadow'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <CheckSquare size={14} className="text-emerald-400" />
+              <span>Tasks & Abilities</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('pet')}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === 'pet'
@@ -488,6 +546,131 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         style={{ width: `${needs.happiness}%` }}
                       />
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TASKS & PROGRESSION TAB (update tak all add img) */}
+            {activeTab === 'tasks' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <CheckSquare size={16} className="text-emerald-400" /> Tasks & Ability Progression
+                    </h3>
+                    <p className="text-[11px] text-gray-400">
+                      All companion katas, high-speed sprint, and live audio lip-sync tasks with visual previews
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-emerald-400" />
+                      {LULU_TASKS.filter((t) => t.isCompleted).length}/{LULU_TASKS.length} Completed (100%)
+                    </span>
+                    <button
+                      onClick={() => {
+                        onUnlockAll?.();
+                        messageManager.enqueue('🎉 All tasks and flame abilities are 100% unlocked!', 'high', 'interaction');
+                      }}
+                      className="py-1 px-3 rounded-lg bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-600/50 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
+                    >
+                      <Unlock size={12} className="text-emerald-300" />
+                      <span>Unlock All</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tasks Cards Grid with Visual Character Images */}
+                <div className="grid grid-cols-2 gap-3">
+                  {LULU_TASKS.map((task) => (
+                    <div
+                      key={task.id}
+                      className="bg-[#181825] border border-[#313244] hover:border-emerald-500/40 p-3 rounded-xl transition flex gap-3 items-start group"
+                    >
+                      <div className="relative flex-shrink-0">
+                        <img
+                          src={getTaskImage(task.imageKey)}
+                          alt={task.title}
+                          className="w-14 h-14 object-contain rounded-xl bg-black/40 p-1 border border-white/10 filter drop-shadow-md group-hover:scale-105 transition"
+                        />
+                        <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
+                          <CheckCircle2 size={12} className="text-black fill-emerald-400" />
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                            {task.category}
+                          </span>
+                          <span className="text-[9px] text-emerald-300 font-semibold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                            100% Complete
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-white truncate mt-0.5">{task.title}</h4>
+                        <p className="text-[10px] text-gray-400 line-clamp-2 mt-0.5 leading-snug">
+                          {task.description}
+                        </p>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-[9px] text-amber-300 font-medium truncate max-w-[140px]">
+                            🎁 {task.reward}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (task.actionId === 'sprint_dash') {
+                                onStart40sRun?.();
+                              } else if (task.actionId === 'all') {
+                                onUnlockAll?.();
+                              } else {
+                                onTriggerAnimation?.(task.actionId);
+                              }
+                              messageManager.enqueue(`Triggering task: ${task.title}!`, 'normal', 'interaction');
+                            }}
+                            className="px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-[10px] font-bold transition flex items-center gap-1"
+                          >
+                            <Zap size={10} className="text-yellow-400" />
+                            <span>Trigger</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 9 Master Flame Styles Grid with Images */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-amber-400" /> Master Flame Abilities (9/9 Unlocked)
+                    </p>
+                    <span className="text-[10px] text-gray-400">Click any flame to trigger</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    {Object.values(LULU_FLAME_STYLES).map((flame) => (
+                      <button
+                        key={flame.id}
+                        onClick={() => {
+                          if (flame.id === 'sprint_dash') {
+                            onStart40sRun?.();
+                          } else {
+                            onTriggerAnimation?.(flame.animation);
+                          }
+                          messageManager.enqueue(`Triggering ${flame.name}!`, 'normal', 'interaction');
+                        }}
+                        className="flex items-center gap-2.5 p-2 rounded-xl bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-900/20 text-gray-300 hover:text-amber-200 transition text-left"
+                      >
+                        <img
+                          src={getFlameImage(flame.id)}
+                          alt={flame.name}
+                          className="w-10 h-10 object-contain rounded-lg bg-black/60 p-0.5 border border-white/10 flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-xs truncate">{flame.name}</div>
+                          <div className="text-[10px] text-emerald-400 font-medium">1 Frame • Smooth</div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -687,10 +870,17 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           }
                           messageManager.enqueue(`Triggering ${flame.name}!`, 'normal', 'interaction');
                         }}
-                        className="p-1.5 rounded-lg bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-900/20 text-gray-300 hover:text-amber-200 transition text-left"
+                        className="p-1.5 rounded-lg bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-900/20 text-gray-300 hover:text-amber-200 transition text-left flex items-center gap-2"
                       >
-                        <div className="font-bold text-[11px] truncate">{flame.name}</div>
-                        <div className="text-[9px] text-gray-500">{flame.framesCount} frames • {flame.fps} FPS</div>
+                        <img
+                          src={getFlameImage(flame.id)}
+                          alt={flame.name}
+                          className="w-8 h-8 object-contain rounded bg-black/60 p-0.5 border border-white/10 flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-[11px] truncate">{flame.name}</div>
+                          <div className="text-[9px] text-emerald-400/80 font-medium">1 Frame • Smooth</div>
+                        </div>
                       </button>
                     ))}
                   </div>

@@ -87,8 +87,8 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
     id: 'peaceful_rest',
     name: 'Peaceful Rest / Sleep',
     animation: 'sleep',
-    framesCount: 20,
-    fps: 3,
+    framesCount: 1,
+    fps: 1,
     comboWith: ['celebration_cheer'],
     description: 'Energy recharging sleep cycle',
   },
@@ -120,6 +120,10 @@ export interface LuluTask {
   description: string;
   isCompleted: boolean;
   unlockedItems: string[];
+  imageKey: 'idle' | 'run' | 'happy' | 'sleep' | 'sing' | 'sad';
+  reward: string;
+  actionId: string;
+  category: string;
 }
 
 export const LULU_TASKS: LuluTask[] = [
@@ -129,20 +133,87 @@ export const LULU_TASKS: LuluTask[] = [
     description: 'Activate all 9 master flame animations, 17 shinobi katas, and combo synergies.',
     isCompleted: true,
     unlockedItems: Object.keys(LULU_FLAME_STYLES),
-  },
-  {
-    id: 'spotify_vocalist',
-    title: 'Spotify Realtime Vocalist',
-    description: 'Synchronize 20-frame singing lip-sync with live Spotify lyrics.',
-    isCompleted: true,
-    unlockedItems: ['spotify_sing', 'spotify_dance'],
+    imageKey: 'happy',
+    reward: 'All 9 Master Flames & Abilities Unlocked',
+    actionId: 'celebration_cheer',
+    category: 'Mastery',
   },
   {
     id: 'continuous_sprint_master',
     title: 'SHOW RUN Infinite Sprint',
-    description: 'Autonomous wall-to-wall sprint with Wayland boundary bounce.',
+    description: 'Autonomous wall-to-wall sprint with Wayland boundary bounce physics.',
     isCompleted: true,
     unlockedItems: ['sprint_dash'],
+    imageKey: 'run',
+    reward: 'High-Speed Dust Trail & Aerodynamic Stride',
+    actionId: 'sprint_dash',
+    category: 'Movement',
+  },
+  {
+    id: 'spotify_vocalist',
+    title: 'Spotify Realtime Vocalist',
+    description: 'Synchronize real-time singing and rhythmic sway with live Spotify lyrics.',
+    isCompleted: true,
+    unlockedItems: ['spotify_sing', 'spotify_dance'],
+    imageKey: 'sing',
+    reward: 'Live MPRIS Karaoke Lip-Sync',
+    actionId: 'spotify_sing',
+    category: 'Audio',
+  },
+  {
+    id: 'peaceful_zen_sleep',
+    title: 'Deep Zen Sleep & Recharge',
+    description: 'Restful sleeping mode with floating zzz bubbles for full energy recovery.',
+    isCompleted: true,
+    unlockedItems: ['peaceful_rest'],
+    imageKey: 'sleep',
+    reward: 'Full Energy & Happiness Recovery',
+    actionId: 'peaceful_rest',
+    category: 'Vitals',
+  },
+  {
+    id: 'susanoo_chakra_defense',
+    title: 'Susanoo Energy Barrier',
+    description: 'Summon the glowing polygonal chakra shield to defend the workstation.',
+    isCompleted: true,
+    unlockedItems: ['susanoo_defense'],
+    imageKey: 'idle',
+    reward: 'Protective Chakra Barrier',
+    actionId: 'susanoo_defense',
+    category: 'Combat',
+  },
+  {
+    id: 'celebration_victory_cheer',
+    title: 'Flame Victory Celebration',
+    description: 'Joyful cheer with hands raised and celebratory confetti after focus milestones.',
+    isCompleted: true,
+    unlockedItems: ['celebration_cheer'],
+    imageKey: 'happy',
+    reward: 'Victory Confetti & Blushing Smile',
+    actionId: 'celebration_cheer',
+    category: 'Mood',
+  },
+  {
+    id: 'desktop_perimeter_patrol',
+    title: 'Desktop Perimeter Patrol',
+    description: 'Gentle walking patrol along the desktop perimeter to ensure workstation safety.',
+    isCompleted: true,
+    unlockedItems: ['desktop_patrol'],
+    imageKey: 'run',
+    reward: 'Autonomous Perimeter Patrol',
+    actionId: 'desktop_patrol',
+    category: 'Movement',
+  },
+  {
+    id: 'warrior_deep_focus',
+    title: 'Deep Concentration Mode',
+    description: 'Stationary ninja concentration with sharp Sharingan perception.',
+    isCompleted: true,
+    unlockedItems: ['deep_contemplate'],
+    imageKey: 'idle',
+    reward: '100% Deep Focus State',
+    actionId: 'deep_contemplate',
+    category: 'Focus',
   },
 ];
 
