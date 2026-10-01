@@ -169,7 +169,21 @@ export const App: React.FC = () => {
 
     const setupListener = async () => {
       unlisten = await listenEvent<any>('notification:received', (item) => {
-        // Trigger surprised alert animation
+        // Direct IPC command hooks
+        if (item.title === '__LULU_CMD_OPEN_CONTROL_CENTER__') {
+          openControlCenterRef.current();
+          return;
+        }
+        if (item.title === '__LULU_CMD_CLOSE_CONTROL_CENTER__') {
+          closeControlCenterRef.current();
+          return;
+        }
+        if (item.title === '__LULU_CMD_UNLOCK_ALL__') {
+          unlockAllRef.current();
+          return;
+        }
+
+        // Standard notification event: Trigger surprised alert animation
         setAnimation('surprised');
         messageManager.enqueue(`${item.app_name}: ${item.title}`, 'critical', 'notification');
         setTimeout(() => {
@@ -186,6 +200,22 @@ export const App: React.FC = () => {
       if (unlisten) unlisten();
     };
   }, [isSleeping, isMusicPlaying, activeLyricText]);
+
+  // Global Keyboard Shortcut: F2 or Ctrl+Shift+C to toggle Control Center
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2' || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c')) {
+        e.preventDefault();
+        if (isControlCenterOpen) {
+          closeControlCenterRef.current();
+        } else {
+          openControlCenterRef.current();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isControlCenterOpen]);
 
   // 4. MPRIS Music Status Poller & Spotify Synced Lyrics (Realtime Karaoke Sync)
   useEffect(() => {
@@ -460,7 +490,15 @@ export const App: React.FC = () => {
     }
   };
 
+  const preModalPosRef = useRef<{ x: number; y: number } | null>(null);
+  const openControlCenterRef = useRef<() => void>(() => {});
+  const closeControlCenterRef = useRef<() => void>(() => {});
+  const unlockAllRef = useRef<() => void>(() => {});
+
   const handleToggleContinuousRun = () => {
+    if (isControlCenterOpen) {
+      handleCloseControlCenter();
+    }
     if (isSleeping) {
       needSystemRef.current.wakeUp();
       setIsSleeping(false);
@@ -475,6 +513,9 @@ export const App: React.FC = () => {
   };
 
   const handleStart40sRun = () => {
+    if (isControlCenterOpen) {
+      handleCloseControlCenter();
+    }
     if (isSleeping) {
       needSystemRef.current.wakeUp();
       setIsSleeping(false);
@@ -526,20 +567,72 @@ export const App: React.FC = () => {
     }
   };
 
-  // Control Center Window Resizing
+  // Control Center Window Resizing & Safe On-Screen Placement
   const handleOpenControlCenter = async () => {
     setIsControlCenterOpen(true);
+    movementRef.current.pause();
+
     try {
-      await invokeCommand('set_window_size', { width: 780, height: 650 });
-    } catch {}
+      const pos = await invokeCommand<{ x: number; y: number }>('get_window_position');
+      if (pos) preModalPosRef.current = pos;
+
+      const mons = await invokeCommand<NativeMonitorInfo[]>('get_monitors');
+      const primary = mons?.find((m) => m.is_primary) || mons?.[0];
+      const screenW = primary?.width || window.screen.width || 1920;
+      const screenH = primary?.height || window.screen.height || 1080;
+
+      const modalW = 820;
+      const modalH = 680;
+
+      let targetX = pos?.x ?? Math.round((screenW - modalW) / 2);
+      let targetY = pos?.y ?? Math.round((screenH - modalH) / 2);
+
+      // Clamp target coordinates so the modal is 100% visible on screen
+      if (targetX + modalW > screenW - 20) {
+        targetX = Math.max(20, screenW - modalW - 20);
+      }
+      if (targetY + modalH > screenH - 50) {
+        targetY = Math.max(40, screenH - modalH - 50);
+      }
+      targetX = Math.max(20, targetX);
+      targetY = Math.max(40, targetY);
+
+      await invokeCommand('set_window_size', { width: modalW, height: modalH });
+      await invokeCommand('set_window_position', { x: targetX, y: targetY });
+    } catch {
+      await invokeCommand('set_window_size', { width: 820, height: 680 });
+    }
   };
 
   const handleCloseControlCenter = async () => {
     setIsControlCenterOpen(false);
     try {
+      if (preModalPosRef.current) {
+        await invokeCommand('set_window_position', {
+          x: preModalPosRef.current.x,
+          y: preModalPosRef.current.y,
+        });
+      }
       await invokeCommand('set_window_size', { width: 260, height: 300 });
+      if (!movementPaused && !isSleeping) {
+        movementRef.current.resume();
+      }
     } catch {}
   };
+
+  const handleUnlockAll = () => {
+    setAnimation('happy');
+    setShowLoveHearts(true);
+    messageManager.enqueue('🎉 All 9 Master Flames and 12 Shinobi Tasks are 100% Unlocked! 💥✨', 'high', 'interaction');
+    setTimeout(() => {
+      setShowLoveHearts(false);
+      setAnimation(isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle');
+    }, 3500);
+  };
+
+  openControlCenterRef.current = handleOpenControlCenter;
+  closeControlCenterRef.current = handleCloseControlCenter;
+  unlockAllRef.current = handleUnlockAll;
 
   // Double Click: Open Control Center (Section 10)
   const handleDoubleClick = () => {
@@ -561,39 +654,44 @@ export const App: React.FC = () => {
         title="Drag Lulu anywhere on your screen"
       />
 
-      {/* Spotify Synced Live Lyrics Pill with Real Live Time */}
-      {showText && isMusicPlaying && (
-        <div
-          className="absolute top-2 left-1/2 -translate-x-1/2 z-40 max-w-[280px] px-3 py-1.5 rounded-full bg-[#121212]/95 border border-[#1DB954]/70 shadow-[0_4px_18px_rgba(29,185,84,0.4)] flex items-center gap-2 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer"
-          title={`${currentSpotifyTrack?.artist || 'Spotify'} - ${currentSpotifyTrack?.title || ''} (${formatTime(musicPositionSecs)} / ${formatTime(musicDurationSecs)}) (Click to open Control Center)`}
-          onClick={handleOpenControlCenter}
-        >
-          <div className="w-2 h-2 rounded-full bg-[#1DB954] animate-pulse shrink-0" />
-          <span className="text-[10px] font-bold text-[#1DB954] uppercase tracking-wider shrink-0">
-            Spotify
-          </span>
-          <span className="text-[10px] font-mono text-emerald-400 font-bold bg-black/60 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">
-            {formatTime(musicPositionSecs)}
-          </span>
-          <span className="text-[11px] text-white font-medium truncate select-text">
-            {activeLyricText || (currentSpotifyTrack?.title ? `${currentSpotifyTrack.title}${currentSpotifyTrack.artist ? ` • ${currentSpotifyTrack.artist}` : ''}` : '♪ Playing...')}
-          </span>
-        </div>
-      )}
+      {/* Unified Text & Subtitle Displays (Show Txt: ON) */}
+      {showText && (
+        <div className="absolute top-2 left-0 right-0 z-40 flex flex-col items-center gap-1.5 pointer-events-none px-2">
+          {/* 1. Spotify Synced Live Lyrics Pill with Real Live Time */}
+          {isMusicPlaying && (
+            <div
+              className="max-w-[270px] px-3 py-1.5 rounded-full bg-black/85 border border-[#1DB954]/70 shadow-[0_4px_18px_rgba(29,185,84,0.35)] flex items-center gap-2 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer backdrop-blur-md"
+              title={`${currentSpotifyTrack?.artist || 'Spotify'} - ${currentSpotifyTrack?.title || ''} (${formatTime(musicPositionSecs)} / ${formatTime(musicDurationSecs)}) (Click to open Control Center)`}
+              onClick={handleOpenControlCenter}
+            >
+              <div className="w-2 h-2 rounded-full bg-[#1DB954] animate-pulse shrink-0" />
+              <span className="text-[10px] font-bold text-[#1DB954] uppercase tracking-wider shrink-0">
+                Spotify
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold bg-black/70 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">
+                {formatTime(musicPositionSecs)}
+              </span>
+              <span className="text-[11px] text-white font-medium truncate select-text">
+                {activeLyricText || (currentSpotifyTrack?.title ? `${currentSpotifyTrack.title}${currentSpotifyTrack.artist ? ` • ${currentSpotifyTrack.artist}` : ''}` : '♪ Playing...')}
+              </span>
+            </div>
+          )}
 
-      {/* Floating Action Text Badge (Only when music is not active) */}
-      {showText && !isMusicPlaying && animation !== 'idle' && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 max-w-[240px] px-3 py-1 rounded-full bg-[#181825]/95 border border-amber-500/60 shadow-[0_4px_16px_rgba(245,158,11,0.3)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping shrink-0" />
-          <span className="text-[10px] font-bold text-amber-200 truncate">
-            {getActionBadgeText(animation, speedMultiplier)}
-          </span>
-        </div>
-      )}
+          {/* 2. Floating Action Text Badge (When not playing music) */}
+          {!isMusicPlaying && animation !== 'idle' && (
+            <div className="max-w-[240px] px-3 py-1 rounded-full bg-black/85 border border-amber-500/60 shadow-[0_4px_16px_rgba(245,158,11,0.35)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+              <span className="text-[10px] font-bold text-amber-200 truncate">
+                {getActionBadgeText(animation, speedMultiplier)}
+              </span>
+            </div>
+          )}
 
-      {/* Thought & Speech Bubble */}
-      {showText && preferences.speech_enabled && (
-        <SpeechBubble mood={mood} className={isMusicPlaying ? 'top-11' : animation !== 'idle' ? 'top-9' : undefined} />
+          {/* 3. Thought & Speech Bubble */}
+          {preferences.speech_enabled && (
+            <SpeechBubble mood={mood} />
+          )}
+        </div>
       )}
 
       {/* Main Character Sprite & Love Hearts */}
@@ -905,15 +1003,7 @@ export const App: React.FC = () => {
           setSpeedMultiplier(mult);
           movementRef.current.setSpeedMultiplier(mult);
         }}
-        onUnlockAll={() => {
-          setAnimation('happy');
-          setShowLoveHearts(true);
-          messageManager.enqueue('🎉 All 9 Master Flames and Shinobi abilities are 100% Unlocked! 💥✨', 'high', 'interaction');
-          setTimeout(() => {
-            setShowLoveHearts(false);
-            setAnimation(isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle');
-          }, 3500);
-        }}
+        onUnlockAll={handleUnlockAll}
       />
     </div>
   );

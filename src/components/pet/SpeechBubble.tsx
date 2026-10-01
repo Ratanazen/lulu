@@ -56,25 +56,25 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ mood, fallbackText, 
       onMouseLeave={() => messageManager.resume()}
       onClick={() => messageManager.togglePause()}
       onDoubleClick={() => messageManager.reopenLatest()}
-      className={`absolute ${className || 'top-2'} left-1/2 -translate-x-1/2 z-30 transition-all duration-300 pointer-events-auto cursor-pointer max-w-[240px] ${
+      className={`transition-all duration-300 pointer-events-auto cursor-pointer max-w-[250px] ${
         bubbleState === 'FADING'
-          ? 'opacity-0 scale-95 -translate-y-2'
+          ? 'opacity-0 scale-95 -translate-y-1'
           : 'opacity-100 scale-100 translate-y-0'
       }`}
       title="Click to Pause/Resume, Double-click to Reopen, Hover to Hold"
     >
-      <div className="relative px-3 py-1.5 rounded-xl bg-[#1e1b4b]/95 border border-indigo-400/40 text-indigo-100 text-xs font-medium shadow-xl backdrop-blur-md flex items-center gap-1.5 select-none leading-relaxed">
+      <div className="relative px-3 py-1.5 rounded-2xl bg-[#0f172a]/95 border border-indigo-400/50 text-indigo-100 text-xs font-medium shadow-[0_8px_24px_rgba(0,0,0,0.6)] backdrop-blur-md flex items-center gap-2 select-none leading-relaxed">
         {moodIcon}
-        <span className="flex-1 break-words">{textToShow}</span>
+        <span className="flex-1 break-words font-medium">{textToShow}</span>
 
         {isPaused && (
-          <span className="text-[10px] text-amber-300 ml-1 flex items-center gap-0.5 bg-amber-500/20 px-1 py-0.5 rounded">
+          <span className="text-[9px] text-amber-300 ml-1 flex items-center gap-0.5 bg-amber-500/20 px-1 py-0.5 rounded font-bold">
             <Pause size={8} /> Paused
           </span>
         )}
 
         {/* Bubble arrow down pointing to character */}
-        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#1e1b4b]/95 border-b border-r border-indigo-400/40 rotate-45" />
+        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0f172a]/95 border-b border-r border-indigo-400/50 rotate-45" />
       </div>
     </div>
   );

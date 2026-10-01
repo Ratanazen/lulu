@@ -88,6 +88,16 @@ export const getFlameImage = (id: string) => {
   }
 };
 
+export const SHINOBI_SPRITES = [
+  { id: 'idle', name: 'Idle Guard', image: shinobiIdle, badge: 'Standard', desc: 'Standing guard stance with breathing animation' },
+  { id: 'run', name: 'Ninja Sprint', image: shinobiRun, badge: 'Sprint / Run', desc: 'High-speed desktop traversal sprint pose' },
+  { id: 'happy', name: 'Joyous Cheer', image: shinobiHappy, badge: 'Celebration', desc: 'Victorious cheer with glowing aura & hearts' },
+  { id: 'sleep', name: 'Deep Rest', image: shinobiSleep, badge: 'Rest Mode', desc: 'Serene resting state restoring energy & focus' },
+  { id: 'sing', name: 'Karaoke Sing', image: shinobiSing, badge: 'Spotify Sync', desc: 'Stage microphone & floating musical rhythm notes' },
+  { id: 'sad', name: 'Contemplate', image: shinobiSad, badge: 'Solitude', desc: 'Seated contemplation with tear & comforting aura' },
+  { id: 'protect', name: 'Flame Shield', image: shinobiProtect, badge: 'Susanoo Barrier', desc: 'Chakra hand seal with cyan flame barrier' },
+];
+
 interface ControlCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -123,6 +133,7 @@ interface ControlCenterModalProps {
 }
 
 type TabType =
+  | 'show_all'
   | 'overview'
   | 'tasks'
   | 'pet'
@@ -165,7 +176,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   onSetSpeedMultiplier,
   onUnlockAll,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('show_all');
 
   // Diagnostics & Capabilities
   const [capabilities, setCapabilities] = useState<any>(null);
@@ -238,9 +249,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     loadData();
   }, [isOpen]);
 
-  // Periodic music update when Music tab or Overview is active
+  // Periodic music update when Music tab, Overview, or Show All is active
   useEffect(() => {
-    if (!isOpen || (activeTab !== 'overview' && activeTab !== 'music_lyrics')) return;
+    if (!isOpen || (activeTab !== 'overview' && activeTab !== 'music_lyrics' && activeTab !== 'show_all')) return;
 
     const timer = setInterval(async () => {
       try {
@@ -426,6 +437,18 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
           {/* Sidebar */}
           <div className="w-36 sm:w-44 bg-[#11111b] border-r border-[#313244] p-2 space-y-1 shrink-0 overflow-y-auto">
             <button
+              onClick={() => setActiveTab('show_all')}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition mb-1.5 ${
+                activeTab === 'show_all'
+                  ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 text-white shadow-lg shadow-purple-500/30'
+                  : 'text-amber-300 hover:text-white hover:bg-white/5 border border-amber-500/30 bg-amber-500/10'
+              }`}
+            >
+              <Sparkles size={14} className="text-amber-400" />
+              <span>⚡ Show All</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('overview')}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition ${
                 activeTab === 'overview'
@@ -524,6 +547,413 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
           {/* Content Area */}
           <div className="flex-1 p-5 overflow-y-auto">
+            {/* 0. SHOW ALL UNIFIED DASHBOARD */}
+            {activeTab === 'show_all' && (
+              <div className="space-y-6">
+                {/* Header Banner */}
+                <div className="bg-gradient-to-r from-purple-900/40 via-indigo-900/30 to-pink-900/40 border border-purple-500/30 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                  <div>
+                    <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                      <Sparkles size={18} className="text-amber-400 animate-pulse" />
+                      <span>Master Shinobi Console & All Tasks</span>
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-0.5">
+                      Unified studio: 7 master shinobi poses, all 12 tasks, Spotify lyrics karaoke & movement cadence
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        onUnlockAll?.();
+                        messageManager.enqueue('🎉 All 12 Tasks and Flames 100% Unlocked!', 'high', 'interaction');
+                      }}
+                      className="py-1.5 px-3 rounded-xl bg-emerald-600/40 border border-emerald-400/50 text-emerald-200 hover:bg-emerald-600/60 flex items-center gap-1.5 text-xs font-bold transition shadow"
+                    >
+                      <Unlock size={14} className="text-emerald-300" />
+                      <span>Unlock All 12 Tasks</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (isContinuousRunning) {
+                          onToggleContinuousRun?.();
+                        } else {
+                          onStart40sRun?.();
+                        }
+                      }}
+                      className="py-1.5 px-3 rounded-xl bg-purple-600/40 border border-purple-400/50 text-purple-200 hover:bg-purple-600/60 flex items-center gap-1.5 text-xs font-bold transition shadow"
+                    >
+                      <Zap size={14} className="text-yellow-400" />
+                      <span>{isContinuousRunning ? 'Stop Sprint' : '40s Sprint Run'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Character Status & Quick Toggles */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-400">Current Mood</p>
+                      <p className="text-xs font-bold text-white capitalize">{mood}</p>
+                    </div>
+                    <button
+                      onClick={onPetLulu}
+                      className="p-1.5 rounded-lg bg-pink-500/20 text-pink-300 hover:bg-pink-500/40 text-[10px] font-bold"
+                      title="Pet Lulu"
+                    >
+                      <Heart size={14} />
+                    </button>
+                  </div>
+
+                  <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-400">State / Sleep</p>
+                      <p className="text-xs font-bold text-white">
+                        {isSleeping ? '💤 Asleep' : '⚡ Awake'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={onToggleSleep}
+                      className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 text-[10px] font-bold"
+                      title="Toggle Sleep"
+                    >
+                      <Moon size={14} />
+                    </button>
+                  </div>
+
+                  <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-400">Speech Text Style</p>
+                      <p className="text-xs font-bold text-white">
+                        {showText ? 'Visible' : 'Hidden'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={onToggleShowText}
+                      className={`px-2 py-1 rounded text-[10px] font-bold transition ${
+                        showText ? 'bg-purple-600/30 text-purple-200 border border-purple-500/40' : 'bg-gray-700 text-gray-400'
+                      }`}
+                    >
+                      {showText ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+
+                  <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-400">Movement</p>
+                      <p className="text-xs font-bold text-white">
+                        {isMovementPaused ? '⏸ Paused' : `${speedMultiplier}x Active`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={isMovementPaused ? onResumeMovement : onPauseMovement}
+                      className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/40 text-[10px] font-bold"
+                      title={isMovementPaused ? 'Resume' : 'Pause'}
+                    >
+                      {isMovementPaused ? <Play size={14} /> : <Pause size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1. SEVEN MASTER SHINOBI SPRITES CONSOLE */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-amber-400" />
+                      <span>7 Master Shinobi Poses (High-Res 512x512)</span>
+                    </h4>
+                    <span className="text-[10px] font-semibold text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                      7 / 7 Poses Ready
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+                    {SHINOBI_SPRITES.map((sprite) => (
+                      <div
+                        key={sprite.id}
+                        className="bg-[#181825] border border-[#313244] hover:border-purple-500/50 p-2.5 rounded-xl flex flex-col items-center text-center group transition"
+                      >
+                        <div className="w-16 h-16 rounded-xl bg-black/50 border border-white/10 p-1 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition">
+                          <img
+                            src={sprite.image}
+                            alt={sprite.name}
+                            className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                          />
+                        </div>
+                        <span className="text-[11px] font-bold text-white mt-1.5 truncate max-w-full">
+                          {sprite.name}
+                        </span>
+                        <span className="text-[8px] text-purple-300 font-medium px-1.5 py-0.2 rounded bg-purple-950/60 border border-purple-800/40 mt-0.5 truncate max-w-full">
+                          {sprite.badge}
+                        </span>
+                        <p className="text-[9px] text-gray-400 mt-1 line-clamp-2 leading-tight">
+                          {sprite.desc}
+                        </p>
+                        <button
+                          onClick={() => {
+                            if (sprite.id === 'run') {
+                              onStart40sRun?.();
+                            } else {
+                              onTriggerAnimation?.(sprite.id);
+                            }
+                            messageManager.enqueue(`Triggered pose: ${sprite.name}!`, 'normal', 'interaction');
+                          }}
+                          className="w-full mt-2 py-1 rounded bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-[10px] font-bold transition flex items-center justify-center gap-1"
+                        >
+                          <Zap size={10} className="text-yellow-400" />
+                          <span>Pose</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. ALL 12 TASKS & ABILITIES CATALOG */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckSquare size={14} className="text-emerald-400" />
+                      <span>All 12 Shinobi Tasks & Progression</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800/40">
+                      {LULU_TASKS.length} / {LULU_TASKS.length} Unlocked
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {LULU_TASKS.map((task) => (
+                      <div
+                        key={task.id}
+                        className="bg-[#181825] border border-[#313244] hover:border-emerald-500/40 p-2.5 rounded-xl transition flex gap-2.5 items-start group"
+                      >
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={getTaskImage(task.imageKey)}
+                            alt={task.title}
+                            className="w-12 h-12 object-contain rounded-xl bg-black/40 p-1 border border-white/10 filter drop-shadow-md group-hover:scale-105 transition"
+                          />
+                          <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
+                            <CheckCircle2 size={10} className="text-black fill-emerald-400" />
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 truncate">
+                              {task.category}
+                            </span>
+                            <span className="text-[8px] text-emerald-300 font-semibold bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-800/40 flex-shrink-0">
+                              Unlocked
+                            </span>
+                          </div>
+                          <h5 className="text-[11px] font-bold text-white truncate mt-0.5">{task.title}</h5>
+                          <p className="text-[9px] text-gray-400 line-clamp-2 mt-0.5 leading-snug">
+                            {task.description}
+                          </p>
+                          <div className="mt-1.5 flex items-center justify-between">
+                            <span className="text-[8px] text-amber-300 font-medium truncate max-w-[100px]">
+                              🎁 {task.reward}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (task.actionId === 'sprint_dash') {
+                                  onStart40sRun?.();
+                                } else if (task.actionId === 'all') {
+                                  onUnlockAll?.();
+                                } else {
+                                  onTriggerAnimation?.(task.actionId);
+                                }
+                                messageManager.enqueue(`Triggering task: ${task.title}!`, 'normal', 'interaction');
+                              }}
+                              className="px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-[9px] font-bold transition flex items-center gap-1"
+                            >
+                              <Zap size={9} className="text-yellow-400" />
+                              <span>Trigger</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. SPOTIFY KARAOKE & LYRICS API SEARCH */}
+                <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Music size={16} className="text-pink-400" />
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                        Spotify MPRIS & Karaoke Lyrics Studio
+                      </h4>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-semibold border border-pink-500/30">
+                        {spotifyLyricsService.getCurrentSource()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-lg border border-white/5">
+                        <span className="text-[9px] text-gray-400">Sync:</span>
+                        <button
+                          onClick={() => handleAdjustSyncOffset(-0.25)}
+                          className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-gray-300 text-[9px] font-mono font-bold"
+                          title="-0.25s"
+                        >
+                          -0.25s
+                        </button>
+                        <span className="text-[10px] font-mono font-bold text-amber-300">
+                          {lyricsSyncOffset > 0 ? `+${lyricsSyncOffset.toFixed(2)}` : lyricsSyncOffset.toFixed(2)}s
+                        </span>
+                        <button
+                          onClick={() => handleAdjustSyncOffset(0.25)}
+                          className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-gray-300 text-[9px] font-mono font-bold"
+                          title="+0.25s"
+                        >
+                          +0.25s
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          onTriggerAnimation?.('sing');
+                          messageManager.enqueue('🎤 Lulu is singing along with Spotify!', 'normal', 'interaction');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-pink-600/30 border border-pink-500/40 text-pink-200 hover:bg-pink-600/50 flex items-center gap-1 text-xs font-bold transition shadow-sm"
+                      >
+                        <Mic size={12} className="text-pink-400" />
+                        <span>Sing Along</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Player Bar & Lyrics Search */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* MPRIS Controls */}
+                    <div className="bg-black/30 border border-white/5 p-3 rounded-xl flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 truncate">
+                          Player: {musicStatus?.player || 'None'}
+                        </span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                          musicStatus?.playback_status === 'Playing' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-700 text-gray-400'
+                        }`}>
+                          {musicStatus?.playback_status || 'Stopped'}
+                        </span>
+                      </div>
+                      <div className="py-2 text-center">
+                        <p className="text-xs font-bold text-pink-300 truncate">
+                          {musicStatus?.title || 'No Track Playing'}
+                        </p>
+                        <p className="text-[10px] text-gray-400 truncate">
+                          {musicStatus?.artist || 'Idle Player'}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center gap-3">
+                        <button onClick={handleMusicPrev} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-300">
+                          <SkipBack size={14} />
+                        </button>
+                        <button onClick={handleToggleMusicPlayPause} className="p-2 rounded-full bg-pink-600 hover:bg-pink-500 text-white shadow">
+                          {musicStatus?.playback_status === 'Playing' ? <Pause size={14} /> : <Play size={14} />}
+                        </button>
+                        <button onClick={handleMusicNext} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-300">
+                          <SkipForward size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Online Lyrics Search API */}
+                    <div className="bg-black/30 border border-white/5 p-3 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-gray-300 flex items-center gap-1">
+                          <Search size={11} className="text-emerald-400" /> Search Online Lyrics
+                        </span>
+                        <span className="text-[9px] text-gray-500">LRCLIB API</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={lyricsSearchQuery}
+                          onChange={(e) => setLyricsSearchQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSearchLyrics()}
+                          placeholder="Song title or artist..."
+                          className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-pink-500/50"
+                        />
+                        <button
+                          onClick={handleSearchLyrics}
+                          disabled={isSearchingLyrics}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-600/50 text-xs font-bold transition flex items-center gap-1 disabled:opacity-50"
+                        >
+                          {isSearchingLyrics ? <RefreshCw size={11} className="animate-spin" /> : <Search size={11} />}
+                          <span>Search</span>
+                        </button>
+                      </div>
+
+                      {/* Top results */}
+                      {lyricsSearchResults.length > 0 && (
+                        <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                          {lyricsSearchResults.slice(0, 3).map((res) => (
+                            <div key={res.id} className="p-1.5 rounded bg-black/50 border border-white/5 flex items-center justify-between text-[10px]">
+                              <div className="truncate flex-1 pr-2">
+                                <span className="font-bold text-white">{res.trackName}</span>
+                                <span className="text-gray-400 ml-1">({res.artistName})</span>
+                              </div>
+                              <button
+                                onClick={() => handleApplySearchResult(res)}
+                                className="px-1.5 py-0.5 rounded bg-pink-600 text-white font-bold text-[9px] flex-shrink-0"
+                              >
+                                Sync
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Lyrics Display */}
+                  <LyricsViewer
+                    parsedLrc={parsedLrc}
+                    currentTimeSecs={musicStatus?.position_secs || 0}
+                  />
+                </div>
+
+                {/* 4. MOVEMENT CADENCE & SPEED MULTIPLIER */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Sliders size={14} className="text-purple-400" />
+                      <span>Movement Cadence & Speed Multiplier</span>
+                    </h5>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      Current speed: <strong className="text-purple-300">{speedMultiplier}x</strong> • Direction: <strong className="text-purple-300">{currentDirection}</strong>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {[0.5, 1.0, 1.5, 2.0, 3.0].map((speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => onSetSpeedMultiplier?.(speed)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                          speedMultiplier === speed
+                            ? 'bg-purple-600 text-white shadow'
+                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                    <button
+                      onClick={onStopMovement}
+                      className="px-2.5 py-1 rounded-lg bg-red-600/20 text-red-300 hover:bg-red-600/40 text-xs font-bold transition ml-1"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* 1. OVERVIEW TAB */}
             {activeTab === 'overview' && (
               <div className="space-y-4">
