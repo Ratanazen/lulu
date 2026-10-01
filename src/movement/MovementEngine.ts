@@ -14,6 +14,8 @@ export interface MovementState {
   currentFrame: number;
   isPaused: boolean;
   speedMultiplier: number;
+  currentX?: number;
+  currentY?: number;
 }
 
 export interface MovementConfig {
@@ -167,7 +169,13 @@ export class MovementEngine {
       currentFrame: this.currentFrame,
       isPaused: this.isPaused,
       speedMultiplier: this.speedMultiplier,
+      currentX: this.currentX,
+      currentY: this.currentY,
     };
+  }
+
+  public getPosition(): { x: number; y: number } {
+    return { x: this.currentX, y: this.currentY };
   }
 
   public pause() {
@@ -274,7 +282,7 @@ export class MovementEngine {
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (isRunning) {
-        this.currentFrame = (this.currentFrame + 1) % 6;
+        this.currentFrame = (this.currentFrame + 1) % 1;
       }
 
       if (dist <= currentSpeed) {

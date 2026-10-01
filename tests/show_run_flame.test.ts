@@ -42,15 +42,15 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     expect(state.speedMultiplier).toBe(1.0);
   });
 
-  it('2. verifies 6-frame loop progression (0 to 5 and wrap)', () => {
+  it('2. verifies 1-frame loop progression (constant frame 0 in 1-frame system)', () => {
     engine.startContinuousRun();
     expect(engine.getState().currentFrame).toBe(0);
 
-    // Advance 50ms -> frame 1
+    // Advance 50ms -> frame remains 0
     vi.advanceTimersByTime(50);
-    expect(engine.getState().currentFrame).toBe(1);
+    expect(engine.getState().currentFrame).toBe(0);
 
-    // Advance 5 more frames (5 * 50ms = 250ms) -> total 6 frames -> wraps back to 0
+    // Advance 250ms -> wraps and remains 0
     vi.advanceTimersByTime(5 * 50);
     expect(engine.getState().currentFrame).toBe(0);
   });
@@ -96,14 +96,14 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     engine.pause();
     expect(engine.getState().isPaused).toBe(true);
 
-    const frameBefore = engine.getState().currentFrame;
-    vi.advanceTimersByTime(200); // 5 frames would elapse if not paused
-    expect(engine.getState().currentFrame).toBe(frameBefore); // No progress while paused
+    const posBefore = engine.getState().currentX;
+    vi.advanceTimersByTime(200);
+    expect(engine.getState().currentX).toBe(posBefore); // No movement while paused
 
     engine.resume();
     expect(engine.getState().isPaused).toBe(false);
-    vi.advanceTimersByTime(50);
-    expect(engine.getState().currentFrame).toBe((frameBefore + 1) % 6);
+    vi.advanceTimersByTime(100);
+    expect(engine.getState().currentX).not.toBe(posBefore);
   });
 
   it('6. verifies timer safety and cleanup on multiple starts and stop', () => {
@@ -119,24 +119,24 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     expect(completed2).toBe(true);  // Second timer completed cleanly
   });
 
-  it('7. verifies 8 random routines in LULU_ROUTINE_POOL', () => {
+  it('7. verifies 8 random routines in LULU_ROUTINE_POOL (1-frame pet system)', () => {
     expect(LULU_ROUTINE_POOL.length).toBe(8);
     const sprintRoutines = LULU_ROUTINE_POOL.filter(r => r.animation === 'run_sprint');
     expect(sprintRoutines.length).toBe(2);
-    expect(sprintRoutines[0].frames).toBe(6);
-    expect(sprintRoutines[1].frames).toBe(6);
+    expect(sprintRoutines[0].frames).toBe(1);
+    expect(sprintRoutines[1].frames).toBe(1);
 
     const danceRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'happy_dance');
-    expect(danceRoutine?.frames).toBe(6);
+    expect(danceRoutine?.frames).toBe(1);
 
     const musicRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'music_jam');
-    expect(musicRoutine?.frames).toBe(6);
+    expect(musicRoutine?.frames).toBe(1);
 
     const protectRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'protect');
-    expect(protectRoutine?.frames).toBe(6);
+    expect(protectRoutine?.frames).toBe(1);
 
     const waveRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'wave');
-    expect(waveRoutine?.frames).toBe(6);
+    expect(waveRoutine?.frames).toBe(1);
   });
 
   it('8. verifies strict frame priority ordering with singing lip-sync', () => {

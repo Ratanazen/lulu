@@ -55,7 +55,16 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
   speedMultiplier = 1.0, // Normal, smooth cadence default
 }) => {
   const [frame, setFrame] = useState(0);
+  const [tick, setTick] = useState(0);
   const activeCursor = cursorPos || cursorOffset;
+
+  // Continuous physics clock (40ms = 25 updates/sec) for organic sinusoidal breathing, swaying, wobbling
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick((t) => (t + 1) % 100000);
+    }, 40);
+    return () => clearInterval(timer);
+  }, []);
 
   // Behavior state detection across all 17 functions
   const isRunning = animation === 'run-left' || animation === 'run-right' || (animation as string) === 'run';
@@ -74,7 +83,7 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
   const isWaving = animation === 'wave';
   const isFlipped = animation === 'walk-left' || animation === 'run-left';
 
-  // Independent animation frame sequence timer (supports 20-frame and 5-frame cycles dynamically)
+  // Independent animation frame sequence timer (supports 1-frame and multi-frame sequences dynamically)
   useEffect(() => {
     // Explicit animation state strictly takes priority over ambient mood
     const activeLength = isRunning
@@ -103,22 +112,22 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
 
     // Normal, smooth anime animation frame rates (not too fast, balanced and comfortable)
     const fps = isRunning
-      ? 12 // 12 FPS: silky-smooth natural running stride for 40-frame sprint (not too fast)
+      ? 12
       : isWalking
-      ? 4 // 4 FPS: comfortable walking pace
+      ? 4
       : isSinging
-      ? 5 // 5 FPS: natural human vocal lip-sync cadence (200ms per mouth change)
+      ? 5
       : (isSleeping || isSitting)
-      ? 2 // 2 FPS: gentle slow resting breathing
+      ? 2
       : isDancing
-      ? 6 // 6 FPS: rhythmic music sway
+      ? 6
       : (animation === 'happy' || mood === 'happy' || mood === 'playful')
-      ? 5 // 5 FPS: joyful celebration
+      ? 5
       : (animation === 'sad' || animation === 'angry' || mood === 'sad' || mood === 'tired')
       ? 4
       : (isThinking || isProtecting || isWaving)
       ? 4
-      : 3; // 3 FPS: peaceful idle breathing
+      : 3;
 
     const effectiveFps = Math.max(1, Math.round(fps * (speedMultiplier ?? 1.0)));
     const interval = setInterval(() => {
@@ -128,34 +137,50 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
     return () => clearInterval(interval);
   }, [animation, mood, isSleeping, isSitting, isRunning, isDancing, isSinging, isWalking, isThinking, isProtecting, isWaving, speedMultiplier]);
 
-  // Dynamic smooth physics: smooth continuous sinusoidal curve instead of rapid alternating jitter
+  // Dynamic smooth physics: continuous sinusoidal curve gives natural life to 1-frame artwork
   const isSad = animation === 'sad' || animation === 'angry' || (animation === 'idle' && (mood === 'sad' || mood === 'tired'));
   const isJoyful = animation === 'happy' || (animation === 'idle' && (mood === 'happy' || mood === 'playful')) || isDancing;
 
+  // Breathing motion during idle and resting
   const breathY = (animation === 'idle' || isSleeping || isSitting)
-    ? Math.sin(frame * 0.4) * 1.5
+    ? Math.sin(tick * 0.1) * 3
     : 0;
 
+  // Stride offset during walking and running
   const walkOffset = isWalking
-    ? Math.sin(frame * 0.8) * 1.5
+    ? Math.sin(tick * 0.25) * 3
+    : isRunning
+    ? Math.sin(tick * 0.4) * 4
     : 0;
 
-  const bounceY = isJumping ? -26 : isSitting ? 12 : isSurprised ? -8 : 0;
+  // Expressive jumping, sitting, or joyful bouncing
+  const bounceY = isJumping
+    ? -26
+    : isSitting
+    ? 12
+    : isSurprised
+    ? -8
+    : (animation === 'happy' || isJoyful)
+    ? Math.abs(Math.sin(tick * 0.2)) * -5
+    : 0;
 
+  // Dynamic tilt & sway: running lean, dancing groove, walking wobble, singing gentle sway
   const tiltDeg = isRunning
-    ? 0
+    ? Math.sin(tick * 0.35) * 4
     : isDancing
-    ? Math.sin(frame * 0.5) * 2.5
+    ? Math.sin(tick * 0.2) * 5
+    : isSinging
+    ? Math.sin(tick * 0.15) * 3
     : isJoyful
-    ? Math.sin(frame * 0.4) * 2.0
+    ? Math.sin(tick * 0.2) * 3
     : isWalking
-    ? Math.sin(frame * 0.6) * 1.2
+    ? Math.sin(tick * 0.25) * 2.5
     : isThinking
     ? 2.5
     : isSurprised
     ? -3.0
     : isSad
-    ? Math.sin(frame * 0.3) * 0.8
+    ? Math.sin(tick * 0.1) * 1.5
     : 0;
 
   // 1. AUTHENTIC SHADOW SHINOBI (Real Multi-Frame 2D Motion Engine from User Sprite Sheets)
@@ -219,9 +244,9 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
             transformOrigin: 'bottom center',
             transition: isJumping
               ? 'transform 0.15s cubic-bezier(0.17, 0.67, 0.83, 0.67)'
-              : isRunning
+              : (isRunning || isWalking || isDancing || isSinging)
               ? 'none'
-              : 'transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
+              : 'transform 0.05s linear',
           }}
         >
           {/* Authentic High-Resolution Transparent Character Artwork */}
