@@ -35,12 +35,16 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ mood, fallbackText, 
     textToShow.toLowerCase().includes('notification') ||
     textToShow.toLowerCase().includes('chrome');
 
-  const isMusic = textToShow.includes('🎵') || textToShow.toLowerCase().includes('now playing');
+  const isMusic = textToShow.includes('🎵') ||
+    textToShow.toLowerCase().includes('now playing') ||
+    textToShow.includes('🎤') ||
+    textToShow.includes('♪') ||
+    textToShow.includes('♫');
 
   const moodIcon = isNotification ? (
     <Bell size={12} className="text-amber-400 inline shrink-0 animate-bounce" />
   ) : isMusic ? (
-    <Music size={12} className="text-pink-400 inline shrink-0 animate-pulse" />
+    <Music size={12} className="text-emerald-300 inline shrink-0 animate-pulse" />
   ) : {
     happy: <Heart size={12} className="text-rose-400 fill-rose-400 inline shrink-0" />,
     tired: <Moon size={12} className="text-indigo-400 inline shrink-0" />,
@@ -56,14 +60,18 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ mood, fallbackText, 
       onMouseLeave={() => messageManager.resume()}
       onClick={() => messageManager.togglePause()}
       onDoubleClick={() => messageManager.reopenLatest()}
-      className={`transition-all duration-300 pointer-events-auto cursor-pointer max-w-[250px] ${
+      className={`transition-all duration-300 pointer-events-auto cursor-pointer max-w-[280px] ${
         bubbleState === 'FADING'
           ? 'opacity-0 scale-95 -translate-y-1'
           : 'opacity-100 scale-100 translate-y-0'
       }`}
       title="Click to Pause/Resume, Double-click to Reopen, Hover to Hold"
     >
-      <div className="relative px-3 py-1.5 rounded-2xl bg-[#0f172a]/95 border border-indigo-400/50 text-indigo-100 text-xs font-medium shadow-[0_8px_24px_rgba(0,0,0,0.6)] backdrop-blur-md flex items-center gap-2 select-none leading-relaxed">
+      <div className={`relative px-3.5 py-1.5 rounded-2xl ${
+        isMusic
+          ? 'bg-[#042114]/95 border border-emerald-400/70 text-emerald-100 shadow-[0_8px_24px_rgba(16,185,129,0.45)]'
+          : 'bg-[#0f172a]/95 border border-indigo-400/50 text-indigo-100 shadow-[0_8px_24px_rgba(0,0,0,0.6)]'
+      } text-xs font-medium backdrop-blur-md flex items-center gap-2 select-none leading-relaxed`}>
         {moodIcon}
         <span className="flex-1 break-words font-medium">{textToShow}</span>
 

@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { PetNeeds, MoodType, PetPreferences, NativeMonitorInfo, CharacterStyle } from '../../types/pet';
+import {
+  PetNeeds,
+  MoodType,
+  PetPreferences,
+  NativeMonitorInfo,
+  CharacterStyle,
+  SystemTelemetry,
+  BehaviorMode,
+} from '../../types/pet';
 import { LULU_THEMES } from '../../themes';
 import { invokeCommand } from '../../services/tauriBridge';
 import { LyricsViewer } from '../../features/lyrics/LyricsViewer';
@@ -35,6 +43,9 @@ import {
   CheckSquare,
   Search,
   Mic,
+  Cpu,
+  Battery,
+  Laptop,
 } from 'lucide-react';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
 import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
@@ -45,6 +56,7 @@ import shinobiSleep from '../../assets/avatars/shinobi_sleep.png';
 import shinobiSing from '../../assets/avatars/shinobi_sing.png';
 import shinobiSad from '../../assets/avatars/shinobi_sad.png';
 import shinobiProtect from '../../assets/avatars/shinobi_protect.png';
+import shinobiSitdown from '../../assets/avatars/shinobi_sitdown.png';
 
 export const getTaskImage = (imageKey?: string) => {
   switch (imageKey) {
@@ -60,6 +72,8 @@ export const getTaskImage = (imageKey?: string) => {
       return shinobiSad;
     case 'protect':
       return shinobiProtect;
+    case 'sit':
+      return shinobiSitdown;
     case 'idle':
     default:
       return shinobiIdle;
@@ -78,6 +92,9 @@ export const getFlameImage = (id: string) => {
       return shinobiHappy;
     case 'peaceful_rest':
       return shinobiSleep;
+    case 'step_down_rest':
+    case 'step_down_zen_posture':
+      return shinobiSitdown;
     case 'deep_contemplate':
       return shinobiSad;
     case 'susanoo_defense':
@@ -92,10 +109,27 @@ export const SHINOBI_SPRITES = [
   { id: 'idle', name: 'Idle Guard', image: shinobiIdle, badge: 'Standard', desc: 'Standing guard stance with breathing animation' },
   { id: 'run', name: 'Ninja Sprint', image: shinobiRun, badge: 'Sprint / Run', desc: 'High-speed desktop traversal sprint pose' },
   { id: 'happy', name: 'Joyous Cheer', image: shinobiHappy, badge: 'Celebration', desc: 'Victorious cheer with glowing aura & hearts' },
-  { id: 'sleep', name: 'Deep Rest', image: shinobiSleep, badge: 'Rest Mode', desc: 'Serene resting state restoring energy & focus' },
+  { id: 'sleep', name: 'Deep Slumber', image: shinobiSleep, badge: 'Authentic Sleep', desc: 'Lying comfortably on floor with floating Zzz bubbles' },
+  { id: 'sit', name: 'Step Down / Sit', image: shinobiSitdown, badge: 'Relaxed Sit', desc: 'Calm cross-legged floor posture resting peacefully' },
   { id: 'sing', name: 'Karaoke Sing', image: shinobiSing, badge: 'Spotify Sync', desc: 'Stage microphone & floating musical rhythm notes' },
   { id: 'sad', name: 'Contemplate', image: shinobiSad, badge: 'Solitude', desc: 'Seated contemplation with tear & comforting aura' },
   { id: 'protect', name: 'Flame Shield', image: shinobiProtect, badge: 'Susanoo Barrier', desc: 'Chakra hand seal with cyan flame barrier' },
+];
+
+export const ALL_BEHAVIOR_MODES: {
+  id: BehaviorMode;
+  label: string;
+  desc: string;
+  icon: string;
+  badge: string;
+}[] = [
+  { id: 'SYSTEM_SYNC', label: 'Follow System', desc: 'Syncs with computer CPU load & battery in real-time', icon: '💻', badge: 'Telemetry' },
+  { id: 'ACTIVE', label: 'Active Traversal', desc: 'Continuous desktop patrol and high-speed sprint', icon: '🏃', badge: 'Continuous' },
+  { id: 'PLAYFUL', label: 'Playful Cheer', desc: 'Frequent katas, dances, and affection routines', icon: '🎮', badge: 'High Energy' },
+  { id: 'NORMAL', label: 'Balanced Normal', desc: 'Classic lifelike desktop companion behavior', icon: '🐾', badge: 'Default' },
+  { id: 'CALM', label: 'Calm & Restful', desc: 'Slow strolls, quiet rests, and gentle breathing', icon: '🧘', badge: 'Relaxed' },
+  { id: 'FOCUSED', label: 'Focused Study', desc: 'Stays still next to your window while you work', icon: '🎯', badge: 'Focus' },
+  { id: 'QUIET', label: 'Quiet Muted', desc: 'Completely stationary and silent guard', icon: '🤫', badge: 'Muted' },
 ];
 
 interface ControlCenterModalProps {
@@ -130,6 +164,7 @@ interface ControlCenterModalProps {
   speedMultiplier?: number;
   onSetSpeedMultiplier?: (mult: number) => void;
   onUnlockAll?: () => void;
+  systemTelemetry?: SystemTelemetry | null;
 }
 
 type TabType =
@@ -175,6 +210,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   speedMultiplier = 1.0,
   onSetSpeedMultiplier,
   onUnlockAll,
+  systemTelemetry = null,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('show_all');
 
@@ -951,6 +987,201 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* 5. COMPUTER SYSTEM TELEMETRY & FOLLOW MODE (config for follow system comoputer all) */}
+                <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Cpu size={16} className="text-cyan-400" />
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                        Computer System Telemetry & Follow Mode
+                      </h4>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
+                        preferences.behavior_mode === 'SYSTEM_SYNC'
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 animate-pulse'
+                          : 'bg-gray-800 text-gray-400 border-white/5'
+                      }`}>
+                        {preferences.behavior_mode === 'SYSTEM_SYNC' ? '⚡ System Follow Active' : 'Standby'}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const newMode = preferences.behavior_mode === 'SYSTEM_SYNC' ? 'NORMAL' : 'SYSTEM_SYNC';
+                        onUpdatePreferences({ ...preferences, behavior_mode: newMode });
+                        messageManager.enqueue(
+                          newMode === 'SYSTEM_SYNC'
+                            ? '💻 Follow Computer System Mode activated! Lulu now syncs with CPU & Battery! ⚡'
+                            : '🐾 Returned to Normal companion mode.',
+                          'high',
+                          'interaction'
+                        );
+                      }}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow ${
+                        preferences.behavior_mode === 'SYSTEM_SYNC'
+                          ? 'bg-cyan-600 text-white shadow-cyan-500/30'
+                          : 'bg-cyan-600/30 border border-cyan-500/40 text-cyan-200 hover:bg-cyan-600/50'
+                      }`}
+                    >
+                      <Laptop size={12} />
+                      <span>{preferences.behavior_mode === 'SYSTEM_SYNC' ? '✓ Following System Active' : 'Enable Follow System Mode'}</span>
+                    </button>
+                  </div>
+
+                  {/* Telemetry Metrics Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {/* CPU Usage */}
+                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
+                      <div className="flex justify-between text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1"><Cpu size={11} className="text-cyan-400" /> CPU Load</span>
+                        <span className="font-mono font-bold text-white">{Math.round(systemTelemetry?.cpuPercent ?? 0)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${
+                            (systemTelemetry?.cpuPercent ?? 0) > 70 ? 'bg-red-500' : (systemTelemetry?.cpuPercent ?? 0) > 40 ? 'bg-amber-400' : 'bg-cyan-400'
+                          }`}
+                          style={{ width: `${Math.min(100, systemTelemetry?.cpuPercent ?? 0)}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] text-gray-500 truncate">
+                        {systemTelemetry?.cpuCores ? `${systemTelemetry.cpuCores} Logical Cores` : 'Multi-core CPU'}
+                      </p>
+                    </div>
+
+                    {/* RAM Usage */}
+                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
+                      <div className="flex justify-between text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1"><Activity size={11} className="text-purple-400" /> Memory</span>
+                        <span className="font-mono font-bold text-white">{Math.round(systemTelemetry?.memPercent ?? 0)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-purple-500 transition-all"
+                          style={{ width: `${Math.min(100, systemTelemetry?.memPercent ?? 0)}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] text-gray-500 truncate">
+                        {Math.round((systemTelemetry?.memUsedMb ?? 0) / 1024 * 10) / 10} / {Math.round((systemTelemetry?.memTotalMb ?? 1) / 1024 * 10) / 10} GB
+                      </p>
+                    </div>
+
+                    {/* Battery Status */}
+                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
+                      <div className="flex justify-between text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1"><Battery size={11} className="text-emerald-400" /> Battery</span>
+                        <span className="font-mono font-bold text-white">
+                          {systemTelemetry?.batteryPercent !== undefined ? `${systemTelemetry.batteryPercent}%` : 'AC Power'}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 transition-all"
+                          style={{ width: `${systemTelemetry?.batteryPercent ?? 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] text-gray-500 truncate">
+                        {systemTelemetry?.isCharging ? '⚡ Charging Active' : 'Power Connected'}
+                      </p>
+                    </div>
+
+                    {/* OS Platform */}
+                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
+                      <div className="flex justify-between text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1"><Monitor size={11} className="text-blue-400" /> Environment</span>
+                        <span className="font-bold text-emerald-400 text-[10px]">Sway Wayland</span>
+                      </div>
+                      <p className="text-[10px] font-bold text-white truncate mt-1">
+                        {systemTelemetry?.osName || 'Linux Desktop'}
+                      </p>
+                      <p className="text-[9px] text-gray-500 truncate">
+                        Profile: {systemTelemetry?.profile || 'Auto'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. ALL 7 BEHAVIOR MODES & CHARACTER MODELS UNLOCKED (update mode unlock all) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-amber-400" />
+                      <span>All 7 Behavior Modes (100% Unlocked)</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-800/40">
+                      Current: {preferences.behavior_mode}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                    {ALL_BEHAVIOR_MODES.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => {
+                          onUpdatePreferences({ ...preferences, behavior_mode: m.id });
+                          messageManager.enqueue(`Activated ${m.label} mode! ${m.icon}`, 'normal', 'interaction');
+                        }}
+                        className={`p-2 rounded-xl border text-left transition flex flex-col justify-between group ${
+                          preferences.behavior_mode === m.id
+                            ? 'bg-purple-600/30 border-purple-500 shadow-md shadow-purple-500/20'
+                            : 'bg-[#181825] border-[#313244] hover:border-purple-500/40'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-base">{m.icon}</span>
+                            <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${
+                              preferences.behavior_mode === m.id ? 'bg-purple-500 text-white' : 'bg-white/5 text-gray-400'
+                            }`}>
+                              {m.badge}
+                            </span>
+                          </div>
+                          <p className="text-xs font-bold text-white mt-1 group-hover:text-purple-300 transition truncate">
+                            {m.label}
+                          </p>
+                          <p className="text-[9px] text-gray-400 mt-0.5 line-clamp-2 leading-tight">
+                            {m.desc}
+                          </p>
+                        </div>
+                        <span className={`text-[9px] font-bold mt-2 text-center py-0.5 rounded ${
+                          preferences.behavior_mode === m.id ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-300 group-hover:bg-white/10'
+                        }`}>
+                          {preferences.behavior_mode === m.id ? 'Active' : 'Select'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Character Model Selector */}
+                  <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                    <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Sparkles size={12} className="text-pink-400" />
+                      <span>Character Model Engine (All Unlocked)</span>
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'shadow_shinobi', name: 'Shadow Shinobi (Madara Chibi)' },
+                        { id: 'anime_chibi', name: 'Anime Chibi (Cute Blue)' },
+                        { id: 'celestial_kitsune', name: 'Celestial Kitsune (Pink)' },
+                      ].map((style) => (
+                        <button
+                          key={style.id}
+                          onClick={() => {
+                            onUpdatePreferences({ ...preferences, character_style: style.id as CharacterStyle });
+                            messageManager.enqueue(`Switched character model to ${style.name}!`, 'normal', 'interaction');
+                          }}
+                          className={`p-2 rounded-lg border text-center transition ${
+                            preferences.character_style === style.id
+                              ? 'bg-purple-600/30 border-purple-500 text-purple-200 font-bold'
+                              : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {style.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1473,7 +1704,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-white text-xs flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-amber-400" /> Master Character Sprites (7 Custom Poses)
+                      <Sparkles size={14} className="text-amber-400" /> Master Character Sprites (8 Custom Poses)
                     </p>
                     <span className="text-[10px] text-gray-400">Click to switch pose live</span>
                   </div>
@@ -1484,7 +1715,8 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       { id: 'run-right', name: 'Aerodynamic Sprint (Run)', img: shinobiRun, desc: 'High-speed dust trail & wind' },
                       { id: 'sing', name: 'Karaoke Vocalist (Sing)', img: shinobiSing, desc: 'Mic & live musical notes' },
                       { id: 'happy', name: 'Victory Cheer (Happy)', img: shinobiHappy, desc: 'Hands raised, blush, confetti' },
-                      { id: 'sleep', name: 'Zen Recharge (Sleep)', img: shinobiSleep, desc: 'Peaceful rest, floating zzz' },
+                      { id: 'sit', name: 'Step Down / Sit', img: shinobiSitdown, desc: 'Cross-legged calm floor rest' },
+                      { id: 'sleep', name: 'Zen Slumber (Sleep)', img: shinobiSleep, desc: 'Authentic lying slumber, floating Zzz' },
                       { id: 'sad', name: 'Melancholic (Sad)', img: shinobiSad, desc: 'Slumped sitting, tear droplet' },
                       { id: 'protect', name: 'Susanoo Chakra (Protect)', img: shinobiProtect, desc: 'Hand sign & cyan flame aura' },
                     ].map((item) => (
@@ -1909,20 +2141,22 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 {/* Movement Mode Selector */}
                 <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
                   <p className="font-semibold text-gray-300">Desktop Movement Mode</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {['OFF', 'CALM', 'NORMAL', 'ACTIVE'].map((m) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                    {ALL_BEHAVIOR_MODES.map((m) => (
                       <button
-                        key={m}
-                        onClick={() =>
-                          onUpdatePreferences({ ...preferences, behavior_mode: m as any })
-                        }
-                        className={`py-2 rounded-lg font-bold text-center border transition ${
-                          preferences.behavior_mode === m
+                        key={m.id}
+                        onClick={() => {
+                          onUpdatePreferences({ ...preferences, behavior_mode: m.id });
+                          messageManager.enqueue(`Mode set to ${m.label} ${m.icon}`, 'normal', 'interaction');
+                        }}
+                        className={`p-2 rounded-lg font-bold text-center border transition flex flex-col items-center gap-0.5 ${
+                          preferences.behavior_mode === m.id
                             ? 'bg-blue-600/30 border-blue-500 text-blue-200'
                             : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
                         }`}
                       >
-                        {m}
+                        <span className="text-sm">{m.icon}</span>
+                        <span className="text-[10px] truncate max-w-full">{m.label}</span>
                       </button>
                     ))}
                   </div>

@@ -89,8 +89,17 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
     animation: 'sleep',
     framesCount: 1,
     fps: 1,
-    comboWith: ['celebration_cheer'],
-    description: 'Energy recharging sleep cycle',
+    comboWith: ['step_down_rest', 'celebration_cheer'],
+    description: 'Energy recharging sleep cycle with floating Zzz snoozing bubbles',
+  },
+  step_down_rest: {
+    id: 'step_down_rest',
+    name: 'Step Down Cross-Legged Sit',
+    animation: 'sit',
+    framesCount: 1,
+    fps: 1,
+    comboWith: ['peaceful_rest', 'deep_contemplate', 'celebration_cheer'],
+    description: 'Relaxed cross-legged sitting posture on floor or taskbar step',
   },
 };
 
@@ -120,7 +129,7 @@ export interface LuluTask {
   description: string;
   isCompleted: boolean;
   unlockedItems: string[];
-  imageKey: 'idle' | 'run' | 'happy' | 'sleep' | 'sing' | 'sad' | 'protect';
+  imageKey: 'idle' | 'run' | 'happy' | 'sleep' | 'sing' | 'sad' | 'protect' | 'sit';
   reward: string;
   actionId: string;
   category: string;
@@ -130,11 +139,11 @@ export const LULU_TASKS: LuluTask[] = [
   {
     id: 'unlock_all_flames',
     title: 'Unlock All Flames & Abilities',
-    description: 'Activate all 9 master flame animations, 17 shinobi katas, and combo synergies.',
+    description: 'Activate all 10 master flame animations, 18 shinobi katas, and combo synergies.',
     isCompleted: true,
     unlockedItems: Object.keys(LULU_FLAME_STYLES),
     imageKey: 'happy',
-    reward: 'All 9 Master Flames & Abilities Unlocked',
+    reward: 'All 10 Master Flames & Abilities Unlocked',
     actionId: 'celebration_cheer',
     category: 'Mastery',
   },
@@ -163,7 +172,7 @@ export const LULU_TASKS: LuluTask[] = [
   {
     id: 'peaceful_zen_sleep',
     title: 'Deep Zen Sleep & Recharge',
-    description: 'Restful sleeping mode with floating zzz bubbles for full energy recovery.',
+    description: 'Authentic lying slumber mode with floating Zzz bubbles for complete energy recovery.',
     isCompleted: true,
     unlockedItems: ['peaceful_rest'],
     imageKey: 'sleep',
@@ -228,12 +237,12 @@ export const LULU_TASKS: LuluTask[] = [
   },
   {
     id: 'master_of_seven_sprites',
-    title: 'Master of 7 Shinobi Katas',
-    description: 'Unlock and activate all 7 dedicated character poses (Idle, Sprint, Sing, Celebrate, Sleep, Melancholy, and Chakra Shield).',
+    title: 'Master of 8 Shinobi Katas',
+    description: 'Unlock and activate all 8 dedicated character poses (Idle, Sprint, Sing, Celebrate, Authentic Sleep, Melancholy, Chakra Shield, and Step-Down Sit).',
     isCompleted: true,
     unlockedItems: ['susanoo_defense', 'celebration_cheer'],
-    imageKey: 'protect',
-    reward: '7-Pose Master Shinobi Suite',
+    imageKey: 'sit',
+    reward: '8-Pose Master Shinobi Suite',
     actionId: 'susanoo_defense',
     category: 'Mastery',
   },
@@ -257,6 +266,17 @@ export const LULU_TASKS: LuluTask[] = [
     imageKey: 'sad',
     reward: 'Instant Maximum Happiness & Fun',
     actionId: 'deep_contemplate',
+    category: 'Vitals',
+  },
+  {
+    id: 'step_down_zen_posture',
+    title: 'Step-Down Zen Floor Rest',
+    description: 'Calm cross-legged floor posture restoring energy without full slumber.',
+    isCompleted: true,
+    unlockedItems: ['step_down_rest'],
+    imageKey: 'sit',
+    reward: 'Zen Meditation Stance & Calm Rest',
+    actionId: 'step_down_rest',
     category: 'Vitals',
   },
 ];

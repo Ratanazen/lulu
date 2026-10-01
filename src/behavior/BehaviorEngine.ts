@@ -1,4 +1,4 @@
-import { AnimationState, BehaviorMode, MoodType, PetNeeds } from '../types/pet';
+import { AnimationState, BehaviorMode, MoodType, PetNeeds, SystemTelemetry } from '../types/pet';
 import { MovementEngine } from '../movement/MovementEngine';
 
 export interface LuluRoutine {
@@ -138,12 +138,62 @@ export class BehaviorEngine {
     needs: PetNeeds,
     mood: MoodType,
     isSleeping: boolean,
-    isMoving: boolean
+    isMoving: boolean,
+    systemTelemetry?: SystemTelemetry
   ): BehaviorDecision {
     if (!this.isAutonomousEnabled || this.mode === 'QUIET' || this.mode === 'FOCUSED') {
       return {
         action: 'idle',
         animation: isSleeping ? 'sleep' : 'idle',
+      };
+    }
+
+    // 0. Follow Computer System Mode (Sync with Hardware Telemetry)
+    if (this.mode === 'SYSTEM_SYNC' && systemTelemetry) {
+      if (systemTelemetry.cpuPercent >= 65) {
+        return {
+          action: 'run_sprint',
+          animation: 'run-right',
+          thought: `System CPU load at ${Math.round(systemTelemetry.cpuPercent)}%! Overclocking chakra sprint! 💻🔥`,
+        };
+      }
+      if (
+        systemTelemetry.batteryPercent !== undefined &&
+        systemTelemetry.batteryPercent < 20 &&
+        !systemTelemetry.isCharging
+      ) {
+        return {
+          action: 'sleep',
+          animation: 'sleep',
+          thought: `Battery low (${systemTelemetry.batteryPercent}%)! Conserving power to protect your workstation! 🔋🌙`,
+        };
+      }
+      if (systemTelemetry.memPercent >= 85) {
+        return {
+          action: 'protect',
+          animation: 'protect',
+          thought: `Memory usage high (${Math.round(systemTelemetry.memPercent)}%)! Susanoo barrier guarding system! 🛡️⚡`,
+        };
+      }
+      // System normal
+      const r = Math.random();
+      if (r < 0.30) {
+        return {
+          action: 'wave',
+          animation: 'wave',
+          thought: `System nominal (CPU ${Math.round(systemTelemetry.cpuPercent)}% • RAM ${Math.round(systemTelemetry.memPercent)}%)! All clear! 💻✨`,
+        };
+      }
+      if (r < 0.60) {
+        return {
+          action: 'wander',
+          animation: 'walk-right',
+          thought: 'Patrolling system perimeter... smooth performance! 🐾',
+        };
+      }
+      return {
+        action: 'idle',
+        animation: 'idle',
       };
     }
 

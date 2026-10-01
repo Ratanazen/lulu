@@ -33,4 +33,34 @@ describe('Lulu Needs & Mood Systems', () => {
     expect(MoodSystem.calculateMood({ energy: 85, happiness: 65, fun: 60 }, false)).toBe('curious');
     expect(MoodSystem.calculateMood({ energy: 50, happiness: 50, fun: 50 }, false)).toBe('calm');
   });
+
+  it('reacts to computer system telemetry in SYSTEM_SYNC mode', async () => {
+    const { BehaviorEngine } = await import('../src/behavior/BehaviorEngine');
+    const engine = new BehaviorEngine();
+    engine.setMode('SYSTEM_SYNC');
+
+    // High CPU (>65%) triggers sprint
+    const highCpu = engine.evaluateNextStep(
+      { energy: 90, happiness: 90, fun: 90 },
+      'calm',
+      false,
+      false,
+      { cpuPercent: 82, memUsedMb: 4000, memTotalMb: 16000, memPercent: 25 }
+    );
+    expect(highCpu.action).toBe('run_sprint');
+    expect(highCpu.animation).toBe('run-right');
+    expect(highCpu.thought).toContain('CPU load');
+
+    // Low battery (<20% discharging) triggers sleep
+    const lowBattery = engine.evaluateNextStep(
+      { energy: 90, happiness: 90, fun: 90 },
+      'calm',
+      false,
+      false,
+      { cpuPercent: 15, memUsedMb: 4000, memTotalMb: 16000, memPercent: 25, batteryPercent: 12, isCharging: false }
+    );
+    expect(lowBattery.action).toBe('sleep');
+    expect(lowBattery.animation).toBe('sleep');
+    expect(lowBattery.thought).toContain('Battery low');
+  });
 });

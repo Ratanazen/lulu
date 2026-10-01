@@ -80,6 +80,20 @@ export class LrcParser {
       }
     }
 
+    // Fallback: If no timestamp tags were found, treat non-empty lines as plain lyrics (paced at 4s per line)
+    if (parsedLines.length === 0 && lines.length > 0) {
+      const nonBlank = lines.map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('['));
+      if (nonBlank.length > 0) {
+        const step = 4.0;
+        nonBlank.forEach((txt, idx) => {
+          parsedLines.push({
+            timeSeconds: idx * step,
+            text: txt,
+          });
+        });
+      }
+    }
+
     // Apply offset to all line timestamps
     const offsetSeconds = offsetMs / 1000.0;
     const finalLines = parsedLines

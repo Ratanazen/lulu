@@ -21,7 +21,27 @@ export type AnimationState =
 
 export type MoodType = 'calm' | 'happy' | 'curious' | 'tired' | 'playful' | 'sad';
 
-export type BehaviorMode = 'OFF' | 'CALM' | 'NORMAL' | 'ACTIVE' | 'PLAYFUL' | 'FOCUSED' | 'QUIET';
+export type BehaviorMode =
+  | 'OFF'
+  | 'CALM'
+  | 'NORMAL'
+  | 'ACTIVE'
+  | 'PLAYFUL'
+  | 'FOCUSED'
+  | 'QUIET'
+  | 'SYSTEM_SYNC';
+
+export interface SystemTelemetry {
+  cpuPercent: number;
+  cpuCores?: number;
+  memUsedMb: number;
+  memTotalMb: number;
+  memPercent: number;
+  batteryPercent?: number;
+  isCharging?: boolean;
+  osName?: string;
+  profile?: string;
+}
 
 export interface PersonalityTraits {
   curiosity: number;   // 0 - 100

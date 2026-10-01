@@ -207,6 +207,33 @@ class SpotifyLyricsService {
     }
     return null;
   }
+
+  public getActiveAndNextLines(lrc: ParsedLrc | null, positionSecs: number): {
+    current: string | null;
+    next: string | null;
+    currentIndex: number;
+    totalLines: number;
+  } {
+    if (!lrc || !lrc.lines || lrc.lines.length === 0) {
+      return { current: null, next: null, currentIndex: -1, totalLines: 0 };
+    }
+    const adjustedSecs = positionSecs + this.syncOffsetSecs;
+    if (adjustedSecs < lrc.lines[0].timeSeconds) {
+      return {
+        current: null,
+        next: lrc.lines[0]?.text || null,
+        currentIndex: -1,
+        totalLines: lrc.lines.length,
+      };
+    }
+    const idx = LrcParser.findActiveLineIndex(lrc.lines, adjustedSecs);
+    if (idx >= 0 && idx < lrc.lines.length) {
+      const current = lrc.lines[idx].text || null;
+      const next = idx + 1 < lrc.lines.length ? lrc.lines[idx + 1].text || null : null;
+      return { current, next, currentIndex: idx, totalLines: lrc.lines.length };
+    }
+    return { current: null, next: null, currentIndex: -1, totalLines: lrc.lines.length };
+  }
 }
 
 export const spotifyLyricsService = new SpotifyLyricsService();

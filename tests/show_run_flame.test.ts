@@ -224,7 +224,8 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     const unlockAllTask = LULU_TASKS.find((t) => t.id === 'unlock_all_flames');
     expect(unlockAllTask).toBeDefined();
     expect(unlockAllTask?.isCompleted).toBe(true);
-    expect(unlockAllTask?.unlockedItems.length).toBe(9);
+    expect(unlockAllTask?.unlockedItems.length).toBe(10);
+    expect(unlockAllTask?.unlockedItems).toContain('step_down_rest');
   });
 });
 

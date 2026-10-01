@@ -7,6 +7,7 @@ import shinobiSleep from '../assets/avatars/shinobi_sleep.png';
 import shinobiSad from '../assets/avatars/shinobi_sad.png';
 import shinobiSing from '../assets/avatars/shinobi_sing.png';
 import shinobiProtect from '../assets/avatars/shinobi_protect.png';
+import shinobiSitdown from '../assets/avatars/shinobi_sitdown.png';
 
 // Helper to sort and extract URLs from Vite glob
 const loadFrames = (globRecord: Record<string, { default: string }>) => {
@@ -22,6 +23,7 @@ const loadFrames = (globRecord: Record<string, { default: string }>) => {
 // 100 Frames (20 frames each across 5 styles) extracted directly from User Sprite Sheets
 const runFrames = loadFrames(import.meta.glob<{ default: string }>('../assets/avatars/animations/run/*.png', { eager: true }));
 const sleepFrames = loadFrames(import.meta.glob<{ default: string }>('../assets/avatars/animations/sleep/*.png', { eager: true }));
+const sitFrames = loadFrames(import.meta.glob<{ default: string }>('../assets/avatars/animations/sit/*.png', { eager: true }));
 const happyFrames = loadFrames(import.meta.glob<{ default: string }>('../assets/avatars/animations/happy/*.png', { eager: true }));
 const musicFrames = loadFrames(import.meta.glob<{ default: string }>('../assets/avatars/animations/music/*.png', { eager: true }));
 const sadFrames = loadFrames(import.meta.glob<{ default: string }>('../assets/avatars/animations/sad/*.png', { eager: true }));
@@ -94,8 +96,10 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
       ? walkFrames.length
       : isSinging
       ? singFrames.length
-      : (isSleeping || isSitting)
+      : isSleeping
       ? sleepFrames.length
+      : isSitting
+      ? (sitFrames.length > 0 ? sitFrames.length : 1)
       : isDancing
       ? musicFrames.length
       : isProtecting || isThinking
@@ -119,8 +123,10 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
       ? 4
       : isSinging
       ? 5
-      : (isSleeping || isSitting)
+      : isSleeping
       ? 2
+      : isSitting
+      ? 3
       : isDancing
       ? 6
       : (animation === 'happy' || mood === 'happy' || mood === 'playful')
@@ -159,7 +165,7 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
   const bounceY = isJumping
     ? -26
     : isSitting
-    ? 12
+    ? 0
     : isSurprised
     ? -8
     : (animation === 'happy' || isJoyful)
@@ -195,8 +201,10 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
       activeArtwork = walkFrames[frame % walkFrames.length];
     } else if (isSinging) {
       activeArtwork = singFrames[frame % singFrames.length];
-    } else if (isSleeping || isSitting) {
+    } else if (isSleeping) {
       activeArtwork = sleepFrames[frame % sleepFrames.length];
+    } else if (isSitting) {
+      activeArtwork = sitFrames.length > 0 ? sitFrames[frame % sitFrames.length] : shinobiSitdown;
     } else if (isDancing) {
       activeArtwork = musicFrames[frame % musicFrames.length];
     } else if (isProtecting || isThinking) {
@@ -229,6 +237,8 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
                 ? 'scale(0.55)'
                 : isRunning
                 ? 'scale(1.2, 0.85)'
+                : isSitting
+                ? 'scale(1.25, 0.7)'
                 : isJoyful
                 ? 'scale(1.1, 0.9)'
                 : 'scale(1)',

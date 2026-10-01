@@ -51,5 +51,28 @@ describe('spotifyLyricsService', () => {
     spotifyLyricsService.setSyncOffset(0);
     expect(spotifyLyricsService.getSyncOffset()).toBe(0);
   });
+
+  it('correctly provides active and next lines with line indices for Livetime lyrics', () => {
+    const raw = '[00:02.00]First lyric\n[00:05.00]Second lyric\n[00:08.00]Third lyric';
+    const lrc = LrcParser.parse(raw);
+
+    // Before first line
+    const before = spotifyLyricsService.getActiveAndNextLines(lrc, 1.0);
+    expect(before.current).toBeNull();
+    expect(before.next).toBe('First lyric');
+    expect(before.currentIndex).toBe(-1);
+
+    // During first line
+    const first = spotifyLyricsService.getActiveAndNextLines(lrc, 3.0);
+    expect(first.current).toBe('First lyric');
+    expect(first.next).toBe('Second lyric');
+    expect(first.currentIndex).toBe(0);
+
+    // During last line
+    const last = spotifyLyricsService.getActiveAndNextLines(lrc, 9.0);
+    expect(last.current).toBe('Third lyric');
+    expect(last.next).toBeNull();
+    expect(last.currentIndex).toBe(2);
+  });
 });
 
