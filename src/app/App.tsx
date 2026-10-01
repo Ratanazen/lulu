@@ -20,6 +20,7 @@ import {
 import { Heart, Coffee, Moon, Settings, Sparkles, Footprints, Music, Bell, Compass, Zap, FileText } from 'lucide-react';
 import { spotifyLyricsService } from '../features/lyrics/spotifyLyricsService';
 import { ParsedLrc } from '../features/lyrics/lrcParser';
+import { MediaSession, normalizeMediaSession, getProviderTheme } from '../features/media/mediaSession';
 
 export const App: React.FC = () => {
   const [animation, setAnimation] = useState<AnimationState>('idle');
@@ -38,9 +39,11 @@ export const App: React.FC = () => {
   const [isContinuousRunning, setIsContinuousRunning] = useState(false);
   const [is40sRunActive, setIs40sRunActive] = useState(false);
   const [spotifyLyrics, setSpotifyLyrics] = useState<ParsedLrc | null>(null);
+  const [prevLyricText, setPrevLyricText] = useState<string | null>(null);
   const [activeLyricText, setActiveLyricText] = useState<string | null>(null);
   const [nextLyricText, setNextLyricText] = useState<string | null>(null);
   const [currentSpotifyTrack, setCurrentSpotifyTrack] = useState<{ artist: string; title: string } | null>(null);
+  const [activeMediaSession, setActiveMediaSession] = useState<MediaSession | null>(null);
   const [musicPositionSecs, setMusicPositionSecs] = useState<number>(0);
   const [musicDurationSecs, setMusicDurationSecs] = useState<number>(0);
   const [systemTelemetry, setSystemTelemetry] = useState<SystemTelemetry | null>(null);
@@ -48,6 +51,7 @@ export const App: React.FC = () => {
   // Flame speed multiplier: default 1.0 (Normal & Smooth)
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
   const [showText, setShowText] = useState<boolean>(true);
+  const [lyricsMode, setLyricsMode] = useState<'auto_lyrics' | 'normal_text'>('auto_lyrics');
 
   const formatTime = (secs: number): string => {
     const s = Math.max(0, Math.floor(secs || 0));
@@ -64,6 +68,7 @@ export const App: React.FC = () => {
     wander_speed: 1.0,
     speech_enabled: true,
     show_text: true,
+    lyrics_mode: 'auto_lyrics',
     speed_multiplier: 1.0,
     sound_volume: 0.8,
     always_on_top: true,
@@ -73,6 +78,11 @@ export const App: React.FC = () => {
   const needSystemRef = useRef<NeedSystem>(new NeedSystem());
   const movementRef = useRef<MovementEngine>(new MovementEngine());
   const behaviorRef = useRef<BehaviorEngine>(new BehaviorEngine());
+  const isFetchingLyricsRef = useRef<boolean>(false);
+  const lastFetchedKeyRef = useRef<string>('');
+  const lyricsRef = useRef<ParsedLrc | null>(null);
+  const currentSpotifyTrackRef = useRef<{ artist: string; title: string } | null>(null);
+  const isMusicPlayingRef = useRef<boolean>(false);
 
   // Keep MovementEngine synchronized with speedMultiplier
   useEffect(() => {
@@ -91,6 +101,33 @@ export const App: React.FC = () => {
     if (anim === 'sad') return `🧘 Deep Contemplation`;
     if (anim === 'sleep') return `🌙 Peaceful Rest`;
     return `🔥 ${anim}`;
+  };
+
+  const getNormalLuluText = (anim: string, moodState: MoodType, sleeping: boolean, mult: number): string => {
+    if (sleeping || anim === 'sleep') return '😴 Peaceful Slumber • Zzz...';
+    if (anim === 'sit') return '🧘 Step Down Zen • Deep Peace';
+    if (anim.startsWith('run')) return `⚡ Shinobi Sprint${mult > 1.1 ? ' (Hyper)' : ''} • Patrolling`;
+    if (anim.startsWith('walk')) return '🐾 Desktop Patrol • Wandering';
+    if (anim === 'sing') return '🎤 Singing to Melody • Joyful Spirit';
+    if (anim === 'dance') return '💃 Chakra Dance • Pure Joy';
+    if (anim === 'protect') return '🛡️ Susanoo Defense • Guarding Screen';
+    if (anim === 'happy') return '✨ Shinobi Spirit • Radiant Chakra';
+    if (anim === 'sad') return '🧘 Deep Stillness • Meditating';
+
+    switch (moodState) {
+      case 'happy':
+        return '💖 Lulu • Peaceful & Content';
+      case 'playful':
+        return '✨ Lulu • Ready for Action';
+      case 'curious':
+        return '🐾 Lulu • Watching Over Desktop';
+      case 'tired':
+        return '🌙 Lulu • Resting Gently';
+      case 'calm':
+        return '🍃 Lulu • Calm & Mindful';
+      default:
+        return '🐾 Lulu • Shinobi Companion';
+    }
   };
 
   // 1. Initial Load & Persistence
@@ -269,33 +306,77 @@ export const App: React.FC = () => {
     return () => clearInterval(telemetryTimer);
   }, []);
 
-  // 4. MPRIS Music Status Poller & Spotify Synced Lyrics (Realtime Karaoke Sync)
+  // 4. Media & Lyrics Poller (MPRIS, Spotify, YouTube, YouTube Music)
   useEffect(() => {
-    const musicTimer = setInterval(async () => {
+    const mediaTimer = setInterval(async () => {
       try {
-        const status = await invokeCommand<any>('get_music_status');
-        if (status && status.playback_status === 'Playing') {
-          setMusicPositionSecs(status.position_secs || 0);
-          setMusicDurationSecs(status.duration_secs || 0);
+        const session = await invokeCommand<MediaSession>('get_media_session');
+        if (session && session.title) {
+          setActiveMediaSession(session);
+          const normalized = normalizeMediaSession(session);
+          const posSecs = (session.position_ms || 0) / 1000.0;
+          const durSecs = (session.duration_ms || 0) / 1000.0;
+          setMusicPositionSecs(posSecs);
+          setMusicDurationSecs(durSecs);
 
-          if (!isMusicPlaying) {
-            setIsMusicPlaying(true);
-            setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
-            eventBus.emit('music:playback_changed', { status: 'Playing', title: status.title });
-          }
+          if (session.playing) {
+            if (!isMusicPlayingRef.current) {
+              isMusicPlayingRef.current = true;
+              setIsMusicPlaying(true);
+              setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
+              eventBus.emit('music:playback_changed', { status: 'Playing', title: normalized.title });
+            }
 
-          // Spotify Synced Lyrics Detection & Realtime Line Match
-          const trackChanged =
-            !currentSpotifyTrack ||
-            currentSpotifyTrack.artist !== status.artist ||
-            currentSpotifyTrack.title !== status.title;
+            // Synced Lyrics Detection & Realtime Line Match
+            const trackKey = `${normalized.artist} - ${normalized.title}`.toLowerCase().trim();
+            const trackChanged =
+              !currentSpotifyTrackRef.current ||
+              currentSpotifyTrackRef.current.artist !== normalized.artist ||
+              currentSpotifyTrackRef.current.title !== normalized.title;
 
-          if (trackChanged && status.title) {
-            setCurrentSpotifyTrack({ artist: status.artist, title: status.title });
-            const lrc = await spotifyLyricsService.getLyricsForTrack(status.artist, status.title, status.duration_secs);
-            setSpotifyLyrics(lrc);
-            if (lrc) {
-              const lineInfo = spotifyLyricsService.getActiveAndNextLines(lrc, status.position_secs);
+            if (trackChanged && normalized.title) {
+              currentSpotifyTrackRef.current = { artist: normalized.artist, title: normalized.title };
+              setCurrentSpotifyTrack({ artist: normalized.artist, title: normalized.title });
+            }
+
+            if (
+              (trackChanged || (!lyricsRef.current && lastFetchedKeyRef.current !== trackKey)) &&
+              !isFetchingLyricsRef.current &&
+              normalized.title
+            ) {
+              isFetchingLyricsRef.current = true;
+              lastFetchedKeyRef.current = trackKey;
+              lyricsRef.current = null;
+              setSpotifyLyrics(null);
+
+              spotifyLyricsService
+                .getLyricsForTrack(normalized.artist, normalized.title, durSecs)
+                .then((lrc) => {
+                  lyricsRef.current = lrc;
+                  setSpotifyLyrics(lrc);
+                  if (lrc) {
+                    const lineInfo = spotifyLyricsService.getSyncedLyricsLines(lrc, posSecs);
+                    setPrevLyricText(lineInfo.previous);
+                    setActiveLyricText(lineInfo.current);
+                    setNextLyricText(lineInfo.next);
+                    if (lineInfo.current) {
+                      setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'sing'));
+                    } else {
+                      setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
+                    }
+                  } else {
+                    setPrevLyricText(null);
+                    setActiveLyricText(null);
+                    setNextLyricText(null);
+                    setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
+                  }
+                })
+                .finally(() => {
+                  isFetchingLyricsRef.current = false;
+                });
+            } else if (lyricsRef.current) {
+              const lineInfo = spotifyLyricsService.getSyncedLyricsLines(lyricsRef.current, posSecs);
+              setPrevLyricText(lineInfo.previous);
               setActiveLyricText(lineInfo.current);
               setNextLyricText(lineInfo.next);
               if (lineInfo.current) {
@@ -303,36 +384,39 @@ export const App: React.FC = () => {
               } else {
                 setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
               }
-            } else {
-              setActiveLyricText(null);
-              setNextLyricText(null);
-              setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
             }
-          } else if (spotifyLyrics) {
-            const lineInfo = spotifyLyricsService.getActiveAndNextLines(spotifyLyrics, status.position_secs);
-            setActiveLyricText(lineInfo.current);
-            setNextLyricText(lineInfo.next);
-            if (lineInfo.current) {
-              setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'sing'));
-            } else {
-              setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
+          } else {
+            // Paused: freeze lyrics and set paused state
+            if (isMusicPlayingRef.current) {
+              isMusicPlayingRef.current = false;
+              setIsMusicPlaying(false);
+              setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
+              eventBus.emit('music:playback_changed', { status: 'Paused' });
             }
           }
         } else {
-          if (isMusicPlaying) {
+          // No media session
+          if (isMusicPlayingRef.current) {
+            isMusicPlayingRef.current = false;
             setIsMusicPlaying(false);
             setMusicPositionSecs(0);
-            setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
-            eventBus.emit('music:playback_changed', { status: 'Paused' });
+            lyricsRef.current = null;
+            currentSpotifyTrackRef.current = null;
+            lastFetchedKeyRef.current = '';
+            setSpotifyLyrics(null);
+            setPrevLyricText(null);
             setActiveLyricText(null);
             setNextLyricText(null);
+            setActiveMediaSession(null);
+            setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
+            eventBus.emit('music:playback_changed', { status: 'Paused' });
           }
         }
       } catch {}
     }, 250);
 
-    return () => clearInterval(musicTimer);
-  }, [isMusicPlaying, currentSpotifyTrack, spotifyLyrics]);
+    return () => clearInterval(mediaTimer);
+  }, []);
 
   // 5. Needs & Mood Clock (Ticks every 10 seconds)
   useEffect(() => {
@@ -699,6 +783,8 @@ export const App: React.FC = () => {
     handleOpenControlCenter();
   };
 
+  const mediaTheme = getProviderTheme(activeMediaSession?.provider || 'spotify');
+
   return (
     <div
       onMouseMove={handleMouseMove}
@@ -717,60 +803,103 @@ export const App: React.FC = () => {
       {/* Unified Text & Subtitle Displays (Show Txt: ON) */}
       {showText && (
         <div className="absolute top-2 left-0 right-0 z-40 flex flex-col items-center gap-1.5 pointer-events-none px-2">
-          {/* 1. Spotify Synced Live-Time Lyrics & Rhythm Equalizer HUD */}
-          {isMusicPlaying && (
+          {/* 1. Multi-Provider Synced Live-Time Lyrics Card (Exact 3-Line Blueprint) */}
+          {isMusicPlaying && lyricsMode === 'auto_lyrics' && (
             <div
-              className="max-w-[310px] w-full px-3.5 py-2 rounded-2xl bg-[#07190f]/95 border border-[#1DB954] shadow-[0_8px_24px_rgba(29,185,84,0.5)] flex flex-col gap-1.5 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer backdrop-blur-md"
-              title="Click to open Lyrics Studio"
+              className={`max-w-[320px] w-full px-4 py-2.5 rounded-2xl bg-[#090d16]/95 border ${mediaTheme.borderColor} flex flex-col gap-1.5 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer backdrop-blur-md`}
+              style={{ boxShadow: `0 8px 28px ${mediaTheme.glowColor}` }}
+              title={`Click to open Lyrics Studio (${mediaTheme.badgeText})`}
               onClick={handleOpenControlCenter}
             >
-              {/* Header: Equalizer + Live Lyrics Badge + Timestamp */}
-              <div className="flex items-center justify-between gap-1.5 border-b border-[#1DB954]/30 pb-1">
+              {/* Header: Lulu + Equalizer & Live Synced Badge */}
+              <div
+                className="flex items-center justify-between pb-1"
+                style={{ borderBottom: `1px solid ${mediaTheme.primaryColor}33` }}
+              >
+                <span className="text-[11px] font-bold text-white tracking-wide flex items-center gap-1.5">
+                  🐾 <span style={{ color: mediaTheme.accentColor }}>Lulu</span>
+                </span>
                 <div className="flex items-center gap-1.5">
-                  {/* 4-bar Animated Equalizer */}
-                  <div className="flex items-end gap-0.5 h-3 shrink-0">
-                    <span className="w-0.5 bg-[#1DB954] rounded-full animate-pulse h-2" />
-                    <span className="w-0.5 bg-[#1DB954] rounded-full animate-bounce h-3" />
-                    <span className="w-0.5 bg-emerald-300 rounded-full animate-pulse h-1.5" />
-                    <span className="w-0.5 bg-[#1DB954] rounded-full animate-bounce h-2.5" />
+                  <div className="flex items-end gap-0.5 h-2.5 shrink-0">
+                    <span className="w-0.5 rounded-full animate-pulse h-1.5" style={{ backgroundColor: mediaTheme.primaryColor }} />
+                    <span className="w-0.5 rounded-full animate-bounce h-2.5" style={{ backgroundColor: mediaTheme.primaryColor }} />
+                    <span className="w-0.5 rounded-full animate-pulse h-1.5" style={{ backgroundColor: mediaTheme.accentColor }} />
+                    <span className="w-0.5 rounded-full animate-bounce h-2" style={{ backgroundColor: mediaTheme.primaryColor }} />
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
-                    Live Lyrics
+                  <span
+                    className="text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1"
+                    style={{ color: mediaTheme.accentColor }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full animate-ping inline-block" style={{ backgroundColor: mediaTheme.accentColor }} />
+                    {mediaTheme.badgeIcon} {mediaTheme.badgeText}
                   </span>
                 </div>
-
-                <span className="text-[9px] font-mono text-emerald-300 font-bold bg-black/80 px-2 py-0.5 rounded border border-emerald-500/40 shrink-0">
-                  {formatTime(musicPositionSecs)} {musicDurationSecs > 0 ? `/ ${formatTime(musicDurationSecs)}` : ''}
-                </span>
               </div>
 
-              {/* Real-time Livetime Lyrics Text Display: Main Prominent Focus */}
-              <div className="text-center py-0.5">
-                <p className="text-[12px] font-extrabold text-emerald-100 tracking-wide line-clamp-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] leading-tight">
-                  {activeLyricText ? `🎤 ♪ "${activeLyricText}" ♪` : '♪ ♫ Singing to the melody rhythm... ♫ ♪'}
+              {/* Artist - Song Header */}
+              <div className="text-center pt-0.5">
+                <p className="text-[10px] font-bold text-gray-300 truncate tracking-wide">
+                  {currentSpotifyTrack?.artist || mediaTheme.badgeText} - {currentSpotifyTrack?.title || 'Unknown Track'}
                 </p>
-                {nextLyricText && (
-                  <p className="text-[10px] text-emerald-300/80 italic truncate mt-1 opacity-90 leading-none">
-                    ↳ {nextLyricText}
-                  </p>
-                )}
               </div>
 
-              {/* Real-time Song Progress Bar */}
-              {musicDurationSecs > 0 && (
-                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-[#1DB954] transition-all duration-300"
-                    style={{ width: `${Math.min(100, Math.max(0, (musicPositionSecs / musicDurationSecs) * 100))}%` }}
-                  />
+              {/* 3-Line Synced Lyrics Display */}
+              <div className="flex flex-col items-center gap-1 py-1 min-h-[58px] justify-center text-center">
+                {/* previous line */}
+                <p className="text-[10px] text-gray-400/70 truncate max-w-full px-1 font-medium select-none transition-all duration-300">
+                  {prevLyricText ? prevLyricText : '···'}
+                </p>
+
+                {/* ► CURRENT LYRIC ◄ */}
+                <p
+                  className="text-[12px] font-extrabold line-clamp-2 px-1 leading-snug tracking-wide transition-all duration-200"
+                  style={{
+                    color: mediaTheme.accentColor,
+                    filter: `drop-shadow(0 0 10px ${mediaTheme.glowColor})`,
+                  }}
+                >
+                  ► {activeLyricText ? activeLyricText : (nextLyricText ? '♪ Instrumental Melody ♪' : 'Singing to the rhythm...')} ◄
+                </p>
+
+                {/* next line */}
+                <p
+                  className="text-[10px] truncate max-w-full px-1 font-medium select-none italic transition-all duration-300"
+                  style={{ color: mediaTheme.accentColor, opacity: 0.6 }}
+                >
+                  {nextLyricText ? nextLyricText : '···'}
+                </p>
+              </div>
+
+              {/* Progress Bar & 01:24 / 03:45 Timestamp */}
+              <div className="space-y-1 pt-0.5">
+                {musicDurationSecs > 0 && (
+                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, (musicPositionSecs / musicDurationSecs) * 100))}%`,
+                        background: `linear-gradient(to right, ${mediaTheme.primaryColor}, ${mediaTheme.accentColor})`,
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="text-center">
+                  <span
+                    className="text-[9px] font-mono font-bold bg-black/60 px-2 py-0.5 rounded border"
+                    style={{
+                      color: mediaTheme.accentColor,
+                      borderColor: `${mediaTheme.primaryColor}33`,
+                    }}
+                  >
+                    {formatTime(musicPositionSecs)} / {formatTime(musicDurationSecs || 0)}
+                  </span>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
-          {/* 2. Floating Follow Computer Telemetry Badge (When in SYSTEM_SYNC mode & not playing music) */}
-          {!isMusicPlaying && preferences.behavior_mode === 'SYSTEM_SYNC' && systemTelemetry && (
+          {/* 2. Floating Follow Computer Telemetry Badge (When in SYSTEM_SYNC mode & not in live lyrics) */}
+          {(!isMusicPlaying || lyricsMode === 'normal_text') && preferences.behavior_mode === 'SYSTEM_SYNC' && systemTelemetry && (
             <div className="max-w-[260px] px-3 py-1 rounded-full bg-[#0f172a]/95 border border-cyan-500/60 shadow-[0_4px_16px_rgba(6,182,212,0.35)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in backdrop-blur-md">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
               <span className="text-[10px] font-bold text-cyan-200 truncate">
@@ -779,22 +908,23 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* 3. Floating Action Text Badge (When not playing music & not in system sync) */}
-          {!isMusicPlaying && preferences.behavior_mode !== 'SYSTEM_SYNC' && animation !== 'idle' && (
-            <div className="max-w-[240px] px-3 py-1 rounded-full bg-black/85 border border-amber-500/60 shadow-[0_4px_16px_rgba(245,158,11,0.35)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in backdrop-blur-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping shrink-0" />
-              <span className="text-[10px] font-bold text-amber-200 truncate">
-                {getActionBadgeText(animation, speedMultiplier)}
+          {/* 3. Floating Normal Lulu Text Badge (When not playing live lyrics & not in system sync) */}
+          {(!isMusicPlaying || lyricsMode === 'normal_text') && preferences.behavior_mode !== 'SYSTEM_SYNC' && (
+            <div
+              onClick={handlePetClick}
+              className="max-w-[260px] px-3.5 py-1 rounded-full bg-[#0b0f19]/90 border border-purple-500/50 shadow-[0_4px_16px_rgba(168,85,247,0.35)] flex items-center gap-1.5 pointer-events-auto cursor-pointer transition-all duration-300 animate-fade-in backdrop-blur-md hover:border-purple-400 group"
+              title="Lulu Normal Status — Click to interact"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="text-[10px] font-bold text-purple-200 truncate group-hover:text-white transition-colors">
+                {getNormalLuluText(animation, mood, isSleeping, speedMultiplier)}
               </span>
             </div>
           )}
 
-          {/* 4. Thought & Speech Bubble (Sings live lyrics directly on Lulu!) */}
-          {preferences.speech_enabled && (
-            <SpeechBubble
-              mood={mood}
-              fallbackText={isMusicPlaying && activeLyricText ? `🎤 ♪ "${activeLyricText}" ♪` : null}
-            />
+          {/* 4. Thought & Speech Bubble: strictly disabled during live lyrics playback */}
+          {preferences.speech_enabled && (!isMusicPlaying || lyricsMode === 'normal_text') && (
+            <SpeechBubble mood={mood} />
           )}
         </div>
       )}
@@ -916,6 +1046,22 @@ export const App: React.FC = () => {
             title={showText ? 'Hide Text & Subtitles (Show Txt: ON)' : 'Show Text & Subtitles (Show Txt: OFF)'}
           >
             <FileText size={13} />
+          </button>
+
+          <button
+            onClick={() => {
+              setLyricsMode((prev) => {
+                const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
+                messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
+                return next;
+              });
+            }}
+            className={`p-1.5 rounded-full transition ${
+              lyricsMode === 'auto_lyrics' ? 'bg-emerald-500/30 text-emerald-300' : 'hover:bg-purple-500/20 text-purple-300'
+            }`}
+            title={lyricsMode === 'auto_lyrics' ? 'Switch to Normal Text Lulu' : 'Switch to Live Lyrics'}
+          >
+            <Music size={13} />
           </button>
 
           <button
@@ -1047,6 +1193,22 @@ export const App: React.FC = () => {
             <span>{showText ? '💬 Hide Text' : '💬 Show Text'}</span>
           </button>
 
+          {/* 🎵 Live Lyrics / Normal Text Mode Toggle */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              setLyricsMode((prev) => {
+                const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
+                messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
+                return next;
+              });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-emerald-600 hover:text-white flex items-center gap-2 text-emerald-300 font-medium"
+          >
+            <Music size={13} />
+            <span>{lyricsMode === 'auto_lyrics' ? '🎵 Mode: Live Lyrics' : '🐾 Mode: Normal Text'}</span>
+          </button>
+
           {/* Control Center */}
           <button
             onClick={() => {
@@ -1129,12 +1291,21 @@ export const App: React.FC = () => {
         currentFrame={movementRef.current.getState().currentFrame}
         showText={showText}
         onToggleShowText={() => setShowText((p) => !p)}
+        lyricsMode={lyricsMode}
+        onToggleLyricsMode={() => {
+          setLyricsMode((prev) => {
+            const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
+            messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
+            return next;
+          });
+        }}
         speedMultiplier={speedMultiplier}
         onSetSpeedMultiplier={(mult) => {
           setSpeedMultiplier(mult);
           movementRef.current.setSpeedMultiplier(mult);
         }}
         systemTelemetry={systemTelemetry}
+        activeMediaSession={activeMediaSession}
         onUnlockAll={handleUnlockAll}
       />
     </div>

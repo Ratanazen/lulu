@@ -87,3 +87,25 @@ pub fn delete_lyrics_file(filename: String) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[tauri::command]
+pub fn fetch_remote_lyrics(url: String) -> Result<String, String> {
+    let output = std::process::Command::new("curl")
+        .args([
+            "-s",
+            "--max-time",
+            "6",
+            "-H",
+            "User-Agent: Lulu-Desktop/0.2.0 (Linux)",
+            &url,
+        ])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+

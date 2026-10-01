@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
 import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
+import { MediaSession, getProviderTheme } from '../../features/media/mediaSession';
 import shinobiIdle from '../../assets/avatars/shinobi_idle.png';
 import shinobiRun from '../../assets/avatars/shinobi_run.png';
 import shinobiHappy from '../../assets/avatars/shinobi_happy.png';
@@ -161,10 +162,13 @@ interface ControlCenterModalProps {
   currentFrame?: number;
   showText?: boolean;
   onToggleShowText?: () => void;
+  lyricsMode?: 'auto_lyrics' | 'normal_text';
+  onToggleLyricsMode?: () => void;
   speedMultiplier?: number;
   onSetSpeedMultiplier?: (mult: number) => void;
   onUnlockAll?: () => void;
   systemTelemetry?: SystemTelemetry | null;
+  activeMediaSession?: MediaSession | null;
 }
 
 type TabType =
@@ -207,10 +211,13 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   currentFrame = 0,
   showText = true,
   onToggleShowText,
+  lyricsMode = 'auto_lyrics',
+  onToggleLyricsMode,
   speedMultiplier = 1.0,
   onSetSpeedMultiplier,
   onUnlockAll,
   systemTelemetry = null,
+  activeMediaSession = null,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('show_all');
 
@@ -677,6 +684,25 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
                   <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
                     <div>
+                      <p className="text-[10px] text-gray-400">Text & Lyrics Mode</p>
+                      <p className="text-xs font-bold text-white">
+                        {lyricsMode === 'auto_lyrics' ? '🎵 Live Lyrics Sync' : '🐾 Normal Text Lulu'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={onToggleLyricsMode}
+                      className={`px-2 py-1 rounded text-[10px] font-bold transition ${
+                        lyricsMode === 'auto_lyrics'
+                          ? 'bg-emerald-600/30 text-emerald-200 border border-emerald-500/40'
+                          : 'bg-purple-600/30 text-purple-200 border border-purple-500/40'
+                      }`}
+                    >
+                      {lyricsMode === 'auto_lyrics' ? 'Normal Text' : 'Live Lyrics'}
+                    </button>
+                  </div>
+
+                  <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
+                    <div>
                       <p className="text-[10px] text-gray-400">Movement</p>
                       <p className="text-xs font-bold text-white">
                         {isMovementPaused ? '⏸ Paused' : `${speedMultiplier}x Active`}
@@ -864,24 +890,37 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
                   {/* Player Bar & Lyrics Search */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* MPRIS Controls */}
+                    {/* MPRIS / Streaming Media Controls */}
                     <div className="bg-black/30 border border-white/5 p-3 rounded-xl flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400 truncate">
-                          Player: {musicStatus?.player || 'None'}
+                        <span className="text-[10px] text-gray-400 flex items-center gap-1.5 truncate">
+                          {activeMediaSession ? (
+                            <span style={{ color: getProviderTheme(activeMediaSession.provider).accentColor }} className="font-semibold flex items-center gap-1">
+                              {getProviderTheme(activeMediaSession.provider).badgeIcon} {getProviderTheme(activeMediaSession.provider).badgeText}
+                            </span>
+                          ) : (
+                            `Player: ${musicStatus?.player || 'None'}`
+                          )}
                         </span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                          musicStatus?.playback_status === 'Playing' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-700 text-gray-400'
+                          (activeMediaSession?.playing || musicStatus?.playback_status === 'Playing') ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-700 text-gray-400'
                         }`}>
-                          {musicStatus?.playback_status || 'Stopped'}
+                          {activeMediaSession?.playing ? 'Playing' : (musicStatus?.playback_status || 'Stopped')}
                         </span>
                       </div>
                       <div className="py-2 text-center">
-                        <p className="text-xs font-bold text-pink-300 truncate">
-                          {musicStatus?.title || 'No Track Playing'}
+                        <p
+                          className="text-xs font-bold truncate"
+                          style={{
+                            color: activeMediaSession
+                              ? getProviderTheme(activeMediaSession.provider).accentColor
+                              : '#f472b6',
+                          }}
+                        >
+                          {activeMediaSession?.title || musicStatus?.title || 'No Track Playing'}
                         </p>
                         <p className="text-[10px] text-gray-400 truncate">
-                          {musicStatus?.artist || 'Idle Player'}
+                          {activeMediaSession?.artist || musicStatus?.artist || 'Idle Player'}
                         </p>
                       </div>
                       <div className="flex items-center justify-center gap-3">
@@ -889,7 +928,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           <SkipBack size={14} />
                         </button>
                         <button onClick={handleToggleMusicPlayPause} className="p-2 rounded-full bg-pink-600 hover:bg-pink-500 text-white shadow">
-                          {musicStatus?.playback_status === 'Playing' ? <Pause size={14} /> : <Play size={14} />}
+                          {(activeMediaSession?.playing || musicStatus?.playback_status === 'Playing') ? <Pause size={14} /> : <Play size={14} />}
                         </button>
                         <button onClick={handleMusicNext} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-300">
                           <SkipForward size={14} />
@@ -1907,34 +1946,54 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   <Music size={16} className="text-pink-400" /> Music (MPRIS) & Synchronized Lyrics
                 </h3>
 
-                {/* MPRIS Player Controls */}
+                {/* MPRIS & Streaming Media Controls */}
                 <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-gray-400">Current Player</p>
-                      <p className="text-sm font-bold text-white">
-                        {musicStatus?.player && musicStatus.player !== 'None'
-                          ? musicStatus.player
-                          : 'No Player Active'}
+                      <p className="text-[10px] text-gray-400">Current Player & Source</p>
+                      <p className="text-sm font-bold text-white flex items-center gap-1.5">
+                        {activeMediaSession ? (
+                          <>
+                            <span>{getProviderTheme(activeMediaSession.provider).badgeIcon}</span>
+                            <span style={{ color: getProviderTheme(activeMediaSession.provider).accentColor }}>
+                              {getProviderTheme(activeMediaSession.provider).badgeText}
+                            </span>
+                            <span className="text-xs text-gray-400 font-normal">
+                              ({activeMediaSession.source_app || musicStatus?.player || 'MPRIS'})
+                            </span>
+                          </>
+                        ) : musicStatus?.player && musicStatus.player !== 'None' ? (
+                          musicStatus.player
+                        ) : (
+                          'No Player Active'
+                        )}
                       </p>
                     </div>
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        musicStatus?.playback_status === 'Playing'
+                        (activeMediaSession?.playing || musicStatus?.playback_status === 'Playing')
                           ? 'bg-emerald-500/20 text-emerald-300'
                           : 'bg-gray-700 text-gray-300'
                       }`}
                     >
-                      {musicStatus?.playback_status || 'Stopped'}
+                      {activeMediaSession?.playing ? 'Playing' : (musicStatus?.playback_status || 'Stopped')}
                     </span>
                   </div>
 
                   <div className="text-center py-2">
-                    <p className="text-base font-bold text-pink-300">
-                      {musicStatus?.title || 'No Track Loaded'}
+                    <p
+                      className="text-base font-bold"
+                      style={{
+                        color: activeMediaSession
+                          ? getProviderTheme(activeMediaSession.provider).accentColor
+                          : '#f472b6',
+                      }}
+                    >
+                      {activeMediaSession?.title || musicStatus?.title || 'No Track Loaded'}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {musicStatus?.artist || 'Unknown Artist'}
+                      {activeMediaSession?.artist || musicStatus?.artist || 'Unknown Artist'}
+                      {activeMediaSession?.album ? ` • ${activeMediaSession.album}` : ''}
                     </p>
                   </div>
 
@@ -1952,7 +2011,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       className="p-3 rounded-full bg-pink-600 hover:bg-pink-500 text-white transition shadow-lg"
                       title="Play/Pause"
                     >
-                      {musicStatus?.playback_status === 'Playing' ? (
+                      {(activeMediaSession?.playing || musicStatus?.playback_status === 'Playing') ? (
                         <Pause size={18} />
                       ) : (
                         <Play size={18} />
@@ -1965,6 +2024,40 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     >
                       <SkipForward size={16} />
                     </button>
+                  </div>
+                </div>
+
+                {/* Media Providers & Multi-Source Matrix */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-200 flex items-center gap-1.5">
+                      <Sliders size={13} className="text-purple-400" /> Supported Providers & Capabilities
+                    </span>
+                    <span className="text-[9px] font-mono text-gray-400 bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                      D-Bus / playerctl & LRCLIB
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px]">
+                    <div className="p-2 rounded-lg bg-black/30 border border-emerald-500/30 flex flex-col gap-0.5">
+                      <span className="font-bold text-emerald-400 flex items-center gap-1">🟢 Spotify</span>
+                      <span className="text-gray-400 text-[9px]">Native & Web D-Bus</span>
+                      <span className="text-emerald-300 font-semibold text-[9px]">✓ Synced LRC</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-black/30 border border-red-500/30 flex flex-col gap-0.5">
+                      <span className="font-bold text-red-400 flex items-center gap-1">🔴 YouTube</span>
+                      <span className="text-gray-400 text-[9px]">Browser MPRIS</span>
+                      <span className="text-red-300 font-semibold text-[9px]">✓ Clean Metadata</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-black/30 border border-rose-500/30 flex flex-col gap-0.5">
+                      <span className="font-bold text-rose-400 flex items-center gap-1">🎵 YT Music</span>
+                      <span className="text-gray-400 text-[9px]">Web App / PWA</span>
+                      <span className="text-rose-300 font-semibold text-[9px]">✓ Live Position</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-black/30 border border-indigo-500/30 flex flex-col gap-0.5">
+                      <span className="font-bold text-indigo-400 flex items-center gap-1">🎧 MPRIS</span>
+                      <span className="text-gray-400 text-[9px]">VLC / MPV / Firefox</span>
+                      <span className="text-indigo-300 font-semibold text-[9px]">✓ Local / Online</span>
+                    </div>
                   </div>
                 </div>
 

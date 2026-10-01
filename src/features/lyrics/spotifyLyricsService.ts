@@ -44,24 +44,44 @@ class SpotifyLyricsService {
       .trim();
   }
 
+  private async fetchJson(url: string): Promise<any | null> {
+    // 1. Try Rust backend native curl fetch first (bypasses CORS & WebKit User-Agent restrictions)
+    try {
+      const rawText = await invokeCommand<string>('fetch_remote_lyrics', { url });
+      if (rawText && rawText.trim().length > 0) {
+        return JSON.parse(rawText);
+      }
+    } catch {
+      // Fallback to window.fetch
+    }
+
+    // 2. Fallback to standard web fetch (without forbidden User-Agent header)
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('[SpotifyLyrics] fetchJson error:', e);
+    }
+    return null;
+  }
+
   public async searchLyrics(query: string): Promise<LyricsSearchResult[]> {
     if (!query || query.trim().length === 0) return [];
     try {
       const url = `https://lrclib.net/api/search?q=${encodeURIComponent(query.trim())}`;
-      const res = await fetch(url, { headers: { 'User-Agent': 'Lulu-Desktop/0.2.0 (Linux)' } });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          return data.map((item: any) => ({
-            id: item.id,
-            trackName: item.trackName || item.name || '',
-            artistName: item.artistName || '',
-            albumName: item.albumName,
-            duration: item.duration,
-            syncedLyrics: item.syncedLyrics,
-            plainLyrics: item.plainLyrics,
-          }));
-        }
+      const data = await this.fetchJson(url);
+      if (Array.isArray(data)) {
+        return data.map((item: any) => ({
+          id: item.id,
+          trackName: item.trackName || item.name || '',
+          artistName: item.artistName || '',
+          albumName: item.albumName,
+          duration: item.duration,
+          syncedLyrics: item.syncedLyrics,
+          plainLyrics: item.plainLyrics,
+        }));
       }
     } catch (e) {
       console.warn('[SpotifyLyrics] searchLyrics error:', e);
@@ -103,22 +123,27 @@ class SpotifyLyricsService {
       // Not cached locally, proceed to fetch
     }
 
-    // 2. Fetch from LRCLIB API (Direct Get)
+    // 2. Fetch from LRCLIB API (Direct Get with or without duration)
     try {
-      const directUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}${durationSecs ? `&duration=${Math.round(durationSecs)}` : ''}`;
-      const res = await fetch(directUrl, { headers: { 'User-Agent': 'Lulu-Desktop/0.2.0 (Linux)' } });
-      if (res.ok) {
-        const data = await res.json();
-        const rawContent = data.syncedLyrics || data.plainLyrics;
-        if (rawContent && rawContent.trim().length > 0) {
-          const parsed = LrcParser.parse(rawContent);
-          await this.saveLocalCache(cleanFilename, rawContent);
-          this.cache.set(key, parsed);
-          this.activeTrackKey = key;
-          this.currentLrc = parsed;
-          this.currentSource = data.syncedLyrics ? 'LRCLIB (Synced)' : 'LRCLIB (Plain)';
-          return parsed;
-        }
+      let data = null;
+      if (durationSecs && durationSecs > 0) {
+        const directUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}&duration=${Math.round(durationSecs)}`;
+        data = await this.fetchJson(directUrl);
+      }
+      if (!data || (!data.syncedLyrics && !data.plainLyrics)) {
+        const directNoDurUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
+        data = await this.fetchJson(directNoDurUrl);
+      }
+
+      const rawContent = data?.syncedLyrics || data?.plainLyrics;
+      if (rawContent && rawContent.trim().length > 0) {
+        const parsed = LrcParser.parse(rawContent);
+        await this.saveLocalCache(cleanFilename, rawContent);
+        this.cache.set(key, parsed);
+        this.activeTrackKey = key;
+        this.currentLrc = parsed;
+        this.currentSource = data.syncedLyrics ? 'LRCLIB (Synced)' : 'LRCLIB (Plain)';
+        return parsed;
       }
     } catch (e) {
       console.warn('[SpotifyLyrics] Direct fetch error:', e);
@@ -130,19 +155,16 @@ class SpotifyLyricsService {
     if (cleanArtist !== artist || cleanTitle !== title) {
       try {
         const cleanUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`;
-        const res = await fetch(cleanUrl, { headers: { 'User-Agent': 'Lulu-Desktop/0.2.0 (Linux)' } });
-        if (res.ok) {
-          const data = await res.json();
-          const rawContent = data.syncedLyrics || data.plainLyrics;
-          if (rawContent && rawContent.trim().length > 0) {
-            const parsed = LrcParser.parse(rawContent);
-            await this.saveLocalCache(cleanFilename, rawContent);
-            this.cache.set(key, parsed);
-            this.activeTrackKey = key;
-            this.currentLrc = parsed;
-            this.currentSource = 'LRCLIB (Cleaned Match)';
-            return parsed;
-          }
+        const data = await this.fetchJson(cleanUrl);
+        const rawContent = data?.syncedLyrics || data?.plainLyrics;
+        if (rawContent && rawContent.trim().length > 0) {
+          const parsed = LrcParser.parse(rawContent);
+          await this.saveLocalCache(cleanFilename, rawContent);
+          this.cache.set(key, parsed);
+          this.activeTrackKey = key;
+          this.currentLrc = parsed;
+          this.currentSource = 'LRCLIB (Cleaned Match)';
+          return parsed;
         }
       } catch (e) {
         console.warn('[SpotifyLyrics] Cleaned match error:', e);
@@ -208,18 +230,20 @@ class SpotifyLyricsService {
     return null;
   }
 
-  public getActiveAndNextLines(lrc: ParsedLrc | null, positionSecs: number): {
+  public getSyncedLyricsLines(lrc: ParsedLrc | null, positionSecs: number): {
+    previous: string | null;
     current: string | null;
     next: string | null;
     currentIndex: number;
     totalLines: number;
   } {
     if (!lrc || !lrc.lines || lrc.lines.length === 0) {
-      return { current: null, next: null, currentIndex: -1, totalLines: 0 };
+      return { previous: null, current: null, next: null, currentIndex: -1, totalLines: 0 };
     }
     const adjustedSecs = positionSecs + this.syncOffsetSecs;
     if (adjustedSecs < lrc.lines[0].timeSeconds) {
       return {
+        previous: null,
         current: null,
         next: lrc.lines[0]?.text || null,
         currentIndex: -1,
@@ -228,11 +252,27 @@ class SpotifyLyricsService {
     }
     const idx = LrcParser.findActiveLineIndex(lrc.lines, adjustedSecs);
     if (idx >= 0 && idx < lrc.lines.length) {
+      const previous = idx > 0 ? lrc.lines[idx - 1].text || null : null;
       const current = lrc.lines[idx].text || null;
       const next = idx + 1 < lrc.lines.length ? lrc.lines[idx + 1].text || null : null;
-      return { current, next, currentIndex: idx, totalLines: lrc.lines.length };
+      return { previous, current, next, currentIndex: idx, totalLines: lrc.lines.length };
     }
-    return { current: null, next: null, currentIndex: -1, totalLines: lrc.lines.length };
+    return { previous: null, current: null, next: null, currentIndex: -1, totalLines: lrc.lines.length };
+  }
+
+  public getActiveAndNextLines(lrc: ParsedLrc | null, positionSecs: number): {
+    current: string | null;
+    next: string | null;
+    currentIndex: number;
+    totalLines: number;
+  } {
+    const lines = this.getSyncedLyricsLines(lrc, positionSecs);
+    return {
+      current: lines.current,
+      next: lines.next,
+      currentIndex: lines.currentIndex,
+      totalLines: lines.totalLines,
+    };
   }
 }
 

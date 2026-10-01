@@ -104,6 +104,7 @@ export interface PetPreferences {
   wander_speed: number;
   speech_enabled: boolean;
   show_text?: boolean;
+  lyrics_mode?: 'auto_lyrics' | 'normal_text';
   speed_multiplier?: number;
   sound_volume: number;
   always_on_top: boolean;

@@ -1,13 +1,17 @@
+pub mod cache;
 pub mod capabilities;
 pub mod commands;
+pub mod config;
 pub mod diagnostics;
 pub mod doctor;
 pub mod lyrics;
+pub mod media;
 pub mod monitors;
 pub mod music;
 pub mod notifications;
 pub mod pet_storage;
 pub mod system;
+pub mod terminal;
 pub mod window;
 
 use pet_storage::StorageManager;
@@ -65,17 +69,26 @@ pub fn run() {
             notifications::clear_notification_history,
             notifications::emit_test_notification,
 
+            // Media & Streaming Sessions
+            media::get_media_session,
+            media::list_media_providers,
+
             // Music / MPRIS
             music::get_music_status,
             music::music_play_pause,
             music::music_next,
             music::music_previous,
 
-            // Local LRC Lyrics
+            // Local & Remote LRC Lyrics
             lyrics::list_local_lyrics,
             lyrics::read_lyrics_file,
             lyrics::save_lyrics_file,
             lyrics::delete_lyrics_file,
+            lyrics::fetch_remote_lyrics,
+
+            // Cache Management
+            cache::get_cache_status,
+            cache::clear_cache,
 
             // Diagnostics & Capability Matrix
             capabilities::get_capabilities,
