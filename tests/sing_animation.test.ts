@@ -7,11 +7,11 @@ import fs from 'fs';
 import path from 'path';
 
 describe('Lulu Sing Animation & Spotify Lip-Sync Engine', () => {
-  it('1. verifies that all 20 transparent singing frames exist on disk', () => {
+  it('1. verifies that all 6 transparent singing frames exist on disk', () => {
     const singDir = path.resolve(__dirname, '../src/assets/avatars/animations/sing');
     expect(fs.existsSync(singDir)).toBe(true);
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 6; i++) {
       const framePath = path.join(singDir, `sing_${i}.png`);
       expect(fs.existsSync(framePath)).toBe(true);
       const stat = fs.statSync(framePath);
@@ -40,8 +40,8 @@ describe('Lulu Sing Animation & Spotify Lip-Sync Engine', () => {
     const flame = LULU_FLAME_STYLES.spotify_sing;
     expect(flame).toBeDefined();
     expect(flame.animation).toBe('sing');
-    expect(flame.framesCount).toBe(20);
-    expect(flame.fps).toBe(10);
+    expect(flame.framesCount).toBe(6);
+    expect(flame.fps).toBe(5);
     expect(flame.comboWith).toContain('spotify_dance');
     expect(flame.comboWith).toContain('celebration_cheer');
     expect(flame.comboWith).toContain('ninja_salute');

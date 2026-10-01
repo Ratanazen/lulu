@@ -107,7 +107,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   currentFrame = 0,
   showText = true,
   onToggleShowText,
-  speedMultiplier = 0.60,
+  speedMultiplier = 1.0,
   onSetSpeedMultiplier,
   onUnlockAll,
 }) => {
@@ -586,8 +586,8 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <div className="text-[10px] text-gray-400">Frame:</div>
                       <div className="font-mono font-bold text-emerald-300 mt-0.5">
                         {currentDirection !== 'idle' || isContinuousRunning || is40sRunActive
-                          ? `${currentFrame % 40} / 40`
-                          : '0 / 40'}
+                          ? `Frame ${currentFrame + 1}`
+                          : 'Ready'}
                       </div>
                     </div>
                   </div>
@@ -622,11 +622,11 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <Zap size={13} className="text-yellow-400" /> Flame Update Speed
                       </p>
                       <span className="text-[10px] font-mono text-amber-300 font-bold">
-                        {speedMultiplier === 0.60
-                          ? '🐢 Slow (-40%)'
-                          : speedMultiplier === 1.0
-                          ? '⚡ Normal (100%)'
-                          : '🚀 Turbo (+40%)'}
+                        {speedMultiplier < 0.9
+                          ? '🐢 Relaxed (Slow)'
+                          : speedMultiplier > 1.1
+                          ? '⚡ Fast'
+                          : '✨ Normal & Smooth'}
                       </span>
                     </div>
 
@@ -703,13 +703,13 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <Zap size={13} className="text-yellow-400" /> Animation Controls
                     </p>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-gray-400 font-medium">1flam / 40s:</span>
+                      <span className="text-[10px] text-gray-400 font-medium">Interval:</span>
                       <select
                         value={focusIntervalSeconds === 0 ? 'OFF' : focusIntervalSeconds}
                         onChange={(e) => onSetFocusInterval?.(e.target.value === 'OFF' ? 0 : Number(e.target.value))}
                         className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-[10px] font-bold text-amber-300 focus:outline-none"
                       >
-                        <option value={40}>40s (1flam / 40s)</option>
+                        <option value={40}>40s</option>
                         <option value={30}>30s (2 img)</option>
                         <option value={60}>1m</option>
                         <option value={300}>5m</option>
@@ -721,7 +721,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-4 gap-2 pt-1">
-                    {/* [⚡ 40s Flame Sprint] */}
+                    {/* [⚡ Flame Sprint] */}
                     <button
                       onClick={onStart40sRun}
                       className={`py-1.5 px-2 rounded-lg border flex items-center justify-center gap-1 transition font-bold text-xs truncate ${
@@ -729,10 +729,10 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           ? 'bg-amber-500 text-black border-yellow-300 shadow-md shadow-amber-500/20'
                           : 'bg-yellow-600/30 border-yellow-500/40 text-yellow-200 hover:bg-yellow-600/50'
                       }`}
-                      title="40-Second Flame Sprint (40000ms duration, 25 FPS, 40ms/frame)"
+                      title="Flame Sprint (Autonomous run)"
                     >
                       <Zap size={12} className={is40sRunActive ? 'text-black fill-black shrink-0' : 'text-yellow-300 shrink-0'} />
-                      <span>{is40sRunActive ? 'Stop 40s' : '⚡ 40s Sprint'}</span>
+                      <span>{is40sRunActive ? 'Stop' : '⚡ Sprint'}</span>
                     </button>
 
                     {/* [⚡ SHOW RUN] */}
@@ -743,7 +743,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           ? 'bg-yellow-500 text-black border-yellow-300 shadow-md shadow-amber-500/20'
                           : 'bg-yellow-600/30 border-yellow-500/40 text-yellow-200 hover:bg-yellow-600/50'
                       }`}
-                      title="SHOW RUN: Continuous 40-Frame Sprint across the screen"
+                      title="SHOW RUN: Continuous Sprint across the screen"
                     >
                       <Zap size={12} className={isContinuousRunning ? 'text-black fill-black shrink-0' : 'text-yellow-300 shrink-0'} />
                       <span>{isContinuousRunning ? 'Stop SHOW' : '⚡ SHOW RUN'}</span>

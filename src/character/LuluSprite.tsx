@@ -52,7 +52,7 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
   cursorPos,
   cursorOffset,
   isDragging = false,
-  speedMultiplier = 0.60, // -40% slow flame update speed default
+  speedMultiplier = 1.0, // Normal, smooth cadence default
 }) => {
   const [frame, setFrame] = useState(0);
   const activeCursor = cursorPos || cursorOffset;
@@ -101,26 +101,26 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
       ? sadFrames.length
       : idleFrames.length;
 
-    // Optimized frame rates tailored for authentic multi-frame sequences (40 frames run at 25 FPS = 40ms/frame, 20 frames sing/mood/dance/sleep)
+    // Normal, smooth anime animation frame rates (not too fast, balanced and comfortable)
     const fps = isRunning
-      ? 25 // 1 flame / 40ms = 25 FPS
+      ? 12 // 12 FPS: silky-smooth natural running stride for 40-frame sprint (not too fast)
       : isWalking
-      ? 6
+      ? 4 // 4 FPS: comfortable walking pace
       : isSinging
-      ? 10 // 10 FPS singing lip sync to lyrics
+      ? 5 // 5 FPS: natural human vocal lip-sync cadence (200ms per mouth change)
       : (isSleeping || isSitting)
-      ? 3
+      ? 2 // 2 FPS: gentle slow resting breathing
       : isDancing
-      ? 10
+      ? 6 // 6 FPS: rhythmic music sway
       : (animation === 'happy' || mood === 'happy' || mood === 'playful')
-      ? 8
+      ? 5 // 5 FPS: joyful celebration
       : (animation === 'sad' || animation === 'angry' || mood === 'sad' || mood === 'tired')
-      ? 5
+      ? 4
       : (isThinking || isProtecting || isWaving)
-      ? 5
-      : 4;
+      ? 4
+      : 3; // 3 FPS: peaceful idle breathing
 
-    const effectiveFps = Math.max(1, fps * (speedMultiplier || 0.60));
+    const effectiveFps = Math.max(1, Math.round(fps * (speedMultiplier ?? 1.0)));
     const interval = setInterval(() => {
       setFrame((prev) => (prev + 1) % (activeLength || 1));
     }, 1000 / effectiveFps);
@@ -128,31 +128,38 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
     return () => clearInterval(interval);
   }, [animation, mood, isSleeping, isSitting, isRunning, isDancing, isSinging, isWalking, isThinking, isProtecting, isWaving, speedMultiplier]);
 
-  // Dynamic physics offsets: smooth multi-frame playback without artificial jitter
-  const breathY = (animation === 'idle' || isSleeping || isSitting) ? (frame % 2 === 0 ? 0 : 1) : 0;
-  const walkOffset = isRunning ? 0 : isWalking ? (frame % 2 === 0 ? -1 : 1) : 0;
+  // Dynamic smooth physics: smooth continuous sinusoidal curve instead of rapid alternating jitter
+  const isSad = animation === 'sad' || animation === 'angry' || (animation === 'idle' && (mood === 'sad' || mood === 'tired'));
+  const isJoyful = animation === 'happy' || (animation === 'idle' && (mood === 'happy' || mood === 'playful')) || isDancing;
+
+  const breathY = (animation === 'idle' || isSleeping || isSitting)
+    ? Math.sin(frame * 0.4) * 1.5
+    : 0;
+
+  const walkOffset = isWalking
+    ? Math.sin(frame * 0.8) * 1.5
+    : 0;
+
   const bounceY = isJumping ? -26 : isSitting ? 12 : isSurprised ? -8 : 0;
+
+  const tiltDeg = isRunning
+    ? 0
+    : isDancing
+    ? Math.sin(frame * 0.5) * 2.5
+    : isJoyful
+    ? Math.sin(frame * 0.4) * 2.0
+    : isWalking
+    ? Math.sin(frame * 0.6) * 1.2
+    : isThinking
+    ? 2.5
+    : isSurprised
+    ? -3.0
+    : isSad
+    ? Math.sin(frame * 0.3) * 0.8
+    : 0;
 
   // 1. AUTHENTIC SHADOW SHINOBI (Real Multi-Frame 2D Motion Engine from User Sprite Sheets)
   if (characterStyle === 'shadow_shinobi') {
-    const isSad = animation === 'sad' || animation === 'angry' || (animation === 'idle' && (mood === 'sad' || mood === 'tired'));
-    const isJoyful = animation === 'happy' || (animation === 'idle' && (mood === 'happy' || mood === 'playful')) || isDancing;
-    const tiltDeg = isRunning
-      ? 0
-      : isWalking
-      ? (frame % 2 === 0 ? -1 : 1)
-      : isDancing
-      ? (frame % 2 === 0 ? -2 : 2)
-      : isAngry || isSad
-      ? (frame % 2 === 0 ? -1 : 1)
-      : isThinking
-      ? 3
-      : isSurprised
-      ? -4
-      : isJoyful
-      ? (frame % 2 === 0 ? -2 : 2)
-      : 0;
-
     // Select the authentic multi-frame animation artwork: strict animation action priority
     let activeArtwork = idleFrames[frame % idleFrames.length];
     if (isRunning) {
@@ -214,7 +221,7 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
               ? 'transform 0.15s cubic-bezier(0.17, 0.67, 0.83, 0.67)'
               : isRunning
               ? 'none'
-              : 'transform 0.1s ease-out',
+              : 'transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
           }}
         >
           {/* Authentic High-Resolution Transparent Character Artwork */}

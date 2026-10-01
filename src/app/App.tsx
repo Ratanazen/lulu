@@ -39,10 +39,19 @@ export const App: React.FC = () => {
   const [spotifyLyrics, setSpotifyLyrics] = useState<ParsedLrc | null>(null);
   const [activeLyricText, setActiveLyricText] = useState<string | null>(null);
   const [currentSpotifyTrack, setCurrentSpotifyTrack] = useState<{ artist: string; title: string } | null>(null);
+  const [musicPositionSecs, setMusicPositionSecs] = useState<number>(0);
+  const [musicDurationSecs, setMusicDurationSecs] = useState<number>(0);
 
-  // Flame speed multiplier: default 0.60 (-40% slow flame update speed)
-  const [speedMultiplier, setSpeedMultiplier] = useState<number>(0.60);
+  // Flame speed multiplier: default 1.0 (Normal & Smooth)
+  const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
   const [showText, setShowText] = useState<boolean>(true);
+
+  const formatTime = (secs: number): string => {
+    const s = Math.max(0, Math.floor(secs || 0));
+    const mins = Math.floor(s / 60);
+    const rem = s % 60;
+    return `${mins}:${rem < 10 ? '0' : ''}${rem}`;
+  };
 
   const [preferences, setPreferences] = useState<PetPreferences>({
     scale: 1.0,
@@ -52,7 +61,7 @@ export const App: React.FC = () => {
     wander_speed: 1.0,
     speech_enabled: true,
     show_text: true,
-    speed_multiplier: 0.60,
+    speed_multiplier: 1.0,
     sound_volume: 0.8,
     always_on_top: true,
     fps_limit: 60,
@@ -68,8 +77,8 @@ export const App: React.FC = () => {
   }, [speedMultiplier]);
 
   const getActionBadgeText = (anim: string, mult: number): string => {
-    const speedTag = mult === 0.60 ? ' (-40% Slow)' : mult === 1.40 ? ' (+40% Turbo)' : '';
-    if (anim.startsWith('run')) return `⚡ 40-Frame Sprint${speedTag}`;
+    const speedTag = mult < 0.9 ? ' (Relaxed)' : mult > 1.1 ? ' (Fast)' : '';
+    if (anim.startsWith('run')) return `⚡ Sprint${speedTag}`;
     if (anim.startsWith('walk')) return `🐾 Desktop Patrol${speedTag}`;
     if (anim === 'sing') return `🎤 Singing Lip-Sync${speedTag}`;
     if (anim === 'dance') return `💃 Chakra Dance${speedTag}`;
@@ -178,12 +187,15 @@ export const App: React.FC = () => {
     };
   }, [isSleeping, isMusicPlaying, activeLyricText]);
 
-  // 4. MPRIS Music Status Poller & Spotify Synced Lyrics (Section 16)
+  // 4. MPRIS Music Status Poller & Spotify Synced Lyrics (Realtime Karaoke Sync)
   useEffect(() => {
     const musicTimer = setInterval(async () => {
       try {
         const status = await invokeCommand<any>('get_music_status');
         if (status && status.playback_status === 'Playing') {
+          setMusicPositionSecs(status.position_secs || 0);
+          setMusicDurationSecs(status.duration_secs || 0);
+
           if (!isMusicPlaying) {
             setIsMusicPlaying(true);
             setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
@@ -224,13 +236,14 @@ export const App: React.FC = () => {
         } else {
           if (isMusicPlaying) {
             setIsMusicPlaying(false);
+            setMusicPositionSecs(0);
             setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
             eventBus.emit('music:playback_changed', { status: 'Paused' });
             setActiveLyricText(null);
           }
         }
       } catch {}
-    }, 800);
+    }, 250);
 
     return () => clearInterval(musicTimer);
   }, [isMusicPlaying, currentSpotifyTrack, spotifyLyrics]);
@@ -455,7 +468,7 @@ export const App: React.FC = () => {
     const running = movementRef.current.toggleContinuousRun();
     setIsContinuousRunning(running);
     if (running) {
-      messageManager.enqueue('SHOW RUN active! Continuous 40-frame sprint! ⚡🏃💨', 'normal', 'interaction');
+      messageManager.enqueue('SHOW RUN active! Continuous sprint! ⚡🏃💨', 'normal', 'interaction');
     } else {
       messageManager.enqueue('Sprint paused. Catching breath! 🍃', 'normal', 'interaction');
     }
@@ -475,11 +488,11 @@ export const App: React.FC = () => {
     }
     setIs40sRunActive(true);
     setIsContinuousRunning(true);
-    messageManager.enqueue('40-Second Flame Sprint active! ⚡🏃💨 (1 frame / 40ms)', 'high', 'interaction');
+    messageManager.enqueue('Flame Sprint active! ⚡🏃💨', 'high', 'interaction');
     movementRef.current.startTimedRun(40, () => {
       setIs40sRunActive(false);
       setIsContinuousRunning(false);
-      messageManager.enqueue('40s Flame Sprint complete! Full speed achieved! 🏆🔥', 'high', 'interaction');
+      messageManager.enqueue('Sprint complete! Full speed achieved! 🏆🔥', 'high', 'interaction');
     });
   };
 
@@ -548,25 +561,28 @@ export const App: React.FC = () => {
         title="Drag Lulu anywhere on your screen"
       />
 
-      {/* Spotify Synced Live Lyrics Pill */}
-      {showText && isMusicPlaying && activeLyricText && (
+      {/* Spotify Synced Live Lyrics Pill with Real Live Time */}
+      {showText && isMusicPlaying && (
         <div
-          className="absolute top-2 left-1/2 -translate-x-1/2 z-40 max-w-[245px] px-3 py-1.5 rounded-full bg-[#121212]/95 border border-[#1DB954]/70 shadow-[0_4px_18px_rgba(29,185,84,0.4)] flex items-center gap-2 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer"
-          title={`${currentSpotifyTrack?.artist || 'Spotify'} - ${currentSpotifyTrack?.title || ''} (Click to open Control Center)`}
+          className="absolute top-2 left-1/2 -translate-x-1/2 z-40 max-w-[280px] px-3 py-1.5 rounded-full bg-[#121212]/95 border border-[#1DB954]/70 shadow-[0_4px_18px_rgba(29,185,84,0.4)] flex items-center gap-2 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer"
+          title={`${currentSpotifyTrack?.artist || 'Spotify'} - ${currentSpotifyTrack?.title || ''} (${formatTime(musicPositionSecs)} / ${formatTime(musicDurationSecs)}) (Click to open Control Center)`}
           onClick={handleOpenControlCenter}
         >
           <div className="w-2 h-2 rounded-full bg-[#1DB954] animate-pulse shrink-0" />
           <span className="text-[10px] font-bold text-[#1DB954] uppercase tracking-wider shrink-0">
             Spotify
           </span>
+          <span className="text-[10px] font-mono text-emerald-400 font-bold bg-black/60 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">
+            {formatTime(musicPositionSecs)}
+          </span>
           <span className="text-[11px] text-white font-medium truncate select-text">
-            {activeLyricText}
+            {activeLyricText || (currentSpotifyTrack?.title ? `${currentSpotifyTrack.title}${currentSpotifyTrack.artist ? ` • ${currentSpotifyTrack.artist}` : ''}` : '♪ Playing...')}
           </span>
         </div>
       )}
 
-      {/* Floating Action Text Badge ("config show txt and change flam update to get to slow -40%") */}
-      {showText && (!isMusicPlaying || !activeLyricText) && animation !== 'idle' && (
+      {/* Floating Action Text Badge (Only when music is not active) */}
+      {showText && !isMusicPlaying && animation !== 'idle' && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 max-w-[240px] px-3 py-1 rounded-full bg-[#181825]/95 border border-amber-500/60 shadow-[0_4px_16px_rgba(245,158,11,0.3)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping shrink-0" />
           <span className="text-[10px] font-bold text-amber-200 truncate">
@@ -577,7 +593,7 @@ export const App: React.FC = () => {
 
       {/* Thought & Speech Bubble */}
       {showText && preferences.speech_enabled && (
-        <SpeechBubble mood={mood} className={isMusicPlaying && activeLyricText ? 'top-11' : animation !== 'idle' ? 'top-9' : undefined} />
+        <SpeechBubble mood={mood} className={isMusicPlaying ? 'top-11' : animation !== 'idle' ? 'top-9' : undefined} />
       )}
 
       {/* Main Character Sprite & Love Hearts */}
@@ -660,7 +676,7 @@ export const App: React.FC = () => {
               setIsFollowingCursor((prev) => {
                 const next = !prev;
                 if (next) {
-                  messageManager.enqueue('Following cursor with 40-frame sprint! ⚡', 'normal', 'interaction');
+                  messageManager.enqueue('Following cursor! ⚡', 'normal', 'interaction');
                 }
                 return next;
               });
@@ -668,7 +684,7 @@ export const App: React.FC = () => {
             className={`p-1.5 rounded-full transition ${
               isFollowingCursor ? 'bg-cyan-500/40 text-cyan-200 ring-1 ring-cyan-400' : 'hover:bg-cyan-500/30 text-cyan-300'
             }`}
-            title={isFollowingCursor ? 'Stop Following Cursor' : 'Follow Cursor (40-Frame Sprint)'}
+            title={isFollowingCursor ? 'Stop Following Cursor' : 'Follow Cursor'}
           >
             <Compass size={13} />
           </button>
@@ -678,7 +694,7 @@ export const App: React.FC = () => {
             className={`p-1.5 rounded-full transition ${
               isContinuousRunning ? 'bg-amber-500/50 text-yellow-300 ring-2 ring-yellow-400 animate-pulse' : 'hover:bg-yellow-500/30 text-yellow-300'
             }`}
-            title={isContinuousRunning ? 'Stop SHOW RUN' : 'SHOW RUN (Continuous 40-Frame Sprint)'}
+            title={isContinuousRunning ? 'Stop SHOW RUN' : 'SHOW RUN'}
           >
             <Zap size={13} />
           </button>
@@ -723,7 +739,7 @@ export const App: React.FC = () => {
 
           <div className="h-[1px] bg-[#313244] my-1" />
 
-          {/* ⚡ 40s Flame Sprint */}
+          {/* ⚡ Flame Sprint */}
           <button
             onClick={() => {
               setShowContextMenu(false);
@@ -732,7 +748,7 @@ export const App: React.FC = () => {
             className="w-full text-left px-3 py-1.5 hover:bg-yellow-600 hover:text-white flex items-center gap-2 text-yellow-300 font-semibold"
           >
             <Zap size={13} className="text-yellow-400" />
-            <span>{is40sRunActive ? 'Stop 40s Sprint ⚡' : '⚡ 40s Flame Sprint'}</span>
+            <span>{is40sRunActive ? 'Stop Sprint ⚡' : '⚡ Flame Sprint'}</span>
           </button>
 
           {/* ⚡ SHOW RUN */}

@@ -42,19 +42,19 @@ export class MovementEngine {
   private onPositionUpdate?: (x: number, y: number, isMoving: boolean, direction: 'left' | 'right' | 'idle', isRunning?: boolean) => void;
 
   private baseConfig: MovementConfig = {
-    walkSpeed: 4,
-    runSpeed: 8,
-    edgePadding: 50,
-    tickIntervalMs: 40, // 25 FPS = 1000ms / 25 = 40ms frame timing
-  };
-
-  private speedMultiplier: number = 0.60; // -40% slow flame update speed default
-
-  private config: MovementConfig = {
-    walkSpeed: 2.5,
+    walkSpeed: 3,
     runSpeed: 5,
     edgePadding: 50,
-    tickIntervalMs: 66, // 15 FPS = 1000ms / 15 = ~66.7ms (-40% slow)
+    tickIntervalMs: 50, // 20 FPS = 50ms smooth movement step
+  };
+
+  private speedMultiplier: number = 1.0; // Normal, natural speed default
+
+  private config: MovementConfig = {
+    walkSpeed: 3,
+    runSpeed: 5,
+    edgePadding: 50,
+    tickIntervalMs: 50,
   };
 
   constructor() {
@@ -274,7 +274,7 @@ export class MovementEngine {
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (isRunning) {
-        this.currentFrame = (this.currentFrame + 1) % 40;
+        this.currentFrame = (this.currentFrame + 1) % 6;
       }
 
       if (dist <= currentSpeed) {

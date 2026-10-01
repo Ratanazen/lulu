@@ -13,28 +13,28 @@ export interface LuluFlameStyle {
 export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
   sprint_dash: {
     id: 'sprint_dash',
-    name: '40-Frame High-Speed Sprint',
+    name: 'High-Speed Sprint',
     animation: 'run-right',
-    framesCount: 40,
-    fps: 25, // 40ms/frame
+    framesCount: 6,
+    fps: 12,
     comboWith: ['celebration_cheer', 'spotify_sing', 'ninja_salute'],
-    description: 'High-velocity 40-frame sprint with boundary bounce physics',
+    description: 'High-velocity sprint with boundary bounce physics',
   },
   spotify_sing: {
     id: 'spotify_sing',
     name: 'Spotify Synced Live Singing',
     animation: 'sing',
-    framesCount: 20,
-    fps: 10,
+    framesCount: 6,
+    fps: 5,
     comboWith: ['spotify_dance', 'celebration_cheer', 'ninja_salute'],
     description: 'Lip-synced singing to active Spotify synchronized LRC lyrics',
   },
   spotify_dance: {
     id: 'spotify_dance',
-    name: '20-Frame Music Dance',
+    name: 'Music Dance',
     animation: 'dance',
-    framesCount: 20,
-    fps: 10,
+    framesCount: 6,
+    fps: 6,
     comboWith: ['spotify_sing', 'sprint_dash'],
     description: 'Rhythmic chakra dance during music instrumental sections',
   },
@@ -42,8 +42,8 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
     id: 'celebration_cheer',
     name: 'Joyful Flame Celebration',
     animation: 'happy',
-    framesCount: 20,
-    fps: 8,
+    framesCount: 6,
+    fps: 5,
     comboWith: ['sprint_dash', 'spotify_sing'],
     description: 'Smiling celebration following sprint victory or focus milestone',
   },
@@ -51,8 +51,8 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
     id: 'susanoo_defense',
     name: 'Susanoo Energy Shield',
     animation: 'protect',
-    framesCount: 5,
-    fps: 5,
+    framesCount: 6,
+    fps: 4,
     comboWith: ['ninja_salute', 'sprint_dash'],
     description: 'Chakra energy barrier protecting the workstation',
   },
@@ -60,8 +60,8 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
     id: 'ninja_salute',
     name: 'Ninja Wave Salute',
     animation: 'wave',
-    framesCount: 5,
-    fps: 5,
+    framesCount: 6,
+    fps: 4,
     comboWith: ['susanoo_defense', 'celebration_cheer'],
     description: 'Affectionate comrade salute and greeting',
   },
@@ -69,8 +69,8 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
     id: 'deep_contemplate',
     name: 'Deep Concentration Mode',
     animation: 'sad',
-    framesCount: 20,
-    fps: 5,
+    framesCount: 6,
+    fps: 4,
     comboWith: ['desktop_patrol', 'sprint_dash'],
     description: 'Warrior mental focus and meditation',
   },
@@ -78,8 +78,8 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
     id: 'desktop_patrol',
     name: 'Desktop Perimeter Patrol',
     animation: 'walk-right',
-    framesCount: 5,
-    fps: 6,
+    framesCount: 6,
+    fps: 4,
     comboWith: ['sprint_dash', 'celebration_cheer'],
     description: 'Gentle walking patrol along the desktop dock',
   },
@@ -94,12 +94,12 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
   },
 };
 
-export const DEFAULT_FLAME_SPEED_MULTIPLIER = 0.60; // -40% slow flame update speed
+export const DEFAULT_FLAME_SPEED_MULTIPLIER = 1.0; // Normal, balanced, and smooth cadence
 
 export const FLAME_SPEED_PRESETS = {
-  slow: { id: 'slow', label: '🐢 Slow (-40% Flame)', multiplier: 0.60 },
-  normal: { id: 'normal', label: '⚡ Normal (100%)', multiplier: 1.0 },
-  turbo: { id: 'turbo', label: '🚀 Turbo (+40%)', multiplier: 1.40 },
+  slow: { id: 'slow', label: '🐢 Relaxed (Slow)', multiplier: 0.75 },
+  normal: { id: 'normal', label: '✨ Normal & Smooth', multiplier: 1.0 },
+  turbo: { id: 'turbo', label: '⚡ Fast', multiplier: 1.25 },
 } as const;
 
 export function getEffectiveFps(baseFps: number, multiplier: number = DEFAULT_FLAME_SPEED_MULTIPLIER): number {
@@ -140,7 +140,7 @@ export const LULU_TASKS: LuluTask[] = [
   {
     id: 'continuous_sprint_master',
     title: 'SHOW RUN Infinite Sprint',
-    description: 'Autonomous wall-to-wall 40-frame sprint with Wayland boundary bounce.',
+    description: 'Autonomous wall-to-wall sprint with Wayland boundary bounce.',
     isCompleted: true,
     unlockedItems: ['sprint_dash'],
   },

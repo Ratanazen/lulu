@@ -35,23 +35,23 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     vi.useRealTimers();
   });
 
-  it('1. verifies 25 FPS and 40ms frame timing at standard speed', () => {
-    // 1000ms / 25 = 40ms
+  it('1. verifies smooth normal movement speed and cadence', () => {
+    // 50ms tick interval for smooth 20 FPS movement steps
     const state = engine.getState();
-    expect(state.runSpeed).toBe(8);
+    expect(state.runSpeed).toBe(5);
     expect(state.speedMultiplier).toBe(1.0);
   });
 
-  it('2. verifies 40-frame loop progression (0 to 39 and wrap)', () => {
+  it('2. verifies 6-frame loop progression (0 to 5 and wrap)', () => {
     engine.startContinuousRun();
     expect(engine.getState().currentFrame).toBe(0);
 
-    // Advance 40ms -> frame 1
-    vi.advanceTimersByTime(40);
+    // Advance 50ms -> frame 1
+    vi.advanceTimersByTime(50);
     expect(engine.getState().currentFrame).toBe(1);
 
-    // Advance 39 more frames (39 * 40ms = 1560ms) -> total 40 frames -> wraps back to 0
-    vi.advanceTimersByTime(39 * 40);
+    // Advance 5 more frames (5 * 50ms = 250ms) -> total 6 frames -> wraps back to 0
+    vi.advanceTimersByTime(5 * 50);
     expect(engine.getState().currentFrame).toBe(0);
   });
 
@@ -102,8 +102,8 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
 
     engine.resume();
     expect(engine.getState().isPaused).toBe(false);
-    vi.advanceTimersByTime(40);
-    expect(engine.getState().currentFrame).toBe((frameBefore + 1) % 40);
+    vi.advanceTimersByTime(50);
+    expect(engine.getState().currentFrame).toBe((frameBefore + 1) % 6);
   });
 
   it('6. verifies timer safety and cleanup on multiple starts and stop', () => {
@@ -123,20 +123,20 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     expect(LULU_ROUTINE_POOL.length).toBe(8);
     const sprintRoutines = LULU_ROUTINE_POOL.filter(r => r.animation === 'run_sprint');
     expect(sprintRoutines.length).toBe(2);
-    expect(sprintRoutines[0].frames).toBe(40);
-    expect(sprintRoutines[1].frames).toBe(40);
+    expect(sprintRoutines[0].frames).toBe(6);
+    expect(sprintRoutines[1].frames).toBe(6);
 
     const danceRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'happy_dance');
-    expect(danceRoutine?.frames).toBe(20);
+    expect(danceRoutine?.frames).toBe(6);
 
     const musicRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'music_jam');
-    expect(musicRoutine?.frames).toBe(20);
+    expect(musicRoutine?.frames).toBe(6);
 
     const protectRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'protect');
-    expect(protectRoutine?.frames).toBe(5);
+    expect(protectRoutine?.frames).toBe(6);
 
     const waveRoutine = LULU_ROUTINE_POOL.find(r => r.animation === 'wave');
-    expect(waveRoutine?.frames).toBe(5);
+    expect(waveRoutine?.frames).toBe(6);
   });
 
   it('8. verifies strict frame priority ordering with singing lip-sync', () => {
@@ -200,25 +200,25 @@ describe('Lulu SHOW RUN & 1flam / 40s Specifications', () => {
     expect(['spotify_dance', 'celebration_cheer', 'ninja_salute']).toContain(comboForSing.id);
   });
 
-  it('11. verifies -40% slow flame update speed multiplier and Tasks: Unlock All registry', async () => {
-    const { getEffectiveFps, getEffectiveFrameIntervalMs, LULU_TASKS, DEFAULT_FLAME_SPEED_MULTIPLIER } = await import('../src/config/luluFlameConfig');
+  it('11. verifies normal and smooth flame speed configuration and Tasks: Unlock All registry', async () => {
+    const { getEffectiveFps, getEffectiveFrameIntervalMs, LULU_TASKS, DEFAULT_FLAME_SPEED_MULTIPLIER, FLAME_SPEED_PRESETS } = await import('../src/config/luluFlameConfig');
     
-    // Default multiplier is 0.60 (-40% slow)
-    expect(DEFAULT_FLAME_SPEED_MULTIPLIER).toBe(0.60);
+    // Default multiplier is 1.0 (Normal & Smooth cadence)
+    expect(DEFAULT_FLAME_SPEED_MULTIPLIER).toBe(1.0);
 
-    // 25 FPS sprint slowed by -40% -> 15 FPS
-    expect(getEffectiveFps(25, 0.60)).toBe(15);
-    expect(getEffectiveFrameIntervalMs(25, 0.60)).toBe(67); // 1000 / 15 ≈ 67ms
+    // 12 FPS sprint at normal speed (1.0) -> 12 FPS
+    expect(getEffectiveFps(12, 1.0)).toBe(12);
+    expect(getEffectiveFrameIntervalMs(12, 1.0)).toBe(83); // 1000 / 12 ≈ 83ms
 
-    // 10 FPS sing/dance slowed by -40% -> 6 FPS
-    expect(getEffectiveFps(10, 0.60)).toBe(6);
-    expect(getEffectiveFrameIntervalMs(10, 0.60)).toBe(167); // 1000 / 6 ≈ 167ms
+    // 12 FPS sprint with relaxed preset (0.75) -> 9 FPS
+    expect(getEffectiveFps(12, FLAME_SPEED_PRESETS.slow.multiplier)).toBe(9);
+    expect(getEffectiveFrameIntervalMs(12, FLAME_SPEED_PRESETS.slow.multiplier)).toBe(111); // 1000 / 9 ≈ 111ms
 
-    // MovementEngine configured with -40% slow multiplier
-    engine.setSpeedMultiplier(0.60);
+    // MovementEngine configured with normal multiplier
+    engine.setSpeedMultiplier(1.0);
     const state = engine.getState();
-    expect(state.runSpeed).toBe(5); // 8 * 0.6 = 4.8 -> 5
-    expect(state.speedMultiplier).toBe(0.60);
+    expect(state.runSpeed).toBe(5);
+    expect(state.speedMultiplier).toBe(1.0);
 
     // Tasks system: Unlock All task is configured and active
     const unlockAllTask = LULU_TASKS.find((t) => t.id === 'unlock_all_flames');
