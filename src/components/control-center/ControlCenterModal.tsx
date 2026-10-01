@@ -33,14 +33,18 @@ import {
   Zap,
   Unlock,
   CheckSquare,
+  Search,
+  Mic,
 } from 'lucide-react';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
+import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
 import shinobiIdle from '../../assets/avatars/shinobi_idle.png';
 import shinobiRun from '../../assets/avatars/shinobi_run.png';
 import shinobiHappy from '../../assets/avatars/shinobi_happy.png';
 import shinobiSleep from '../../assets/avatars/shinobi_sleep.png';
 import shinobiSing from '../../assets/avatars/shinobi_sing.png';
 import shinobiSad from '../../assets/avatars/shinobi_sad.png';
+import shinobiProtect from '../../assets/avatars/shinobi_protect.png';
 
 export const getTaskImage = (imageKey?: string) => {
   switch (imageKey) {
@@ -54,6 +58,8 @@ export const getTaskImage = (imageKey?: string) => {
       return shinobiSing;
     case 'sad':
       return shinobiSad;
+    case 'protect':
+      return shinobiProtect;
     case 'idle':
     default:
       return shinobiIdle;
@@ -66,15 +72,17 @@ export const getFlameImage = (id: string) => {
     case 'desktop_patrol':
       return shinobiRun;
     case 'spotify_sing':
-      return shinobiSing;
     case 'spotify_dance':
+      return shinobiSing;
     case 'celebration_cheer':
       return shinobiHappy;
     case 'peaceful_rest':
-    case 'deep_contemplate':
       return shinobiSleep;
+    case 'deep_contemplate':
+      return shinobiSad;
     case 'susanoo_defense':
     case 'ninja_salute':
+      return shinobiProtect;
     default:
       return shinobiIdle;
   }
@@ -193,6 +201,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   const [testApp, setTestApp] = useState('Telegram');
   const [testTitle, setTestTitle] = useState('New message from Team');
 
+  // Spotify / Lyrics API Search & Sync Offset
+  const [lyricsSearchQuery, setLyricsSearchQuery] = useState('');
+  const [lyricsSearchResults, setLyricsSearchResults] = useState<LyricsSearchResult[]>([]);
+  const [isSearchingLyrics, setIsSearchingLyrics] = useState(false);
+  const [lyricsSyncOffset, setLyricsSyncOffset] = useState(spotifyLyricsService.getSyncOffset());
+
   // Load capabilities & monitors when modal opens
   useEffect(() => {
     if (!isOpen) return;
@@ -272,6 +286,42 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
       const updated = await invokeCommand<any>('get_music_status');
       if (updated) setMusicStatus(updated);
     } catch {}
+  };
+
+  const handleSearchLyrics = async () => {
+    if (!lyricsSearchQuery.trim()) return;
+    setIsSearchingLyrics(true);
+    try {
+      const results = await spotifyLyricsService.searchLyrics(lyricsSearchQuery.trim());
+      setLyricsSearchResults(results);
+      if (results.length === 0) {
+        messageManager.enqueue(`No online lyrics found for "${lyricsSearchQuery.trim()}".`, 'normal', 'interaction');
+      }
+    } catch (e) {
+      console.error(e);
+      messageManager.enqueue('Lyrics search API network error.', 'high', 'interaction');
+    } finally {
+      setIsSearchingLyrics(false);
+    }
+  };
+
+  const handleApplySearchResult = async (result: LyricsSearchResult) => {
+    const raw = result.syncedLyrics || result.plainLyrics;
+    if (raw) {
+      const title = result.trackName || musicStatus?.title || 'Unknown';
+      const artist = result.artistName || musicStatus?.artist || 'Unknown';
+      const parsed = await spotifyLyricsService.setCustomLyrics(artist, title, raw);
+      setParsedLrc(parsed);
+      messageManager.enqueue(`Applied lyrics for "${title}"!`, 'normal', 'interaction');
+      setLyricsSearchResults([]);
+    }
+  };
+
+  const handleAdjustSyncOffset = (deltaSecs: number) => {
+    const newOffset = Math.round((lyricsSyncOffset + deltaSecs) * 100) / 100;
+    spotifyLyricsService.setSyncOffset(newOffset);
+    setLyricsSyncOffset(newOffset);
+    messageManager.enqueue(`Lyrics sync offset: ${newOffset > 0 ? `+${newOffset}` : newOffset}s`, 'low', 'interaction');
   };
 
   const handleSaveNotifSettings = async (newSettings: any) => {
@@ -989,6 +1039,50 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
+                {/* 7 Master Shinobi Character Sprites Console */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-white text-xs flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-amber-400" /> Master Character Sprites (7 Custom Poses)
+                    </p>
+                    <span className="text-[10px] text-gray-400">Click to switch pose live</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {[
+                      { id: 'idle', name: 'Alert Shinobi (Idle)', img: shinobiIdle, desc: 'Arms crossed, Sharingan alert' },
+                      { id: 'run-right', name: 'Aerodynamic Sprint (Run)', img: shinobiRun, desc: 'High-speed dust trail & wind' },
+                      { id: 'sing', name: 'Karaoke Vocalist (Sing)', img: shinobiSing, desc: 'Mic & live musical notes' },
+                      { id: 'happy', name: 'Victory Cheer (Happy)', img: shinobiHappy, desc: 'Hands raised, blush, confetti' },
+                      { id: 'sleep', name: 'Zen Recharge (Sleep)', img: shinobiSleep, desc: 'Peaceful rest, floating zzz' },
+                      { id: 'sad', name: 'Melancholic (Sad)', img: shinobiSad, desc: 'Slumped sitting, tear droplet' },
+                      { id: 'protect', name: 'Susanoo Chakra (Protect)', img: shinobiProtect, desc: 'Hand sign & cyan flame aura' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          onTriggerAnimation?.(item.id);
+                          messageManager.enqueue(`Switched companion pose to ${item.name}!`, 'normal', 'interaction');
+                        }}
+                        className="flex items-center gap-2.5 p-2 rounded-xl bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-900/20 text-gray-300 hover:text-white transition text-left group"
+                      >
+                        <img
+                          src={item.img}
+                          alt={item.name}
+                          className="w-12 h-12 object-contain rounded-lg bg-black/60 p-0.5 border border-white/10 group-hover:scale-105 transition flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white truncate">{item.name}</p>
+                          <p className="text-[10px] text-gray-400 line-clamp-1">{item.desc}</p>
+                          <span className="text-[9px] text-amber-300 font-semibold mt-0.5 inline-block">
+                            ▶ Trigger Pose
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* 17 Function Animation Tester Grid */}
                 <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
                   <p className="font-semibold text-gray-300 flex items-center justify-between">
@@ -1212,21 +1306,134 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
-                {/* Lyrics Synchronizer Viewer */}
-                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                {/* Lyrics Synchronizer Viewer & Sync Controls */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-gray-300 flex items-center gap-1.5">
-                      <FileText size={14} className="text-pink-400" /> Synchronized Lyrics (.lrc)
-                    </p>
-                    <span className="text-[10px] text-gray-500">
-                      Position: {Math.floor(musicStatus?.position_secs || 0)}s
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-200 text-xs flex items-center gap-1.5">
+                        <FileText size={14} className="text-pink-400" /> Synchronized Karaoke Lyrics
+                      </p>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-semibold border border-pink-500/30">
+                        {spotifyLyricsService.getCurrentSource()}
+                      </span>
+                    </div>
+
+                    {/* Sing Along with Lulu Action */}
+                    <button
+                      onClick={() => {
+                        onTriggerAnimation?.('sing');
+                        messageManager.enqueue('🎤 Lulu is singing along with your Spotify music!', 'normal', 'interaction');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-pink-600/30 border border-pink-500/40 text-pink-200 hover:bg-pink-600/50 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
+                    >
+                      <Mic size={12} className="text-pink-400" />
+                      <span>Sing Along</span>
+                    </button>
+                  </div>
+
+                  {/* Sync Offset Adjustment */}
+                  <div className="flex items-center justify-between bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                    <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                      <Sliders size={11} className="text-amber-400" /> Audio Sync Offset:
                     </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleAdjustSyncOffset(-0.25)}
+                        className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-gray-300 text-[10px] font-mono font-bold"
+                        title="Earlier by 0.25s"
+                      >
+                        -0.25s
+                      </button>
+                      <span className="text-[11px] font-mono font-bold text-amber-300 px-1">
+                        {lyricsSyncOffset > 0 ? `+${lyricsSyncOffset.toFixed(2)}` : lyricsSyncOffset.toFixed(2)}s
+                      </span>
+                      <button
+                        onClick={() => handleAdjustSyncOffset(0.25)}
+                        className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-gray-300 text-[10px] font-mono font-bold"
+                        title="Later by 0.25s"
+                      >
+                        +0.25s
+                      </button>
+                      {lyricsSyncOffset !== 0 && (
+                        <button
+                          onClick={() => handleAdjustSyncOffset(-lyricsSyncOffset)}
+                          className="ml-1 text-[9px] text-gray-500 hover:text-gray-300 underline"
+                        >
+                          reset
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <LyricsViewer
                     parsedLrc={parsedLrc}
                     currentTimeSecs={musicStatus?.position_secs || 0}
                   />
+                </div>
+
+                {/* Spotify & Online Lyrics API Search Box */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-gray-300 text-xs flex items-center gap-1.5">
+                      <Search size={13} className="text-emerald-400" /> Spotify Lyrics API Search
+                    </p>
+                    <span className="text-[10px] text-gray-500">Live multi-track database</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={lyricsSearchQuery}
+                      onChange={(e) => setLyricsSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchLyrics()}
+                      placeholder="Search artist or song title (e.g. Queen Bohemian Rhapsody)..."
+                      className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-pink-500/50"
+                    />
+                    <button
+                      onClick={handleSearchLyrics}
+                      disabled={isSearchingLyrics}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-600/50 text-xs font-bold transition flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {isSearchingLyrics ? <RefreshCw size={12} className="animate-spin" /> : <Search size={12} />}
+                      <span>Search API</span>
+                    </button>
+                  </div>
+
+                  {/* Search Results List */}
+                  {lyricsSearchResults.length > 0 && (
+                    <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {lyricsSearchResults.map((res) => (
+                        <div
+                          key={res.id}
+                          className="p-2 rounded-lg bg-black/40 border border-white/5 hover:border-pink-500/40 flex items-center justify-between transition"
+                        >
+                          <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-xs font-bold text-white truncate">{res.trackName}</p>
+                            <p className="text-[10px] text-gray-400 truncate">
+                              {res.artistName} {res.albumName ? `• ${res.albumName}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                                res.syncedLyrics
+                                  ? 'bg-emerald-500/20 text-emerald-300'
+                                  : 'bg-amber-500/20 text-amber-300'
+                              }`}
+                            >
+                              {res.syncedLyrics ? 'Karaoke Synced' : 'Plain Text'}
+                            </span>
+                            <button
+                              onClick={() => handleApplySearchResult(res)}
+                              className="px-2 py-1 rounded bg-pink-600 hover:bg-pink-500 text-white text-[10px] font-bold transition"
+                            >
+                              Sync
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Local LRC file input / import */}

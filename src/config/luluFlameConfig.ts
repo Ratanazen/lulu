@@ -120,7 +120,7 @@ export interface LuluTask {
   description: string;
   isCompleted: boolean;
   unlockedItems: string[];
-  imageKey: 'idle' | 'run' | 'happy' | 'sleep' | 'sing' | 'sad';
+  imageKey: 'idle' | 'run' | 'happy' | 'sleep' | 'sing' | 'sad' | 'protect';
   reward: string;
   actionId: string;
   category: string;
@@ -177,7 +177,7 @@ export const LULU_TASKS: LuluTask[] = [
     description: 'Summon the glowing polygonal chakra shield to defend the workstation.',
     isCompleted: true,
     unlockedItems: ['susanoo_defense'],
-    imageKey: 'idle',
+    imageKey: 'protect',
     reward: 'Protective Chakra Barrier',
     actionId: 'susanoo_defense',
     category: 'Combat',
@@ -210,7 +210,7 @@ export const LULU_TASKS: LuluTask[] = [
     description: 'Stationary ninja concentration with sharp Sharingan perception.',
     isCompleted: true,
     unlockedItems: ['deep_contemplate'],
-    imageKey: 'idle',
+    imageKey: 'protect',
     reward: '100% Deep Focus State',
     actionId: 'deep_contemplate',
     category: 'Focus',

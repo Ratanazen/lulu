@@ -210,7 +210,7 @@ export const App: React.FC = () => {
 
           if (trackChanged && status.title) {
             setCurrentSpotifyTrack({ artist: status.artist, title: status.title });
-            const lrc = await spotifyLyricsService.getLyricsForTrack(status.artist, status.title);
+            const lrc = await spotifyLyricsService.getLyricsForTrack(status.artist, status.title, status.duration_secs);
             setSpotifyLyrics(lrc);
             if (lrc) {
               const line = spotifyLyricsService.getActiveLine(lrc, status.position_secs);

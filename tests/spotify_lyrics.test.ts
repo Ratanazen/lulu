@@ -29,5 +29,27 @@ describe('spotifyLyricsService', () => {
     }
     expect(spotifyLyricsService.getActiveLine(lrc, 6.5)).toBe('Outro');
   });
+
+  it('adjusts active line detection based on sync offset', () => {
+    const raw = '[00:10.00]Line at 10s\n[00:20.00]Line at 20s';
+    const lrc = LrcParser.parse(raw);
+
+    // Default offset 0s: at 9.5s -> null
+    spotifyLyricsService.setSyncOffset(0);
+    expect(spotifyLyricsService.getActiveLine(lrc, 9.5)).toBeNull();
+
+    // Advance offset by +1.0s: position 9.5s + 1.0s = 10.5s -> 'Line at 10s'
+    spotifyLyricsService.setSyncOffset(1.0);
+    expect(spotifyLyricsService.getSyncOffset()).toBe(1.0);
+    expect(spotifyLyricsService.getActiveLine(lrc, 9.5)).toBe('Line at 10s');
+
+    // Delay offset by -1.0s: position 10.5s - 1.0s = 9.5s -> null
+    spotifyLyricsService.setSyncOffset(-1.0);
+    expect(spotifyLyricsService.getActiveLine(lrc, 10.5)).toBeNull();
+
+    // Reset offset
+    spotifyLyricsService.setSyncOffset(0);
+    expect(spotifyLyricsService.getSyncOffset()).toBe(0);
+  });
 });
 

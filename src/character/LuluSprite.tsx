@@ -5,6 +5,8 @@ import shinobiRun from '../assets/avatars/shinobi_run.png';
 import shinobiHappy from '../assets/avatars/shinobi_happy.png';
 import shinobiSleep from '../assets/avatars/shinobi_sleep.png';
 import shinobiSad from '../assets/avatars/shinobi_sad.png';
+import shinobiSing from '../assets/avatars/shinobi_sing.png';
+import shinobiProtect from '../assets/avatars/shinobi_protect.png';
 
 // Helper to sort and extract URLs from Vite glob
 const loadFrames = (globRecord: Record<string, { default: string }>) => {
@@ -316,6 +318,29 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
                 <text x="150" y="75" fill="#38bdf8" fontSize="16" fontWeight="bold">
                   ♬
                 </text>
+              </g>
+            )}
+
+            {/* Live Karaoke Singing Notes (Sing Mode) */}
+            {isSinging && (
+              <g className="animate-bounce">
+                <text x="28" y="42" fill="#f43f5e" fontSize="20" fontWeight="bold">
+                  ♪
+                </text>
+                <text x="164" y="36" fill="#a855f7" fontSize="22" fontWeight="bold">
+                  ♫
+                </text>
+                <text x="155" y="74" fill="#38bdf8" fontSize="17" fontWeight="bold">
+                  ♬
+                </text>
+              </g>
+            )}
+
+            {/* Sad Teardrop Particle (Sad Mode) */}
+            {isSad && (
+              <g className="animate-pulse" transform="translate(138, 54)">
+                <circle cx="0" cy="0" r="3.5" fill="#38bdf8" opacity="0.9" />
+                <path d="M 0 -5 L 2.5 0 L -2.5 0 Z" fill="#38bdf8" opacity="0.9" />
               </g>
             )}
 
