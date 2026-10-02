@@ -21,6 +21,7 @@ import { Heart, Coffee, Moon, Settings, Sparkles, Footprints, Music, Bell, Compa
 import { spotifyLyricsService } from '../features/lyrics/spotifyLyricsService';
 import { ParsedLrc } from '../features/lyrics/lrcParser';
 import { MediaSession, normalizeMediaSession, getProviderTheme } from '../features/media/mediaSession';
+import { LULU_TASKS, LULU_FLAME_STYLES } from '../config/luluFlameConfig';
 
 export const App: React.FC = () => {
   const [animation, setAnimation] = useState<AnimationState>('idle');
@@ -767,7 +768,7 @@ export const App: React.FC = () => {
   const handleUnlockAll = () => {
     setAnimation('happy');
     setShowLoveHearts(true);
-    messageManager.enqueue('🎉 All 9 Master Flames and 12 Shinobi Tasks are 100% Unlocked! 💥✨', 'high', 'interaction');
+    messageManager.enqueue(`🎉 All ${Object.keys(LULU_FLAME_STYLES).length} Master Flames and ${LULU_TASKS.length} Shinobi Tasks are 100% Unlocked! 💥✨`, 'high', 'interaction');
     setTimeout(() => {
       setShowLoveHearts(false);
       setAnimation(isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle');

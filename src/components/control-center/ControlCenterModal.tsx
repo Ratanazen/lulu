@@ -261,6 +261,10 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   const [isSearchingLyrics, setIsSearchingLyrics] = useState(false);
   const [lyricsSyncOffset, setLyricsSyncOffset] = useState(spotifyLyricsService.getSyncOffset());
 
+  // Tasks Filter & Search
+  const [taskCategoryFilter, setTaskCategoryFilter] = useState('All');
+  const [taskSearchQuery, setTaskSearchQuery] = useState('');
+
   // Load capabilities & monitors when modal opens
   useEffect(() => {
     if (!isOpen) return;
@@ -601,7 +605,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <span>Master Shinobi Console & All Tasks</span>
                     </h3>
                     <p className="text-xs text-gray-300 mt-0.5">
-                      Unified studio: 7 master shinobi poses, all 12 tasks, Spotify lyrics karaoke & movement cadence
+                      Unified studio: {SHINOBI_SPRITES.length} master shinobi poses, all {LULU_TASKS.length} tasks, YouTube & Spotify lyrics karaoke & movement cadence
                     </p>
                   </div>
 
@@ -609,12 +613,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         onUnlockAll?.();
-                        messageManager.enqueue('🎉 All 12 Tasks and Flames 100% Unlocked!', 'high', 'interaction');
+                        messageManager.enqueue(`🎉 All ${LULU_TASKS.length} Tasks and ${Object.keys(LULU_FLAME_STYLES).length} Flames 100% Unlocked!`, 'high', 'interaction');
                       }}
                       className="py-1.5 px-3 rounded-xl bg-emerald-600/40 border border-emerald-400/50 text-emerald-200 hover:bg-emerald-600/60 flex items-center gap-1.5 text-xs font-bold transition shadow"
                     >
                       <Unlock size={14} className="text-emerald-300" />
-                      <span>Unlock All 12 Tasks</span>
+                      <span>Unlock All {LULU_TASKS.length} Tasks</span>
                     </button>
 
                     <button
@@ -718,19 +722,19 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
-                {/* 1. SEVEN MASTER SHINOBI SPRITES CONSOLE */}
+                {/* 1. EIGHT MASTER SHINOBI SPRITES CONSOLE */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Sparkles size={14} className="text-amber-400" />
-                      <span>7 Master Shinobi Poses (High-Res 512x512)</span>
+                      <span>{SHINOBI_SPRITES.length} Master Shinobi Poses (High-Res 512x512)</span>
                     </h4>
                     <span className="text-[10px] font-semibold text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                      7 / 7 Poses Ready
+                      {SHINOBI_SPRITES.length} / {SHINOBI_SPRITES.length} Poses Ready
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
                     {SHINOBI_SPRITES.map((sprite) => (
                       <div
                         key={sprite.id}
@@ -771,15 +775,15 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
-                {/* 2. ALL 12 TASKS & ABILITIES CATALOG */}
+                {/* 2. ALL MASTER TASKS & ABILITIES CATALOG */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                       <CheckSquare size={14} className="text-emerald-400" />
-                      <span>All 12 Shinobi Tasks & Progression</span>
+                      <span>All {LULU_TASKS.length} Master Tasks & Progression</span>
                     </h4>
                     <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800/40">
-                      {LULU_TASKS.length} / {LULU_TASKS.length} Unlocked
+                      {LULU_TASKS.length} / {LULU_TASKS.length} Unlocked (100%)
                     </span>
                   </div>
 
@@ -1301,29 +1305,30 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
               </div>
             )}
 
-            {/* TASKS & PROGRESSION TAB (update tak all add img) */}
+            {/* TASKS & PROGRESSION TAB (Full Master Catalog & Ability Suite) */}
             {activeTab === 'tasks' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                {/* Header Banner */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-purple-950/40 border border-emerald-500/30 p-3.5 rounded-2xl shadow-lg">
                   <div>
-                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                      <CheckSquare size={16} className="text-emerald-400" /> Tasks & Ability Progression
+                    <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                      <CheckSquare size={16} className="text-emerald-400" /> Tasks & Ability Progression Suite
                     </h3>
-                    <p className="text-[11px] text-gray-400">
-                      All companion katas, high-speed sprint, and live audio lip-sync tasks with visual previews
+                    <p className="text-[11px] text-gray-300 mt-0.5">
+                      All {LULU_TASKS.length} companion katas, YouTube & Spotify media sync, and system telemetry tasks
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex items-center gap-1">
-                      <CheckCircle2 size={12} className="text-emerald-400" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
+                      <CheckCircle2 size={13} className="text-emerald-400" />
                       {LULU_TASKS.filter((t) => t.isCompleted).length}/{LULU_TASKS.length} Completed (100%)
                     </span>
                     <button
                       onClick={() => {
                         onUnlockAll?.();
-                        messageManager.enqueue('🎉 All tasks and flame abilities are 100% unlocked!', 'high', 'interaction');
+                        messageManager.enqueue(`🎉 All ${LULU_TASKS.length} Master Tasks & Abilities 100% Unlocked!`, 'high', 'interaction');
                       }}
-                      className="py-1 px-3 rounded-lg bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-600/50 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
+                      className="py-1 px-3 rounded-xl bg-emerald-600/40 border border-emerald-400/50 text-emerald-200 hover:bg-emerald-600/60 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
                     >
                       <Unlock size={12} className="text-emerald-300" />
                       <span>Unlock All</span>
@@ -1331,72 +1336,192 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
-                {/* Tasks Cards Grid with Visual Character Images */}
-                <div className="grid grid-cols-2 gap-3">
-                  {LULU_TASKS.map((task) => (
-                    <div
-                      key={task.id}
-                      className="bg-[#181825] border border-[#313244] hover:border-emerald-500/40 p-3 rounded-xl transition flex gap-3 items-start group"
-                    >
-                      <div className="relative flex-shrink-0">
-                        <img
-                          src={getTaskImage(task.imageKey)}
-                          alt={task.title}
-                          className="w-14 h-14 object-contain rounded-xl bg-black/40 p-1 border border-white/10 filter drop-shadow-md group-hover:scale-105 transition"
-                        />
-                        <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
-                          <CheckCircle2 size={12} className="text-black fill-emerald-400" />
-                        </div>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
-                            {task.category}
-                          </span>
-                          <span className="text-[9px] text-emerald-300 font-semibold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
-                            100% Complete
-                          </span>
-                        </div>
-                        <h4 className="text-xs font-bold text-white truncate mt-0.5">{task.title}</h4>
-                        <p className="text-[10px] text-gray-400 line-clamp-2 mt-0.5 leading-snug">
-                          {task.description}
-                        </p>
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="text-[9px] text-amber-300 font-medium truncate max-w-[140px]">
-                            🎁 {task.reward}
-                          </span>
-                          <button
-                            onClick={() => {
-                              if (task.actionId === 'sprint_dash') {
-                                onStart40sRun?.();
-                              } else if (task.actionId === 'all') {
-                                onUnlockAll?.();
-                              } else {
-                                onTriggerAnimation?.(task.actionId);
-                              }
-                              messageManager.enqueue(`Triggering task: ${task.title}!`, 'normal', 'interaction');
-                            }}
-                            className="px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-[10px] font-bold transition flex items-center gap-1"
-                          >
-                            <Zap size={10} className="text-yellow-400" />
-                            <span>Trigger</span>
-                          </button>
-                        </div>
-                      </div>
+                {/* Progress Bar & Summary Stats */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-gray-300 font-semibold flex items-center gap-1.5">
+                      <Sparkles size={12} className="text-amber-400" /> Total Mastery Progress
+                    </span>
+                    <span className="text-emerald-400 font-mono font-bold">100% Unlocked</span>
+                  </div>
+                  <div className="w-full bg-black/50 h-2 rounded-full overflow-hidden p-0.5 border border-white/5">
+                    <div className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full w-full shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px] text-gray-400">
+                    <div className="bg-black/30 p-1.5 rounded-lg border border-white/5 text-center">
+                      <span className="text-emerald-300 font-bold block">{LULU_TASKS.length} Tasks</span>
+                      <span className="text-[9px]">Full Suite</span>
                     </div>
-                  ))}
+                    <div className="bg-black/30 p-1.5 rounded-lg border border-white/5 text-center">
+                      <span className="text-amber-300 font-bold block">{Object.keys(LULU_FLAME_STYLES).length} Flames</span>
+                      <span className="text-[9px]">Smooth Cadence</span>
+                    </div>
+                    <div className="bg-black/30 p-1.5 rounded-lg border border-white/5 text-center">
+                      <span className="text-purple-300 font-bold block">{SHINOBI_SPRITES.length} Poses</span>
+                      <span className="text-[9px]">High-Res Sprites</span>
+                    </div>
+                    <div className="bg-black/30 p-1.5 rounded-lg border border-white/5 text-center">
+                      <span className="text-cyan-300 font-bold block">100% Ready</span>
+                      <span className="text-[9px]">System & Media</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* 9 Master Flame Styles Grid with Images */}
+                {/* Filter Chips & Search Bar */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {/* Category Filter Chips */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {['All', 'Movement', 'Audio', 'Vitals', 'Combat', 'Mood', 'Focus', 'System', 'Mastery'].map((cat) => {
+                        const count = cat === 'All' ? LULU_TASKS.length : LULU_TASKS.filter((t) => t.category.toLowerCase() === cat.toLowerCase()).length;
+                        const isSelected = taskCategoryFilter.toLowerCase() === cat.toLowerCase();
+                        return (
+                          <button
+                            key={cat}
+                            onClick={() => setTaskCategoryFilter(cat)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition flex items-center gap-1 ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white shadow-md border border-emerald-400/50'
+                                : 'bg-black/40 text-gray-400 hover:text-white border border-white/5 hover:border-white/10'
+                            }`}
+                          >
+                            <span>{cat}</span>
+                            <span className={`text-[9px] px-1 rounded-full ${isSelected ? 'bg-black/30 text-white' : 'bg-white/10 text-gray-400'}`}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="relative min-w-[180px]">
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={taskSearchQuery}
+                        onChange={(e) => setTaskSearchQuery(e.target.value)}
+                        placeholder="Search tasks or rewards..."
+                        className="w-full pl-7 pr-7 py-1 text-[11px] bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+                      />
+                      {taskSearchQuery && (
+                        <button
+                          onClick={() => setTaskSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tasks Cards Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {LULU_TASKS.filter((task) => {
+                    const matchesCategory =
+                      taskCategoryFilter === 'All' ||
+                      task.category.toLowerCase() === taskCategoryFilter.toLowerCase();
+                    const matchesSearch =
+                      !taskSearchQuery.trim() ||
+                      task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                      task.description.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                      task.reward.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
+                      task.category.toLowerCase().includes(taskSearchQuery.toLowerCase());
+                    return matchesCategory && matchesSearch;
+                  }).map((task) => {
+                    // Category badge colors
+                    const getCategoryColor = (cat: string) => {
+                      switch (cat.toLowerCase()) {
+                        case 'movement':
+                          return 'text-cyan-400 border-cyan-500/30 bg-cyan-950/40';
+                        case 'audio':
+                          return 'text-pink-400 border-pink-500/30 bg-pink-950/40';
+                        case 'vitals':
+                          return 'text-blue-400 border-blue-500/30 bg-blue-950/40';
+                        case 'combat':
+                          return 'text-red-400 border-red-500/30 bg-red-950/40';
+                        case 'mood':
+                          return 'text-amber-400 border-amber-500/30 bg-amber-950/40';
+                        case 'focus':
+                          return 'text-violet-400 border-violet-500/30 bg-violet-950/40';
+                        case 'system':
+                          return 'text-teal-400 border-teal-500/30 bg-teal-950/40';
+                        case 'mastery':
+                        default:
+                          return 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40';
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={task.id}
+                        className="bg-[#181825] border border-[#313244] hover:border-emerald-500/50 p-3 rounded-xl transition-all duration-200 flex gap-3 items-start group hover:bg-[#1e1e30] shadow-sm hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]"
+                      >
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={getTaskImage(task.imageKey)}
+                            alt={task.title}
+                            className="w-14 h-14 object-contain rounded-xl bg-black/40 p-1 border border-white/10 filter drop-shadow-md group-hover:scale-105 transition duration-200"
+                          />
+                          <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
+                            <CheckCircle2 size={12} className="text-black fill-emerald-400" />
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span
+                              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border ${getCategoryColor(
+                                task.category
+                              )}`}
+                            >
+                              {task.category}
+                            </span>
+                            <span className="text-[9px] text-emerald-300 font-semibold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                              ✓ 100% Mastered
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-white truncate mt-1">{task.title}</h4>
+                          <p className="text-[10px] text-gray-400 line-clamp-2 mt-0.5 leading-snug">
+                            {task.description}
+                          </p>
+                          <div className="mt-2 flex items-center justify-between gap-1.5">
+                            <span className="text-[9px] text-amber-300 font-medium truncate flex-1" title={task.reward}>
+                              🎁 {task.reward}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (task.actionId === 'sprint_dash') {
+                                  onStart40sRun?.();
+                                } else if (task.actionId === 'all') {
+                                  onUnlockAll?.();
+                                } else {
+                                  onTriggerAnimation?.(task.actionId);
+                                }
+                                messageManager.enqueue(`⚡ Activated Task: ${task.title}!`, 'normal', 'interaction');
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-200 text-[10px] font-bold transition flex items-center gap-1 shrink-0"
+                            >
+                              <Zap size={11} className="text-yellow-400" />
+                              <span>Execute</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Master Flame Abilities Grid */}
                 <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-white text-xs flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-amber-400" /> Master Flame Abilities (9/9 Unlocked)
+                      <Sparkles size={14} className="text-amber-400" /> Master Flame Abilities ({Object.keys(LULU_FLAME_STYLES).length}/{Object.keys(LULU_FLAME_STYLES).length} Unlocked)
                     </p>
-                    <span className="text-[10px] text-gray-400">Click any flame to trigger</span>
+                    <span className="text-[10px] text-gray-400">Click any flame to trigger instantly</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 pt-1">
                     {Object.values(LULU_FLAME_STYLES).map((flame) => (
                       <button
                         key={flame.id}
@@ -1406,18 +1531,18 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           } else {
                             onTriggerAnimation?.(flame.animation);
                           }
-                          messageManager.enqueue(`Triggering ${flame.name}!`, 'normal', 'interaction');
+                          messageManager.enqueue(`🔥 Triggered Flame: ${flame.name}!`, 'normal', 'interaction');
                         }}
-                        className="flex items-center gap-2.5 p-2 rounded-xl bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-900/20 text-gray-300 hover:text-amber-200 transition text-left"
+                        className="flex items-center gap-2 p-2 rounded-xl bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-950/20 text-gray-300 hover:text-amber-200 transition text-left group"
                       >
                         <img
                           src={getFlameImage(flame.id)}
                           alt={flame.name}
-                          className="w-10 h-10 object-contain rounded-lg bg-black/60 p-0.5 border border-white/10 flex-shrink-0"
+                          className="w-9 h-9 object-contain rounded-lg bg-black/60 p-0.5 border border-white/10 group-hover:scale-105 transition flex-shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="font-bold text-xs truncate">{flame.name}</div>
-                          <div className="text-[10px] text-emerald-400 font-medium">1 Frame • Smooth</div>
+                          <div className="font-bold text-[11px] truncate">{flame.name}</div>
+                          <div className="text-[9px] text-emerald-400 font-medium">1 Frame • Smooth</div>
                         </div>
                       </button>
                     ))}
