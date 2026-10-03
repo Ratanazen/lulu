@@ -74,5 +74,27 @@ describe('spotifyLyricsService', () => {
     expect(last.next).toBeNull();
     expect(last.currentIndex).toBe(2);
   });
+
+  it('cleans YouTube video titles, unread counts, and bracket tags properly', () => {
+    // Unread count and lyrics tag
+    expect(
+      spotifyLyricsService.cleanString('(809) Love Me Not - Ravyn Lenae (Lyrics) - YouTube')
+    ).toBe('Love Me Not - Ravyn Lenae');
+
+    // Official video tags and YouTube suffix
+    expect(
+      spotifyLyricsService.cleanString('Ravyn Lenae - Love Me Not (Official Music Video) - YouTube Music')
+    ).toBe('Ravyn Lenae - Love Me Not');
+
+    // Visualizer, Color Coded Lyrics, HD, 4K
+    expect(
+      spotifyLyricsService.cleanString('Coldplay - Yellow [Official Lyric Video] [4K]')
+    ).toBe('Coldplay - Yellow');
+
+    // Remastered and live tags
+    expect(
+      spotifyLyricsService.cleanString('Queen - Bohemian Rhapsody (Live at Wembley) - Remastered 2011')
+    ).toBe('Queen - Bohemian Rhapsody');
+  });
 });
 

@@ -159,6 +159,17 @@ export const LULU_TASKS: LuluTask[] = [
     category: 'Movement',
   },
   {
+    id: 'walk_go_and_back_patrol',
+    title: 'Walk Go & Back (Desktop Patrol)',
+    description: 'Autonomous smooth walking patrol pacing back and forth with edge-bounce physics.',
+    isCompleted: true,
+    unlockedItems: ['desktop_patrol'],
+    imageKey: 'idle',
+    reward: 'Smooth Walking Go & Back Cycle',
+    actionId: 'walk_go_and_back',
+    category: 'Movement',
+  },
+  {
     id: 'spotify_vocalist',
     title: 'Spotify Realtime Vocalist',
     description: 'Synchronize real-time singing and rhythmic sway with live Spotify lyrics.',

@@ -105,6 +105,10 @@ export class BehaviorEngine {
   private isAutonomousEnabled: boolean = true;
   private mode: BehaviorMode = 'NORMAL';
 
+  constructor(mode: BehaviorMode = 'NORMAL') {
+    this.mode = mode;
+  }
+
   public setMode(mode: BehaviorMode) {
     this.mode = mode;
   }

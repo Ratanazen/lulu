@@ -2,10 +2,11 @@ import { invokeCommand } from '../services/tauriBridge';
 import { NativeMonitorInfo } from '../types/pet';
 
 export type RunDirection = 'left' | 'right';
-export type RunMode = 'idle' | 'timed' | 'continuous';
+export type RunMode = 'idle' | 'timed' | 'continuous' | 'walk_patrol' | 'walk_continuous';
 
 export interface MovementState {
   isRunning: boolean;
+  isWalking: boolean;
   runMode: RunMode;
   runDirection: RunDirection;
   runStartedAt: number;
@@ -32,6 +33,7 @@ export class MovementEngine {
   private targetY: number = 200;
   private isMoving: boolean = false;
   private isContinuousRunning: boolean = false;
+  private isContinuousWalking: boolean = false;
   private isPaused: boolean = false;
   private runMode: RunMode = 'idle';
   private runDirection: RunDirection = 'right';
@@ -135,6 +137,7 @@ export class MovementEngine {
   }
 
   public sprintLap(direction?: 'left' | 'right') {
+    this.syncCurrentPosition().catch(() => {});
     if (!this.activeMonitor) {
       const delta = direction === 'left' ? -350 : 350;
       this.runTo(this.currentX + delta, this.currentY);
@@ -142,8 +145,7 @@ export class MovementEngine {
     }
 
     const minX = this.activeMonitor.work_area_x + this.config.edgePadding;
-    const maxX = this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 240 - this.config.edgePadding;
-    const floorY = this.activeMonitor.work_area_y + this.activeMonitor.work_area_height - 300 - this.config.edgePadding;
+    const maxX = this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding;
 
     let targetX = direction === 'left' ? minX : maxX;
     if (!direction) {
@@ -151,7 +153,79 @@ export class MovementEngine {
       targetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
     }
 
-    this.runTo(targetX, floorY);
+    const minY = this.activeMonitor.work_area_y + this.config.edgePadding;
+    const maxY = this.activeMonitor.work_area_y + this.activeMonitor.work_area_height - 350 - this.config.edgePadding;
+    const targetY = Math.max(minY, Math.min(maxY, this.currentY));
+
+    this.runTo(targetX, targetY);
+  }
+
+  public walkLap(direction?: 'left' | 'right') {
+    this.syncCurrentPosition().catch(() => {});
+    if (!this.activeMonitor) {
+      const delta = direction === 'left' ? -260 : 260;
+      this.walkTo(this.currentX + delta, this.currentY);
+      return;
+    }
+
+    const minX = this.activeMonitor.work_area_x + this.config.edgePadding;
+    const maxX = this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding;
+
+    let targetX = direction === 'left' ? minX : maxX;
+    if (!direction) {
+      targetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
+    }
+
+    const minY = this.activeMonitor.work_area_y + this.config.edgePadding;
+    const maxY = this.activeMonitor.work_area_y + this.activeMonitor.work_area_height - 350 - this.config.edgePadding;
+    const targetY = Math.max(minY, Math.min(maxY, this.currentY));
+
+    this.walkTo(targetX, targetY);
+  }
+
+  public walkGoAndBack(onComplete?: () => void) {
+    if (this.timedRunTimer) {
+      clearTimeout(this.timedRunTimer);
+      this.timedRunTimer = null;
+    }
+    this.runMode = 'walk_patrol';
+    this.isContinuousWalking = true;
+    this.isContinuousRunning = false;
+    this.isPaused = false;
+    this.walkLap();
+
+    this.timedRunTimer = setTimeout(() => {
+      this.stop();
+      onComplete?.();
+    }, 40000);
+  }
+
+  public startContinuousWalk() {
+    if (this.timedRunTimer) {
+      clearTimeout(this.timedRunTimer);
+      this.timedRunTimer = null;
+    }
+    this.runMode = 'walk_continuous';
+    this.isContinuousWalking = true;
+    this.isContinuousRunning = false;
+    this.isPaused = false;
+    this.runStartedAt = Date.now();
+    this.runDuration = 0;
+    this.walkLap();
+  }
+
+  public toggleContinuousWalk(): boolean {
+    if (this.isContinuousWalking || this.runMode === 'walk_continuous' || this.runMode === 'walk_patrol') {
+      this.stop();
+      return false;
+    } else {
+      this.startContinuousWalk();
+      return true;
+    }
+  }
+
+  public isContinuousWalk(): boolean {
+    return this.isContinuousWalking || this.runMode === 'walk_continuous' || this.runMode === 'walk_patrol';
   }
 
   public goHome(homeX: number, homeY: number) {
@@ -160,7 +234,8 @@ export class MovementEngine {
 
   public getState(): MovementState {
     return {
-      isRunning: this.isMoving && this.runMode !== 'idle',
+      isRunning: this.isMoving && (this.runMode === 'continuous' || this.runMode === 'timed'),
+      isWalking: this.isMoving && (this.runMode === 'walk_continuous' || this.runMode === 'walk_patrol' || (!this.isContinuousRunning && this.isMoving)),
       runMode: this.runMode,
       runDirection: this.runDirection,
       runStartedAt: this.runStartedAt,
@@ -189,6 +264,7 @@ export class MovementEngine {
   public stop() {
     this.isMoving = false;
     this.isContinuousRunning = false;
+    this.isContinuousWalking = false;
     this.isPaused = false;
     this.runMode = 'idle';
     if (this.timedRunTimer) {
@@ -293,7 +369,17 @@ export class MovementEngine {
         if (this.isContinuousRunning || this.runMode === 'continuous' || this.runMode === 'timed') {
           // Continuous boundary bounce physics
           const minX = this.activeMonitor ? this.activeMonitor.work_area_x + this.config.edgePadding : 50;
-          const maxX = this.activeMonitor ? this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 240 - this.config.edgePadding : 1500;
+          const maxX = this.activeMonitor ? this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding : 1500;
+          const nextTargetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
+          this.targetX = nextTargetX;
+          this.runDirection = nextTargetX > this.currentX ? 'right' : 'left';
+          return;
+        }
+
+        if (this.isContinuousWalking || this.runMode === 'walk_continuous' || this.runMode === 'walk_patrol') {
+          // Continuous boundary bounce physics for walking (Walk Go & Back!)
+          const minX = this.activeMonitor ? this.activeMonitor.work_area_x + this.config.edgePadding : 50;
+          const maxX = this.activeMonitor ? this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding : 1500;
           const nextTargetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
           this.targetX = nextTargetX;
           this.runDirection = nextTargetX > this.currentX ? 'right' : 'left';

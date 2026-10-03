@@ -45,6 +45,8 @@ interface LuluSpriteProps {
   cursorOffset?: { x: number; y: number };
   isDragging?: boolean;
   speedMultiplier?: number;
+  isMusicPlaying?: boolean;
+  fpsLimit?: number;
 }
 
 export const LuluSprite: React.FC<LuluSpriteProps> = ({
@@ -57,18 +59,22 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
   cursorOffset,
   isDragging = false,
   speedMultiplier = 1.0, // Normal, smooth cadence default
+  isMusicPlaying = false,
+  fpsLimit = 30,
 }) => {
   const [frame, setFrame] = useState(0);
   const [tick, setTick] = useState(0);
   const activeCursor = cursorPos || cursorOffset;
 
-  // Continuous physics clock (40ms = 25 updates/sec) for organic sinusoidal breathing, swaying, wobbling
+  // Continuous physics clock scaled by fpsLimit to save CPU/battery on low-spec hardware
   useEffect(() => {
+    const targetFps = Math.max(15, Math.min(60, fpsLimit));
+    const intervalMs = Math.round(1000 / targetFps);
     const timer = setInterval(() => {
       setTick((t) => (t + 1) % 100000);
-    }, 40);
+    }, intervalMs);
     return () => clearInterval(timer);
-  }, []);
+  }, [fpsLimit]);
 
   // Behavior state detection across all 17 functions
   const isRunning = animation === 'run-left' || animation === 'run-right' || (animation as string) === 'run';
@@ -265,7 +271,7 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
           <img
             src={activeArtwork}
             alt="Lulu Shadow Shinobi"
-            className="w-52 h-52 object-contain select-none pointer-events-none filter drop-shadow-md"
+            className="w-44 h-44 object-contain select-none pointer-events-none filter drop-shadow-md"
             draggable={false}
           />
 
@@ -382,7 +388,7 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
               </g>
             )}
 
-            {/* Sleep Floating Zzz Particle */}
+            {/* Sleep Floating Zzz & Lullaby Notes Particle */}
             {isSleeping && (
               <g className="animate-pulse" transform="translate(142, 48)">
                 <text x="0" y="20" fill="#c084fc" fontSize="16" fontWeight="bold">
@@ -394,6 +400,16 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
                 <text x="18" y="-2" fill="#a855f7" fontSize="10" fontWeight="bold">
                   z
                 </text>
+                {isMusicPlaying && (
+                  <g className="animate-bounce">
+                    <text x="-24" y="16" fill="#38bdf8" fontSize="14" fontWeight="bold">
+                      ♪
+                    </text>
+                    <text x="-12" y="-2" fill="#f43f5e" fontSize="15" fontWeight="bold">
+                      ♫
+                    </text>
+                  </g>
+                )}
               </g>
             )}
           </svg>
@@ -605,11 +621,14 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
             </g>
           )}
 
-          {/* Sleeping Zzz Bubble */}
+          {/* Sleeping Zzz Bubble & Lullaby Note */}
           {animation === 'sleep' && (
             <g className="animate-pulse">
               <text x="120" y="52" fill="#c084fc" fontSize="15" fontWeight="bold">Z</text>
               <text x="130" y="40" fill="#e879f9" fontSize="12" fontWeight="bold">z</text>
+              {isMusicPlaying && (
+                <text x="105" y="60" fill="#38bdf8" fontSize="13" fontWeight="bold">♪</text>
+              )}
             </g>
           )}
         </svg>

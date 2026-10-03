@@ -35,6 +35,7 @@ export interface CleanedTrack {
   artist: string;
   title: string;
   cleanTitle: string;
+  searchQuery: string;
   isYouTube: boolean;
   provider: MediaProviderKind;
 }
@@ -48,6 +49,7 @@ export function normalizeMediaSession(session: MediaSession | null): CleanedTrac
       artist: '',
       title: '',
       cleanTitle: '',
+      searchQuery: '',
       isYouTube: false,
       provider: 'unknown',
     };
@@ -56,33 +58,34 @@ export function normalizeMediaSession(session: MediaSession | null): CleanedTrac
   let rawTitle = session.title.trim();
   let rawArtist = (session.artist || '').trim();
 
+  // Strip unread notification counts like "(809) " or "(1) "
+  rawTitle = rawTitle.replace(/^\s*\(\d+\)\s*/, '').trim();
+
   // Strip common YouTube browser suffixes
-  if (rawTitle.toLowerCase().endsWith(' - youtube')) {
-    rawTitle = rawTitle.slice(0, -10).trim();
-  }
-  if (rawTitle.toLowerCase().endsWith(' | youtube')) {
-    rawTitle = rawTitle.slice(0, -10).trim();
-  }
+  rawTitle = rawTitle
+    .replace(/\s*-\s*youtube(\s*music)?$/i, '')
+    .replace(/\s*\|\s*youtube(\s*music)?$/i, '')
+    .trim();
 
   // Strip brackets (e.g. (Official Music Video), [Official Audio], (Lyrics), etc.)
-  const bracketRegex = /\s*[\(\[](official\s*(music\s*)?(video|audio)|video|audio|lyrics?|hd|4k|mv|remastered|visualizer)[\)\]]/gi;
+  const bracketRegex = /\s*[\(\[](official\s*(music\s*)?(video|audio)?|video|audio|lyrics?|hd|4k|mv|remastered|visualizer|color\s*coded(\s*lyrics)?|eng\s*sub|live|acoustic|performance)[\)\]]/gi;
   const cleaned = rawTitle.replace(bracketRegex, '').trim();
 
   let finalTitle = cleaned;
   let finalArtist = rawArtist;
 
-  // If title has "Artist - Song" and artist is missing or identical to channel name
+  // If title has "Artist - Song" or "Song - Artist"
   if (cleaned.includes(' - ')) {
-    const [art, song] = cleaned.split(' - ');
-    if (art && song) {
-      finalArtist = art.trim();
-      finalTitle = song.replace(bracketRegex, '').trim();
+    const [partA, partB] = cleaned.split(' - ');
+    if (partA && partB) {
+      finalArtist = partA.trim();
+      finalTitle = partB.replace(bracketRegex, '').trim();
     }
   } else if (cleaned.includes(' – ')) {
-    const [art, song] = cleaned.split(' – ');
-    if (art && song) {
-      finalArtist = art.trim();
-      finalTitle = song.replace(bracketRegex, '').trim();
+    const [partA, partB] = cleaned.split(' – ');
+    if (partA && partB) {
+      finalArtist = partA.trim();
+      finalTitle = partB.replace(bracketRegex, '').trim();
     }
   }
 
@@ -92,16 +95,20 @@ export function normalizeMediaSession(session: MediaSession | null): CleanedTrac
     artist: finalArtist || (isYouTube ? 'YouTube Channel' : 'Unknown Artist'),
     title: finalTitle,
     cleanTitle: finalTitle.replace(/[\(\[].*?[\)\]]/g, '').trim(),
+    searchQuery: cleaned,
     isYouTube,
     provider: session.provider,
   };
 }
+
+export type MediaProviderIcon = 'spotify' | 'youtube' | 'youtube_music' | 'mpris' | 'media';
 
 export interface ProviderTheme {
   primaryColor: string;
   accentColor: string;
   badgeText: string;
   badgeIcon: string;
+  iconType: MediaProviderIcon;
   glowColor: string;
   borderColor: string;
 }
@@ -114,6 +121,7 @@ export function getProviderTheme(provider: MediaProviderKind): ProviderTheme {
         accentColor: '#34d399',
         badgeText: 'Spotify',
         badgeIcon: '🟢',
+        iconType: 'spotify',
         glowColor: 'rgba(29, 185, 84, 0.45)',
         borderColor: 'border-emerald-500/80',
       };
@@ -123,6 +131,7 @@ export function getProviderTheme(provider: MediaProviderKind): ProviderTheme {
         accentColor: '#fb7185',
         badgeText: 'YT Music',
         badgeIcon: '🎵',
+        iconType: 'youtube_music',
         glowColor: 'rgba(255, 78, 69, 0.45)',
         borderColor: 'border-rose-500/80',
       };
@@ -132,6 +141,7 @@ export function getProviderTheme(provider: MediaProviderKind): ProviderTheme {
         accentColor: '#f87171',
         badgeText: 'YouTube',
         badgeIcon: '🔴',
+        iconType: 'youtube',
         glowColor: 'rgba(255, 0, 0, 0.45)',
         borderColor: 'border-red-500/80',
       };
@@ -141,6 +151,7 @@ export function getProviderTheme(provider: MediaProviderKind): ProviderTheme {
         accentColor: '#818cf8',
         badgeText: 'MPRIS',
         badgeIcon: '🎧',
+        iconType: 'mpris',
         glowColor: 'rgba(99, 102, 241, 0.45)',
         borderColor: 'border-indigo-500/80',
       };
@@ -150,6 +161,7 @@ export function getProviderTheme(provider: MediaProviderKind): ProviderTheme {
         accentColor: '#a78bfa',
         badgeText: 'Media',
         badgeIcon: '🐾',
+        iconType: 'media',
         glowColor: 'rgba(139, 92, 246, 0.45)',
         borderColor: 'border-purple-500/80',
       };

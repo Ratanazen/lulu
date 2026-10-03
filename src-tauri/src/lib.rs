@@ -45,6 +45,8 @@ pub fn run() {
             window::set_always_on_top,
             window::set_ignore_cursor_events,
             window::show_window,
+            window::focus_window,
+            window::start_dragging,
             window::hide_window,
             window::exit_app,
 

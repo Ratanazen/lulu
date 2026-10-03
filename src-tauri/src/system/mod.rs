@@ -22,6 +22,55 @@ use processes::ProcessSummary;
 
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
+use std::sync::{Mutex, OnceLock};
+
+struct SystemState {
+    sys: System,
+    prev_cpu_times: Option<(u64, u64)>,
+}
+
+static SYSTEM_STATE: OnceLock<Mutex<SystemState>> = OnceLock::new();
+
+fn read_proc_stat() -> Option<(u64, u64)> {
+    let stat = std::fs::read_to_string("/proc/stat").ok()?;
+    let line = stat.lines().next()?;
+    if !line.starts_with("cpu ") {
+        return None;
+    }
+    let parts: Vec<u64> = line
+        .split_whitespace()
+        .skip(1)
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    if parts.len() >= 4 {
+        let user = parts[0];
+        let nice = parts[1];
+        let system = parts[2];
+        let idle = parts[3];
+        let iowait = *parts.get(4).unwrap_or(&0);
+        let irq = *parts.get(5).unwrap_or(&0);
+        let softirq = *parts.get(6).unwrap_or(&0);
+        let steal = *parts.get(7).unwrap_or(&0);
+
+        let idle_all = idle + iowait;
+        let total = user + nice + system + idle_all + irq + softirq + steal;
+        Some((total, idle_all))
+    } else {
+        None
+    }
+}
+
+fn get_system_state() -> &'static Mutex<SystemState> {
+    SYSTEM_STATE.get_or_init(|| {
+        let mut sys = System::new_all();
+        sys.refresh_all();
+        let cpu_times = read_proc_stat();
+        Mutex::new(SystemState {
+            sys,
+            prev_cpu_times: cpu_times,
+        })
+    })
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -56,11 +105,43 @@ pub struct SystemEngine;
 
 impl SystemEngine {
     pub fn probe_full() -> ComprehensiveSystemInfo {
-        let mut sys = System::new_all();
-        sys.refresh_all();
+        let mut state = get_system_state().lock().unwrap();
+        state.sys.refresh_cpu_usage();
+        state.sys.refresh_memory();
+        state.sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
-        let cpu_info = CpuInfo::probe(&sys);
-        let mem_info = MemoryInfo::probe(&sys);
+        let current_cpu_times = read_proc_stat();
+        let mut usage_percent = state.sys.global_cpu_usage();
+
+        if let (Some(curr), Some(prev)) = (current_cpu_times, state.prev_cpu_times) {
+            let delta_total = curr.0.saturating_sub(prev.0);
+            let delta_idle = curr.1.saturating_sub(prev.1);
+            if delta_total > 0 {
+                let calculated = ((delta_total.saturating_sub(delta_idle)) as f64 / delta_total as f64 * 100.0) as f32;
+                usage_percent = calculated.clamp(0.0, 100.0);
+            }
+        } else if usage_percent <= 0.0 {
+            // First run sampling delay for instant live telemetry
+            std::thread::sleep(std::time::Duration::from_millis(60));
+            state.sys.refresh_cpu_usage();
+            let next_cpu_times = read_proc_stat();
+            if let (Some(curr), Some(prev)) = (next_cpu_times, current_cpu_times) {
+                let delta_total = curr.0.saturating_sub(prev.0);
+                let delta_idle = curr.1.saturating_sub(prev.1);
+                if delta_total > 0 {
+                    let calculated = ((delta_total.saturating_sub(delta_idle)) as f64 / delta_total as f64 * 100.0) as f32;
+                    usage_percent = calculated.clamp(0.0, 100.0);
+                }
+            }
+            if usage_percent <= 0.0 {
+                usage_percent = state.sys.global_cpu_usage();
+            }
+        }
+
+        state.prev_cpu_times = current_cpu_times.or(state.prev_cpu_times);
+
+        let cpu_info = CpuInfo::probe_with_usage(&state.sys, usage_percent);
+        let mem_info = MemoryInfo::probe(&state.sys);
         let gpu_info = GpuInfo::probe();
         let disk_info = DiskInfo::probe();
         let display_info = DisplayInfo::probe();
@@ -68,7 +149,7 @@ impl SystemEngine {
         let os_info = OsInfo::probe();
         let session_info = SessionInfo::probe();
         let network_info = NetworkInfo::probe();
-        let process_info = ProcessSummary::probe(&sys);
+        let process_info = ProcessSummary::probe(&state.sys);
 
         let is_low_spec = mem_info.total_mb <= 8192 || cpu_info.logical_cores <= 4 || !gpu_info.is_discrete;
 

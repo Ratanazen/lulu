@@ -46,6 +46,18 @@ import {
   Cpu,
   Battery,
   Laptop,
+  Footprints,
+  Youtube,
+  Radio,
+  Headphones,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+  Gamepad2,
+  Target,
+  VolumeX,
+  PawPrint,
+  Flame,
 } from 'lucide-react';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
 import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
@@ -117,20 +129,40 @@ export const SHINOBI_SPRITES = [
   { id: 'protect', name: 'Flame Shield', image: shinobiProtect, badge: 'Susanoo Barrier', desc: 'Chakra hand seal with cyan flame barrier' },
 ];
 
+export const renderBehaviorIcon = (id: BehaviorMode, size = 16) => {
+  switch (id) {
+    case 'SYSTEM_SYNC':
+      return <Cpu size={size} className="text-cyan-400 shrink-0" />;
+    case 'ACTIVE':
+      return <Activity size={size} className="text-amber-400 shrink-0" />;
+    case 'PLAYFUL':
+      return <Gamepad2 size={size} className="text-pink-400 shrink-0" />;
+    case 'NORMAL':
+      return <PawPrint size={size} className="text-purple-400 shrink-0" />;
+    case 'CALM':
+      return <Moon size={size} className="text-indigo-400 shrink-0" />;
+    case 'FOCUSED':
+      return <Target size={size} className="text-blue-400 shrink-0" />;
+    case 'QUIET':
+      return <VolumeX size={size} className="text-gray-400 shrink-0" />;
+    default:
+      return <PawPrint size={size} className="text-purple-400 shrink-0" />;
+  }
+};
+
 export const ALL_BEHAVIOR_MODES: {
   id: BehaviorMode;
   label: string;
   desc: string;
-  icon: string;
   badge: string;
 }[] = [
-  { id: 'SYSTEM_SYNC', label: 'Follow System', desc: 'Syncs with computer CPU load & battery in real-time', icon: '💻', badge: 'Telemetry' },
-  { id: 'ACTIVE', label: 'Active Traversal', desc: 'Continuous desktop patrol and high-speed sprint', icon: '🏃', badge: 'Continuous' },
-  { id: 'PLAYFUL', label: 'Playful Cheer', desc: 'Frequent katas, dances, and affection routines', icon: '🎮', badge: 'High Energy' },
-  { id: 'NORMAL', label: 'Balanced Normal', desc: 'Classic lifelike desktop companion behavior', icon: '🐾', badge: 'Default' },
-  { id: 'CALM', label: 'Calm & Restful', desc: 'Slow strolls, quiet rests, and gentle breathing', icon: '🧘', badge: 'Relaxed' },
-  { id: 'FOCUSED', label: 'Focused Study', desc: 'Stays still next to your window while you work', icon: '🎯', badge: 'Focus' },
-  { id: 'QUIET', label: 'Quiet Muted', desc: 'Completely stationary and silent guard', icon: '🤫', badge: 'Muted' },
+  { id: 'SYSTEM_SYNC', label: 'Follow System', desc: 'Syncs with computer CPU load & battery in real-time', badge: 'Telemetry' },
+  { id: 'ACTIVE', label: 'Active Traversal', desc: 'Continuous desktop patrol and high-speed sprint', badge: 'Continuous' },
+  { id: 'PLAYFUL', label: 'Playful Cheer', desc: 'Frequent katas, dances, and affection routines', badge: 'High Energy' },
+  { id: 'NORMAL', label: 'Balanced Normal', desc: 'Classic lifelike desktop companion behavior', badge: 'Default' },
+  { id: 'CALM', label: 'Calm & Restful', desc: 'Slow strolls, quiet rests, and gentle breathing', badge: 'Relaxed' },
+  { id: 'FOCUSED', label: 'Focused Study', desc: 'Stays still next to your window while you work', badge: 'Focus' },
+  { id: 'QUIET', label: 'Quiet Muted', desc: 'Completely stationary and silent guard', badge: 'Muted' },
 ];
 
 interface ControlCenterModalProps {
@@ -151,6 +183,9 @@ interface ControlCenterModalProps {
   onSetFocusInterval?: (secs: number) => void;
   isContinuousRunning?: boolean;
   onToggleContinuousRun?: () => void;
+  isContinuousWalking?: boolean;
+  onToggleContinuousWalk?: () => void;
+  onWalkGoAndBack?: () => void;
   is40sRunActive?: boolean;
   onStart40sRun?: () => void;
   parsedLrc?: ParsedLrc | null;
@@ -169,6 +204,10 @@ interface ControlCenterModalProps {
   onUnlockAll?: () => void;
   systemTelemetry?: SystemTelemetry | null;
   activeMediaSession?: MediaSession | null;
+  isLyricsCollapsed?: boolean;
+  onToggleCollapseLyrics?: () => void;
+  lyricsPosition?: 'top' | 'bottom';
+  onToggleLyricsPosition?: () => void;
 }
 
 type TabType =
@@ -200,6 +239,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   onSetFocusInterval,
   isContinuousRunning = false,
   onToggleContinuousRun,
+  isContinuousWalking = false,
+  onToggleContinuousWalk,
+  onWalkGoAndBack,
   is40sRunActive = false,
   onStart40sRun,
   parsedLrc: externalParsedLrc = null,
@@ -218,6 +260,10 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   onUnlockAll,
   systemTelemetry = null,
   activeMediaSession = null,
+  isLyricsCollapsed = false,
+  onToggleCollapseLyrics,
+  lyricsPosition = 'top',
+  onToggleLyricsPosition,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('show_all');
 
@@ -237,7 +283,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   const [customLrcText, setCustomLrcText] = useState('');
 
   useEffect(() => {
-    if (externalParsedLrc) {
+    if (externalParsedLrc !== undefined) {
       setParsedLrc(externalParsedLrc);
     }
   }, [externalParsedLrc]);
@@ -309,6 +355,24 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
     return () => clearInterval(timer);
   }, [isOpen, activeTab]);
+
+  // Quick Tab Navigation & Modal Dismiss Keyboard Shortcuts
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.altKey && e.key === '1') {
+        setActiveTab('show_all');
+      } else if (e.altKey && e.key === '2') {
+        setActiveTab('overview');
+      } else if (e.altKey && e.key === '3') {
+        setActiveTab('tasks');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isOpen, onClose]);
 
   const runDoctor = async () => {
     setIsDoctorRunning(true);
@@ -460,11 +524,26 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 select-none">
-      <div className="bg-[#14141e] border border-[#313244] rounded-2xl shadow-2xl w-full max-w-3xl h-full max-h-[620px] flex flex-col overflow-hidden text-gray-200 text-xs">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 select-none pointer-events-auto"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#14141e] border border-[#313244] rounded-2xl shadow-2xl w-full max-w-3xl h-full max-h-[620px] flex flex-col overflow-hidden text-gray-200 text-xs pointer-events-auto"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#1e1e2e] border-b border-[#313244] shrink-0">
-          <div className="flex items-center gap-2 font-bold text-sm text-purple-300">
+        <div
+          onMouseDown={(e) => {
+            if (e.button === 0 && !(e.target as HTMLElement).closest('button')) {
+              invokeCommand('start_dragging').catch(() => {});
+            }
+          }}
+          className="flex items-center justify-between px-4 py-3 bg-[#1e1e2e] border-b border-[#313244] shrink-0 cursor-move select-none"
+        >
+          <div className="flex items-center gap-2 font-bold text-sm text-purple-300 pointer-events-none">
             <Sparkles size={16} className="text-yellow-400" />
             <span>Lulu Control Center</span>
             <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
@@ -472,8 +551,13 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
             </span>
           </div>
           <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition pointer-events-auto cursor-pointer"
+            title="Close Control Center"
           >
             <X size={16} />
           </button>
@@ -492,7 +576,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
               }`}
             >
               <Sparkles size={14} className="text-amber-400" />
-              <span>⚡ Show All</span>
+              <span>Show All</span>
             </button>
 
             <button
@@ -622,6 +706,27 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     </button>
 
                     <button
+                      type="button"
+                      onClick={() => {
+                        if (isContinuousWalking) {
+                          onToggleContinuousWalk?.();
+                        } else {
+                          onWalkGoAndBack?.();
+                        }
+                      }}
+                      className={`py-1.5 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition shadow ${
+                        isContinuousWalking
+                          ? 'bg-blue-600 text-white border-blue-400'
+                          : 'bg-blue-600/40 border-blue-400/50 text-blue-200 hover:bg-blue-600/60'
+                      }`}
+                      title="Walk Go & Back (Patrol back and forth across screen)"
+                    >
+                      <Footprints size={14} className="text-cyan-300" />
+                      <span>{isContinuousWalking ? 'Stop Walk' : 'Walk Go & Back'}</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => {
                         if (isContinuousRunning) {
                           onToggleContinuousRun?.();
@@ -656,8 +761,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
                     <div>
                       <p className="text-[10px] text-gray-400">State / Sleep</p>
-                      <p className="text-xs font-bold text-white">
-                        {isSleeping ? '💤 Asleep' : '⚡ Awake'}
+                      <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                        {isSleeping ? <Moon size={12} className="text-indigo-400" /> : <Zap size={12} className="text-yellow-400" />}
+                        <span>{isSleeping ? 'Asleep' : 'Awake'}</span>
                       </p>
                     </div>
                     <button
@@ -689,8 +795,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   <div className="bg-[#181825] border border-[#313244] p-2.5 rounded-xl flex items-center justify-between">
                     <div>
                       <p className="text-[10px] text-gray-400">Text & Lyrics Mode</p>
-                      <p className="text-xs font-bold text-white">
-                        {lyricsMode === 'auto_lyrics' ? '🎵 Live Lyrics Sync' : '🐾 Normal Text Lulu'}
+                      <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                        {lyricsMode === 'auto_lyrics' ? <Music size={12} className="text-emerald-400" /> : <PawPrint size={12} className="text-purple-400" />}
+                        <span className="truncate">{lyricsMode === 'auto_lyrics' ? 'Lyrics Sync' : 'Normal Text'}</span>
                       </p>
                     </div>
                     <button
@@ -709,7 +816,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <div>
                       <p className="text-[10px] text-gray-400">Movement</p>
                       <p className="text-xs font-bold text-white">
-                        {isMovementPaused ? '⏸ Paused' : `${speedMultiplier}x Active`}
+                        {isMovementPaused ? 'Paused' : `${speedMultiplier}x Active`}
                       </p>
                     </div>
                     <button
@@ -718,6 +825,51 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       title={isMovementPaused ? 'Resume' : 'Pause'}
                     >
                       {isMovementPaused ? <Play size={14} /> : <Pause size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Companion Lyrics HUD Layout & Hinge Controls */}
+                <div className="bg-[#181825] border border-purple-500/30 p-3 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-purple-900/10 via-[#181825] to-indigo-900/10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      <Music size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                        Companion Lyrics HUD Layout & Hinge
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        Adjust lyrics card sizing and anchor position so Lulu is never squished or pushed down
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Collapsible / Mini Pill Toggle */}
+                    <button
+                      type="button"
+                      onClick={onToggleCollapseLyrics}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${
+                        isLyricsCollapsed
+                          ? 'bg-blue-600/40 border-blue-400 text-blue-200'
+                          : 'bg-purple-600/30 border-purple-400 text-purple-200'
+                      }`}
+                      title={isLyricsCollapsed ? 'Expand to Full Lyrics Card' : 'Collapse to Compact Mini Pill'}
+                    >
+                      {isLyricsCollapsed ? <ChevronDown size={14} className="text-blue-400" /> : <ChevronUp size={14} className="text-purple-400" />}
+                      <span>{isLyricsCollapsed ? 'Mini Pill (26px)' : 'Full Card'}</span>
+                    </button>
+
+                    {/* Hinge Position Toggle */}
+                    <button
+                      type="button"
+                      onClick={onToggleLyricsPosition}
+                      className="px-3 py-1.5 rounded-lg border border-indigo-400/50 bg-indigo-600/30 text-indigo-200 hover:bg-indigo-600/50 text-xs font-bold transition flex items-center gap-1.5"
+                      title={lyricsPosition === 'top' ? 'Switch to Bottom Hinge' : 'Switch to Top Hinge'}
+                    >
+                      <ArrowUpDown size={14} className="text-indigo-400" />
+                      <span>{lyricsPosition === 'top' ? 'Hinged: Top' : 'Hinged: Bottom'}</span>
                     </button>
                   </div>
                 </div>
@@ -822,9 +974,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                               🎁 {task.reward}
                             </span>
                             <button
+                              type="button"
                               onClick={() => {
                                 if (task.actionId === 'sprint_dash') {
                                   onStart40sRun?.();
+                                } else if (task.actionId === 'walk_go_and_back') {
+                                  onWalkGoAndBack?.();
                                 } else if (task.actionId === 'all') {
                                   onUnlockAll?.();
                                 } else {
@@ -992,7 +1147,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   {/* Lyrics Display */}
                   <LyricsViewer
                     parsedLrc={parsedLrc}
-                    currentTimeSecs={musicStatus?.position_secs || 0}
+                    currentTimeSecs={activeMediaSession?.position_ms ? activeMediaSession.position_ms / 1000 : (musicStatus?.position_secs || 0)}
                   />
                 </div>
 
@@ -1031,115 +1186,261 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
-                {/* 5. COMPUTER SYSTEM TELEMETRY & FOLLOW MODE (config for follow system comoputer all) */}
-                <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                {/* 5. CPU & RAM HARDWARE CONFIG & TELEMETRY */}
+                <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-4">
+                  {/* Header & System Sync Toggle */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
                     <div className="flex items-center gap-2">
-                      <Cpu size={16} className="text-cyan-400" />
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                        Computer System Telemetry & Follow Mode
-                      </h4>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
-                        preferences.behavior_mode === 'SYSTEM_SYNC'
-                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 animate-pulse'
-                          : 'bg-gray-800 text-gray-400 border-white/5'
-                      }`}>
-                        {preferences.behavior_mode === 'SYSTEM_SYNC' ? '⚡ System Follow Active' : 'Standby'}
-                      </span>
+                      <div className="p-1.5 bg-cyan-500/10 rounded-lg text-cyan-400 border border-cyan-500/20">
+                        <Cpu size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white tracking-wider flex items-center gap-1.5">
+                          CPU & RAM Performance Engine
+                        </h4>
+                        <p className="text-[10px] text-gray-400">Real-time hardware telemetry & resource throttling</p>
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        const newMode = preferences.behavior_mode === 'SYSTEM_SYNC' ? 'NORMAL' : 'SYSTEM_SYNC';
-                        onUpdatePreferences({ ...preferences, behavior_mode: newMode });
-                        messageManager.enqueue(
-                          newMode === 'SYSTEM_SYNC'
-                            ? '💻 Follow Computer System Mode activated! Lulu now syncs with CPU & Battery! ⚡'
-                            : '🐾 Returned to Normal companion mode.',
-                          'high',
-                          'interaction'
-                        );
-                      }}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow ${
-                        preferences.behavior_mode === 'SYSTEM_SYNC'
-                          ? 'bg-cyan-600 text-white shadow-cyan-500/30'
-                          : 'bg-cyan-600/30 border border-cyan-500/40 text-cyan-200 hover:bg-cyan-600/50'
-                      }`}
-                    >
-                      <Laptop size={12} />
-                      <span>{preferences.behavior_mode === 'SYSTEM_SYNC' ? '✓ Following System Active' : 'Enable Follow System Mode'}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const newMode = preferences.behavior_mode === 'SYSTEM_SYNC' ? 'NORMAL' : 'SYSTEM_SYNC';
+                          onUpdatePreferences({ ...preferences, behavior_mode: newMode });
+                          messageManager.enqueue(
+                            newMode === 'SYSTEM_SYNC'
+                              ? '💻 Follow Computer System Mode activated! Lulu now syncs with CPU & Battery! ⚡'
+                              : '🐾 Returned to Normal companion mode.',
+                            'high',
+                            'interaction'
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow ${
+                          preferences.behavior_mode === 'SYSTEM_SYNC'
+                            ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-cyan-500/30 border border-cyan-400/40'
+                            : 'bg-white/5 border border-white/10 text-cyan-200 hover:bg-white/10'
+                        }`}
+                      >
+                        <Laptop size={13} />
+                        <span>{preferences.behavior_mode === 'SYSTEM_SYNC' ? '✓ System Follow Active' : 'Enable System Follow'}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Telemetry Metrics Grid */}
+                  {/* Telemetry Metrics Grid (CPU, RAM, Battery, OS) */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {/* CPU Usage */}
-                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
-                      <div className="flex justify-between text-[10px] text-gray-400">
-                        <span className="flex items-center gap-1"><Cpu size={11} className="text-cyan-400" /> CPU Load</span>
-                        <span className="font-mono font-bold text-white">{Math.round(systemTelemetry?.cpuPercent ?? 0)}%</span>
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1 font-medium"><Cpu size={12} className="text-cyan-400" /> CPU Load</span>
+                        <span className="font-mono font-bold text-white text-xs">{Math.round(systemTelemetry?.cpuPercent ?? 0)}%</span>
                       </div>
-                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-[#313244] rounded-full overflow-hidden">
                         <div
-                          className={`h-full transition-all ${
-                            (systemTelemetry?.cpuPercent ?? 0) > 70 ? 'bg-red-500' : (systemTelemetry?.cpuPercent ?? 0) > 40 ? 'bg-amber-400' : 'bg-cyan-400'
+                          className={`h-full transition-all duration-300 ${
+                            (systemTelemetry?.cpuPercent ?? 0) > 75 ? 'bg-red-500' : (systemTelemetry?.cpuPercent ?? 0) > 40 ? 'bg-amber-400' : 'bg-cyan-400'
                           }`}
                           style={{ width: `${Math.min(100, systemTelemetry?.cpuPercent ?? 0)}%` }}
                         />
                       </div>
-                      <p className="text-[9px] text-gray-500 truncate">
-                        {systemTelemetry?.cpuCores ? `${systemTelemetry.cpuCores} Logical Cores` : 'Multi-core CPU'}
-                      </p>
+                      <div className="flex justify-between text-[9px] text-gray-400">
+                        <span>{systemTelemetry?.cpuCores ? `${systemTelemetry.cpuCores} Cores` : 'Multi-core'}</span>
+                        <span className={systemTelemetry && systemTelemetry.cpuPercent > 70 ? 'text-red-400 font-bold' : 'text-emerald-400'}>
+                          {systemTelemetry && systemTelemetry.cpuPercent > 70 ? 'High' : 'Normal'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* RAM Usage */}
-                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
-                      <div className="flex justify-between text-[10px] text-gray-400">
-                        <span className="flex items-center gap-1"><Activity size={11} className="text-purple-400" /> Memory</span>
-                        <span className="font-mono font-bold text-white">{Math.round(systemTelemetry?.memPercent ?? 0)}%</span>
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1 font-medium"><Activity size={12} className="text-purple-400" /> RAM Memory</span>
+                        <span className="font-mono font-bold text-white text-xs">{Math.round(systemTelemetry?.memPercent ?? 0)}%</span>
                       </div>
-                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-[#313244] rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-purple-500 transition-all"
+                          className={`h-full transition-all duration-300 ${
+                            (systemTelemetry?.memPercent ?? 0) > 85 ? 'bg-red-500' : (systemTelemetry?.memPercent ?? 0) > 60 ? 'bg-amber-400' : 'bg-purple-500'
+                          }`}
                           style={{ width: `${Math.min(100, systemTelemetry?.memPercent ?? 0)}%` }}
                         />
                       </div>
-                      <p className="text-[9px] text-gray-500 truncate">
-                        {Math.round((systemTelemetry?.memUsedMb ?? 0) / 1024 * 10) / 10} / {Math.round((systemTelemetry?.memTotalMb ?? 1) / 1024 * 10) / 10} GB
-                      </p>
+                      <div className="flex justify-between text-[9px] text-gray-400">
+                        <span>{Math.round((systemTelemetry?.memUsedMb ?? 0) / 1024 * 10) / 10} / {Math.round((systemTelemetry?.memTotalMb ?? 1) / 1024 * 10) / 10} GB</span>
+                        <span className="text-purple-300">{Math.round(systemTelemetry?.memUsedMb ?? 0)} MB</span>
+                      </div>
                     </div>
 
                     {/* Battery Status */}
-                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
-                      <div className="flex justify-between text-[10px] text-gray-400">
-                        <span className="flex items-center gap-1"><Battery size={11} className="text-emerald-400" /> Battery</span>
-                        <span className="font-mono font-bold text-white">
-                          {systemTelemetry?.batteryPercent !== undefined ? `${systemTelemetry.batteryPercent}%` : 'AC Power'}
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1 font-medium"><Battery size={12} className="text-emerald-400" /> Battery / Power</span>
+                        <span className="font-mono font-bold text-white text-xs">
+                          {systemTelemetry?.batteryPercent !== undefined ? `${systemTelemetry.batteryPercent}%` : 'AC Line'}
                         </span>
                       </div>
-                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-[#313244] rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-emerald-500 transition-all"
+                          className="h-full bg-emerald-500 transition-all duration-300"
                           style={{ width: `${systemTelemetry?.batteryPercent ?? 100}%` }}
                         />
                       </div>
-                      <p className="text-[9px] text-gray-500 truncate">
+                      <p className="text-[9px] text-gray-400 truncate">
                         {systemTelemetry?.isCharging ? '⚡ Charging Active' : 'Power Connected'}
                       </p>
                     </div>
 
                     {/* OS Platform */}
-                    <div className="bg-black/40 border border-white/5 p-2.5 rounded-xl space-y-1">
-                      <div className="flex justify-between text-[10px] text-gray-400">
-                        <span className="flex items-center gap-1"><Monitor size={11} className="text-blue-400" /> Environment</span>
-                        <span className="font-bold text-emerald-400 text-[10px]">Sway Wayland</span>
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1 font-medium"><Monitor size={12} className="text-blue-400" /> Environment</span>
+                        <span className="font-bold text-emerald-400 text-[9px]">Sway Wayland</span>
                       </div>
                       <p className="text-[10px] font-bold text-white truncate mt-1">
                         {systemTelemetry?.osName || 'Linux Desktop'}
                       </p>
-                      <p className="text-[9px] text-gray-500 truncate">
-                        Profile: {systemTelemetry?.profile || 'Auto'}
+                      <p className="text-[9px] text-gray-400 truncate">
+                        Profile: <span className="text-cyan-300 font-medium">{preferences.performance_profile || systemTelemetry?.profile || 'Auto'}</span>
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Configuration Controls: Performance Profiles */}
+                  <div className="space-y-2 pt-1 border-t border-white/5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-gray-300 font-semibold flex items-center gap-1.5">
+                        <Zap size={13} className="text-amber-400" /> Performance Profile
+                      </span>
+                      <span className="text-gray-500 text-[10px]">Adjusts FPS & telemetry overhead</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      {[
+                        { id: 'Auto', label: 'Auto Balanced', desc: 'Default adaptive', fps: 30, poll: 2000, lowSpec: false },
+                        { id: 'PowerSaver', label: 'Power Saver', desc: 'Lowest CPU & RAM', fps: 15, poll: 5000, lowSpec: true },
+                        { id: 'Balanced', label: 'Balanced', desc: 'Comfortable 30 FPS', fps: 30, poll: 2000, lowSpec: false },
+                        { id: 'High', label: 'High FPS', desc: 'Smooth 60 FPS', fps: 60, poll: 1000, lowSpec: false },
+                        { id: 'Low', label: 'Low-Spec PC', desc: 'Minimal resources', fps: 15, poll: 3000, lowSpec: true },
+                      ].map((prof) => {
+                        const isCurrent = (preferences.performance_profile || 'Balanced') === prof.id;
+                        return (
+                          <button
+                            key={prof.id}
+                            onClick={() => {
+                              onUpdatePreferences({
+                                ...preferences,
+                                performance_profile: prof.id as any,
+                                fps_limit: prof.fps,
+                                telemetry_interval_ms: prof.poll,
+                                low_spec_mode: prof.lowSpec,
+                              });
+                              messageManager.enqueue(`⚡ Performance Profile set to ${prof.label} (${prof.fps} FPS)!`, 'normal', 'system');
+                            }}
+                            className={`p-2 rounded-lg text-left transition border ${
+                              isCurrent
+                                ? 'bg-cyan-500/20 border-cyan-400/60 text-white shadow-sm'
+                                : 'bg-black/30 border-white/5 text-gray-400 hover:border-white/10 hover:text-gray-200'
+                            }`}
+                          >
+                            <p className="text-[11px] font-bold truncate flex items-center justify-between">
+                              {prof.label}
+                              {isCurrent && <span className="text-[9px] text-cyan-400">✓</span>}
+                            </p>
+                            <p className="text-[9px] text-gray-500 truncate">{prof.fps} FPS • {prof.poll / 1000}s poll</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Manual Tuning: FPS Limit & Telemetry Interval & Low-Spec Toggle */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                    {/* FPS Limit */}
+                    <div className="bg-black/30 border border-white/5 p-2.5 rounded-xl space-y-1.5">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-300 font-medium">FPS Cap</span>
+                        <span className="text-cyan-400 font-mono font-bold">{preferences.fps_limit || 30} FPS</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        {[15, 30, 60].map((rate) => (
+                          <button
+                            key={rate}
+                            onClick={() => {
+                              onUpdatePreferences({ ...preferences, fps_limit: rate });
+                              messageManager.enqueue(`🎯 Target rendering cap set to ${rate} FPS`, 'low', 'system');
+                            }}
+                            className={`py-1 text-[10px] font-bold rounded-md transition ${
+                              (preferences.fps_limit || 30) === rate
+                                ? 'bg-cyan-600 text-white'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            }`}
+                          >
+                            {rate} FPS
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Telemetry Polling Rate */}
+                    <div className="bg-black/30 border border-white/5 p-2.5 rounded-xl space-y-1.5">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-300 font-medium">Telemetry Poll</span>
+                        <span className="text-purple-400 font-mono font-bold">{(preferences.telemetry_interval_ms || 2000) / 1000}s</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        {[
+                          { ms: 1000, label: '1s Fast' },
+                          { ms: 2000, label: '2s Norm' },
+                          { ms: 5000, label: '5s Eco' },
+                        ].map((item) => (
+                          <button
+                            key={item.ms}
+                            onClick={() => {
+                              onUpdatePreferences({ ...preferences, telemetry_interval_ms: item.ms });
+                              messageManager.enqueue(`⏱️ System telemetry polling set to ${item.label}`, 'low', 'system');
+                            }}
+                            className={`py-1 text-[10px] font-bold rounded-md transition ${
+                              (preferences.telemetry_interval_ms || 2000) === item.ms
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Low-Spec Hardware Mode */}
+                    <div className="bg-black/30 border border-white/5 p-2.5 rounded-xl space-y-1.5 flex flex-col justify-between">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-300 font-medium">Low-Spec Mode</span>
+                        <span className={`font-mono font-bold text-[10px] ${preferences.low_spec_mode ? 'text-emerald-400' : 'text-gray-400'}`}>
+                          {preferences.low_spec_mode ? 'ACTIVE' : 'OFF'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const nextVal = !preferences.low_spec_mode;
+                          onUpdatePreferences({
+                            ...preferences,
+                            low_spec_mode: nextVal,
+                            fps_limit: nextVal ? 15 : preferences.fps_limit,
+                          });
+                          messageManager.enqueue(
+                            nextVal ? '🛡️ Low-Spec Mode enabled: throttled animations & lower RAM footprint.' : '🚀 Low-Spec Mode disabled.',
+                            'normal',
+                            'system'
+                          );
+                        }}
+                        className={`w-full py-1 text-[10px] font-bold rounded-md transition ${
+                          preferences.low_spec_mode
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {preferences.low_spec_mode ? '✓ Low-Spec Active' : 'Enable Low-Spec'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1162,7 +1463,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         key={m.id}
                         onClick={() => {
                           onUpdatePreferences({ ...preferences, behavior_mode: m.id });
-                          messageManager.enqueue(`Activated ${m.label} mode! ${m.icon}`, 'normal', 'interaction');
+                          messageManager.enqueue(`Activated ${m.label} mode!`, 'normal', 'interaction');
                         }}
                         className={`p-2 rounded-xl border text-left transition flex flex-col justify-between group ${
                           preferences.behavior_mode === m.id
@@ -1172,7 +1473,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       >
                         <div>
                           <div className="flex items-center justify-between">
-                            <span className="text-base">{m.icon}</span>
+                            <span className="p-1 rounded-lg bg-black/40 border border-white/5 flex items-center justify-center">
+                              {renderBehaviorIcon(m.id, 16)}
+                            </span>
                             <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${
                               preferences.behavior_mode === m.id ? 'bg-purple-500 text-white' : 'bg-white/5 text-gray-400'
                             }`}>
@@ -1238,8 +1541,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl">
                     <p className="text-gray-400 text-[10px]">Lulu Status</p>
-                    <p className="text-sm font-bold text-white mt-1">
-                      {isSleeping ? '💤 Sleeping' : '⚡ Active'}
+                    <p className="text-sm font-bold text-white mt-1 flex items-center gap-1.5">
+                      {isSleeping ? <Moon size={14} className="text-indigo-400" /> : <Activity size={14} className="text-emerald-400" />}
+                      <span>{isSleeping ? 'Sleeping' : 'Active'}</span>
                     </p>
                     <p className="text-[11px] text-gray-500 mt-1">Mood: {mood}</p>
                   </div>
@@ -1254,10 +1558,15 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
                   <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl">
                     <p className="text-gray-400 text-[10px]">Music (MPRIS)</p>
-                    <p className="text-sm font-bold text-pink-300 mt-1 truncate">
-                      {musicStatus && musicStatus.playback_status === 'Playing'
-                        ? `🎵 ${musicStatus.title || 'Playing'}`
-                        : 'No Music Playing'}
+                    <p className="text-sm font-bold text-pink-300 mt-1 truncate flex items-center gap-1.5">
+                      {musicStatus && musicStatus.playback_status === 'Playing' ? (
+                        <>
+                          <Music size={13} className="text-pink-400 shrink-0" />
+                          <span className="truncate">{musicStatus.title || 'Playing'}</span>
+                        </>
+                      ) : (
+                        'No Music Playing'
+                      )}
                     </p>
                     <p className="text-[11px] text-gray-500 mt-1">
                       {musicStatus?.player ? `Player: ${musicStatus.player}` : 'Offline'}
@@ -1300,6 +1609,56 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         style={{ width: `${needs.happiness}%` }}
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Live System Hardware & Resources (Overview) */}
+                <div className="bg-[#181825] border border-[#313244] p-3.5 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-xs text-gray-300 flex items-center gap-1.5">
+                      <Cpu size={13} className="text-cyan-400" />
+                      <span>Host Hardware Telemetry</span>
+                    </p>
+                    <span className="text-[10px] text-cyan-300 font-mono">
+                      {preferences.performance_profile || 'Balanced'} Profile
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-black/30 border border-white/5 p-2 rounded-lg">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400">CPU Load</span>
+                        <span className="font-bold text-white font-mono">{Math.round(systemTelemetry?.cpuPercent ?? 0)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden mt-1">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            (systemTelemetry?.cpuPercent ?? 0) > 75 ? 'bg-red-500' : (systemTelemetry?.cpuPercent ?? 0) > 40 ? 'bg-amber-400' : 'bg-cyan-400'
+                          }`}
+                          style={{ width: `${Math.min(100, systemTelemetry?.cpuPercent ?? 0)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-black/30 border border-white/5 p-2 rounded-lg">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400">RAM Load</span>
+                        <span className="font-bold text-white font-mono">{Math.round(systemTelemetry?.memPercent ?? 0)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden mt-1">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            (systemTelemetry?.memPercent ?? 0) > 85 ? 'bg-red-500' : (systemTelemetry?.memPercent ?? 0) > 60 ? 'bg-amber-400' : 'bg-purple-500'
+                          }`}
+                          style={{ width: `${Math.min(100, systemTelemetry?.memPercent ?? 0)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] text-gray-500 pt-0.5">
+                    <span>RAM: {Math.round((systemTelemetry?.memUsedMb ?? 0) / 1024 * 10) / 10} / {Math.round((systemTelemetry?.memTotalMb ?? 1) / 1024 * 10) / 10} GB</span>
+                    <span>FPS Cap: {preferences.fps_limit || 30} FPS</span>
                   </div>
                 </div>
               </div>
@@ -1491,9 +1850,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                               🎁 {task.reward}
                             </span>
                             <button
+                              type="button"
                               onClick={() => {
                                 if (task.actionId === 'sprint_dash') {
                                   onStart40sRun?.();
+                                } else if (task.actionId === 'walk_go_and_back') {
+                                  onWalkGoAndBack?.();
                                 } else if (task.actionId === 'all') {
                                   onUnlockAll?.();
                                 } else {
@@ -1571,7 +1933,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       onClick={onSendLove}
                       className="flex-1 py-2 px-3 rounded-lg bg-pink-600/30 border border-pink-500/40 text-pink-200 hover:bg-pink-600/50 flex items-center justify-center gap-1.5 transition font-medium"
                     >
-                      <Sparkles size={13} className="text-yellow-300" /> Lulu Aime ❤️
+                      <Sparkles size={13} className="text-yellow-300" /> Lulu Aime <Heart size={12} className="text-pink-400 fill-pink-400 inline" />
                     </button>
                   )}
                   <button
@@ -1592,7 +1954,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-white text-xs flex items-center gap-1.5">
-                      🐾 <span>Lulu Live Status</span>
+                      <PawPrint size={14} className="text-purple-400" /> <span>Lulu Live Status</span>
                     </p>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                       isSleeping
@@ -1785,9 +2147,31 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 pt-1">
-                    {/* [⚡ Flame Sprint] */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                    {/* [🚶 Walk Go & Back] */}
                     <button
+                      type="button"
+                      onClick={() => {
+                        if (isContinuousWalking) {
+                          onToggleContinuousWalk?.();
+                        } else {
+                          onWalkGoAndBack?.();
+                        }
+                      }}
+                      className={`py-1.5 px-2 rounded-lg border flex items-center justify-center gap-1 transition font-bold text-xs truncate ${
+                        isContinuousWalking
+                          ? 'bg-blue-600 text-white border-blue-300 shadow-md shadow-blue-500/20'
+                          : 'bg-blue-600/30 border-blue-500/40 text-blue-200 hover:bg-blue-600/50'
+                      }`}
+                      title="Walk Go & Back (Patrol pacing back and forth with edge bounce)"
+                    >
+                      <Footprints size={12} className={isContinuousWalking ? 'text-white shrink-0' : 'text-cyan-300 shrink-0'} />
+                      <span>{isContinuousWalking ? 'Stop Walk' : 'Walk Go & Back'}</span>
+                    </button>
+
+                    {/* [Flame Sprint] */}
+                    <button
+                      type="button"
                       onClick={onStart40sRun}
                       className={`py-1.5 px-2 rounded-lg border flex items-center justify-center gap-1 transition font-bold text-xs truncate ${
                         is40sRunActive
@@ -1797,11 +2181,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       title="Flame Sprint (Autonomous run)"
                     >
                       <Zap size={12} className={is40sRunActive ? 'text-black fill-black shrink-0' : 'text-yellow-300 shrink-0'} />
-                      <span>{is40sRunActive ? 'Stop' : '⚡ Sprint'}</span>
+                      <span>{is40sRunActive ? 'Stop' : 'Sprint'}</span>
                     </button>
 
-                    {/* [⚡ SHOW RUN] */}
+                    {/* [SHOW RUN] */}
                     <button
+                      type="button"
                       onClick={onToggleContinuousRun}
                       className={`py-1.5 px-2 rounded-lg border flex items-center justify-center gap-1 transition font-bold text-xs truncate ${
                         isContinuousRunning
@@ -1811,11 +2196,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       title="SHOW RUN: Continuous Sprint across the screen"
                     >
                       <Zap size={12} className={isContinuousRunning ? 'text-black fill-black shrink-0' : 'text-yellow-300 shrink-0'} />
-                      <span>{isContinuousRunning ? 'Stop SHOW' : '⚡ SHOW RUN'}</span>
+                      <span>{isContinuousRunning ? 'Stop SHOW' : 'SHOW RUN'}</span>
                     </button>
 
                     {/* [Stop] */}
                     <button
+                      type="button"
                       onClick={onStopMovement}
                       className="py-1.5 px-2 rounded-lg bg-red-600/30 border border-red-500/40 text-red-200 hover:bg-red-600/50 flex items-center justify-center gap-1 transition font-medium text-xs truncate"
                       title="Stop all movement immediately"
@@ -1825,6 +2211,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
                     {/* [Pause] */}
                     <button
+                      type="button"
                       onClick={isMovementPaused ? onResumeMovement : onPauseMovement}
                       className={`py-1.5 px-2 rounded-lg border flex items-center justify-center gap-1 transition font-medium text-xs truncate ${
                         isMovementPaused
@@ -2164,25 +2551,76 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px]">
                     <div className="p-2 rounded-lg bg-black/30 border border-emerald-500/30 flex flex-col gap-0.5">
-                      <span className="font-bold text-emerald-400 flex items-center gap-1">🟢 Spotify</span>
+                      <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                        <Music size={12} className="text-emerald-400" /> Spotify
+                      </span>
                       <span className="text-gray-400 text-[9px]">Native & Web D-Bus</span>
                       <span className="text-emerald-300 font-semibold text-[9px]">✓ Synced LRC</span>
                     </div>
                     <div className="p-2 rounded-lg bg-black/30 border border-red-500/30 flex flex-col gap-0.5">
-                      <span className="font-bold text-red-400 flex items-center gap-1">🔴 YouTube</span>
+                      <span className="font-bold text-red-400 flex items-center gap-1.5">
+                        <Youtube size={12} className="text-red-400" /> YouTube
+                      </span>
                       <span className="text-gray-400 text-[9px]">Browser MPRIS</span>
                       <span className="text-red-300 font-semibold text-[9px]">✓ Clean Metadata</span>
                     </div>
                     <div className="p-2 rounded-lg bg-black/30 border border-rose-500/30 flex flex-col gap-0.5">
-                      <span className="font-bold text-rose-400 flex items-center gap-1">🎵 YT Music</span>
+                      <span className="font-bold text-rose-400 flex items-center gap-1.5">
+                        <Radio size={12} className="text-rose-400" /> YT Music
+                      </span>
                       <span className="text-gray-400 text-[9px]">Web App / PWA</span>
                       <span className="text-rose-300 font-semibold text-[9px]">✓ Live Position</span>
                     </div>
                     <div className="p-2 rounded-lg bg-black/30 border border-indigo-500/30 flex flex-col gap-0.5">
-                      <span className="font-bold text-indigo-400 flex items-center gap-1">🎧 MPRIS</span>
+                      <span className="font-bold text-indigo-400 flex items-center gap-1.5">
+                        <Headphones size={12} className="text-indigo-400" /> MPRIS
+                      </span>
                       <span className="text-gray-400 text-[9px]">VLC / MPV / Firefox</span>
                       <span className="text-indigo-300 font-semibold text-[9px]">✓ Local / Online</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Companion Lyrics HUD Layout & Hinge Controls */}
+                <div className="bg-[#181825] border border-purple-500/30 p-3 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-purple-900/10 via-[#181825] to-indigo-900/10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      <Sliders size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                        Companion Lyrics HUD Layout & Hinge Position
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        Adjust lyrics card sizing and anchor position so Lulu is never squished or pushed down
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={onToggleCollapseLyrics}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${
+                        isLyricsCollapsed
+                          ? 'bg-blue-600/40 border-blue-400 text-blue-200'
+                          : 'bg-purple-600/30 border-purple-400 text-purple-200'
+                      }`}
+                      title={isLyricsCollapsed ? 'Expand to Full Lyrics Card' : 'Collapse to Compact Mini Pill'}
+                    >
+                      {isLyricsCollapsed ? <ChevronDown size={14} className="text-blue-400" /> : <ChevronUp size={14} className="text-purple-400" />}
+                      <span>{isLyricsCollapsed ? 'Mini Pill (26px)' : 'Full Card'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={onToggleLyricsPosition}
+                      className="px-3 py-1.5 rounded-lg border border-indigo-400/50 bg-indigo-600/30 text-indigo-200 hover:bg-indigo-600/50 text-xs font-bold transition flex items-center gap-1.5"
+                      title={lyricsPosition === 'top' ? 'Switch to Bottom Hinge' : 'Switch to Top Hinge'}
+                    >
+                      <ArrowUpDown size={14} className="text-indigo-400" />
+                      <span>{lyricsPosition === 'top' ? 'Hinged: Top' : 'Hinged: Bottom'}</span>
+                    </button>
                   </div>
                 </div>
 
@@ -2247,7 +2685,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
                   <LyricsViewer
                     parsedLrc={parsedLrc}
-                    currentTimeSecs={musicStatus?.position_secs || 0}
+                    currentTimeSecs={activeMediaSession?.position_ms ? activeMediaSession.position_ms / 1000 : (musicStatus?.position_secs || 0)}
                   />
                 </div>
 
@@ -2365,7 +2803,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         key={m.id}
                         onClick={() => {
                           onUpdatePreferences({ ...preferences, behavior_mode: m.id });
-                          messageManager.enqueue(`Mode set to ${m.label} ${m.icon}`, 'normal', 'interaction');
+                          messageManager.enqueue(`Mode set to ${m.label}`, 'normal', 'interaction');
                         }}
                         className={`p-2 rounded-lg font-bold text-center border transition flex flex-col items-center gap-0.5 ${
                           preferences.behavior_mode === m.id
@@ -2373,7 +2811,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
                         }`}
                       >
-                        <span className="text-sm">{m.icon}</span>
+                        <span className="p-1">{renderBehaviorIcon(m.id, 16)}</span>
                         <span className="text-[10px] truncate max-w-full">{m.label}</span>
                       </button>
                     ))}

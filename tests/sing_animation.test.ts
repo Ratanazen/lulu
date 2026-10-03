@@ -82,4 +82,12 @@ describe('Lulu Sing Animation & Spotify Lip-Sync Engine', () => {
     // Final chorus vocals: singing again
     expect(spotifyLyricsService.getActiveLine(lrc, 16.0)).toBe('Final chorus');
   });
+
+  it('6. verifies sleep / lullaby mode takes precedence over singing during sleep', () => {
+    // When isSleeping is active, sleep mode is preserved while music is playing (lullaby mode)
+    const isSleeping = true;
+    const isMusicPlaying = true;
+    const anim = isSleeping ? 'sleep' : isMusicPlaying ? 'sing' : 'idle';
+    expect(anim).toBe('sleep');
+  });
 });

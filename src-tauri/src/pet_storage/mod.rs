@@ -16,6 +16,12 @@ pub struct PetPreferences {
     pub sound_volume: f32,
     pub always_on_top: bool,
     pub fps_limit: u32,
+    #[serde(default)]
+    pub performance_profile: Option<String>,
+    #[serde(default)]
+    pub telemetry_interval_ms: Option<u64>,
+    #[serde(default)]
+    pub low_spec_mode: Option<bool>,
 }
 
 impl Default for PetPreferences {
@@ -30,6 +36,9 @@ impl Default for PetPreferences {
             sound_volume: 0.8,
             always_on_top: true,
             fps_limit: 60,
+            performance_profile: Some("Balanced".to_string()),
+            telemetry_interval_ms: Some(2000),
+            low_spec_mode: Some(false),
         }
     }
 }
@@ -201,6 +210,9 @@ impl StorageManager {
                     sound_volume: row.get(5)?,
                     always_on_top: row.get::<_, i32>(6)? != 0,
                     fps_limit: row.get(7)?,
+                    performance_profile: Some("Balanced".to_string()),
+                    telemetry_interval_ms: Some(2000),
+                    low_spec_mode: Some(false),
                 })
             })
             .map_err(|e| e.to_string())?;

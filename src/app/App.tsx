@@ -17,11 +17,55 @@ import {
   NativeMonitorInfo,
   SystemTelemetry,
 } from '../types/pet';
-import { Heart, Coffee, Moon, Settings, Sparkles, Footprints, Music, Bell, Compass, Zap, FileText } from 'lucide-react';
+import {
+  Heart,
+  Coffee,
+  Moon,
+  Settings,
+  Sparkles,
+  Footprints,
+  Music,
+  Bell,
+  Compass,
+  Zap,
+  FileText,
+  Play,
+  Pause,
+  PawPrint,
+  Youtube,
+  Radio,
+  Headphones,
+  Flame,
+  MessageSquare,
+  Sliders,
+  LogOut,
+  ChevronDown,
+  ChevronUp,
+  ListMusic,
+  Cpu,
+  Armchair,
+  ArrowUpDown,
+} from 'lucide-react';
 import { spotifyLyricsService } from '../features/lyrics/spotifyLyricsService';
 import { ParsedLrc } from '../features/lyrics/lrcParser';
+import { lyricsSyncEngine, parsedLrcToMs } from '../features/lyrics/lyricsSyncEngine';
 import { MediaSession, normalizeMediaSession, getProviderTheme } from '../features/media/mediaSession';
 import { LULU_TASKS, LULU_FLAME_STYLES } from '../config/luluFlameConfig';
+
+const renderProviderIcon = (iconType: string, size = 12) => {
+  switch (iconType) {
+    case 'spotify':
+      return <Music size={size} className="text-emerald-400" />;
+    case 'youtube':
+      return <Youtube size={size} className="text-red-400" />;
+    case 'youtube_music':
+      return <Radio size={size} className="text-rose-400" />;
+    case 'mpris':
+      return <Headphones size={size} className="text-indigo-400" />;
+    default:
+      return <Music size={size} className="text-purple-400" />;
+  }
+};
 
 export const App: React.FC = () => {
   const [animation, setAnimation] = useState<AnimationState>('idle');
@@ -38,11 +82,17 @@ export const App: React.FC = () => {
   const [movementPaused, setMovementPaused] = useState(false);
   const [isFollowingCursor, setIsFollowingCursor] = useState(false);
   const [isContinuousRunning, setIsContinuousRunning] = useState(false);
+  const [isContinuousWalking, setIsContinuousWalking] = useState(false);
   const [is40sRunActive, setIs40sRunActive] = useState(false);
   const [spotifyLyrics, setSpotifyLyrics] = useState<ParsedLrc | null>(null);
   const [prevLyricText, setPrevLyricText] = useState<string | null>(null);
   const [activeLyricText, setActiveLyricText] = useState<string | null>(null);
   const [nextLyricText, setNextLyricText] = useState<string | null>(null);
+  const [showAllLyrics, setShowAllLyrics] = useState<boolean>(false);
+  const [isLyricsCollapsed, setIsLyricsCollapsed] = useState<boolean>(false);
+  const [lyricsPosition, setLyricsPosition] = useState<'top' | 'bottom'>('top');
+  const allLyricsContainerRef = useRef<HTMLDivElement>(null);
+  const allLyricsActiveLineRef = useRef<HTMLDivElement>(null);
   const [currentSpotifyTrack, setCurrentSpotifyTrack] = useState<{ artist: string; title: string } | null>(null);
   const [activeMediaSession, setActiveMediaSession] = useState<MediaSession | null>(null);
   const [musicPositionSecs, setMusicPositionSecs] = useState<number>(0);
@@ -53,6 +103,16 @@ export const App: React.FC = () => {
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
   const [showText, setShowText] = useState<boolean>(true);
   const [lyricsMode, setLyricsMode] = useState<'auto_lyrics' | 'normal_text'>('auto_lyrics');
+
+  // Auto-scroll active lyric line in All Lyrics scroll view
+  useEffect(() => {
+    if (showAllLyrics && allLyricsActiveLineRef.current && allLyricsContainerRef.current) {
+      allLyricsActiveLineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [showAllLyrics, activeLyricText]);
 
   const formatTime = (secs: number): string => {
     const s = Math.max(0, Math.floor(secs || 0));
@@ -84,50 +144,41 @@ export const App: React.FC = () => {
   const lyricsRef = useRef<ParsedLrc | null>(null);
   const currentSpotifyTrackRef = useRef<{ artist: string; title: string } | null>(null);
   const isMusicPlayingRef = useRef<boolean>(false);
+  const isSleepingRef = useRef<boolean>(isSleeping);
+
+  useEffect(() => {
+    isSleepingRef.current = isSleeping;
+  }, [isSleeping]);
 
   // Keep MovementEngine synchronized with speedMultiplier
   useEffect(() => {
     movementRef.current.setSpeedMultiplier(speedMultiplier);
   }, [speedMultiplier]);
 
-  const getActionBadgeText = (anim: string, mult: number): string => {
-    const speedTag = mult < 0.9 ? ' (Relaxed)' : mult > 1.1 ? ' (Fast)' : '';
-    if (anim.startsWith('run')) return `⚡ Sprint${speedTag}`;
-    if (anim.startsWith('walk')) return `🐾 Desktop Patrol${speedTag}`;
-    if (anim === 'sing') return `🎤 Singing Lip-Sync${speedTag}`;
-    if (anim === 'dance') return `💃 Chakra Dance${speedTag}`;
-    if (anim === 'happy') return `✨ Flame Celebration${speedTag}`;
-    if (anim === 'protect') return `🛡️ Susanoo Defense`;
-    if (anim === 'wave') return `👋 Ninja Salute`;
-    if (anim === 'sad') return `🧘 Deep Contemplation`;
-    if (anim === 'sleep') return `🌙 Peaceful Rest`;
-    return `🔥 ${anim}`;
-  };
-
   const getNormalLuluText = (anim: string, moodState: MoodType, sleeping: boolean, mult: number): string => {
-    if (sleeping || anim === 'sleep') return '😴 Peaceful Slumber • Zzz...';
-    if (anim === 'sit') return '🧘 Step Down Zen • Deep Peace';
-    if (anim.startsWith('run')) return `⚡ Shinobi Sprint${mult > 1.1 ? ' (Hyper)' : ''} • Patrolling`;
-    if (anim.startsWith('walk')) return '🐾 Desktop Patrol • Wandering';
-    if (anim === 'sing') return '🎤 Singing to Melody • Joyful Spirit';
-    if (anim === 'dance') return '💃 Chakra Dance • Pure Joy';
-    if (anim === 'protect') return '🛡️ Susanoo Defense • Guarding Screen';
-    if (anim === 'happy') return '✨ Shinobi Spirit • Radiant Chakra';
-    if (anim === 'sad') return '🧘 Deep Stillness • Meditating';
+    if (sleeping || anim === 'sleep') return 'Peaceful Slumber • Zzz...';
+    if (anim === 'sit') return 'Step Down Zen • Deep Peace';
+    if (anim.startsWith('run')) return `Shinobi Sprint${mult > 1.1 ? ' (Hyper)' : ''} • Patrolling`;
+    if (anim.startsWith('walk')) return 'Desktop Patrol • Wandering';
+    if (anim === 'sing') return 'Singing to Melody • Joyful Spirit';
+    if (anim === 'dance') return 'Chakra Dance • Pure Joy';
+    if (anim === 'protect') return 'Susanoo Defense • Guarding Screen';
+    if (anim === 'happy') return 'Shinobi Spirit • Radiant Chakra';
+    if (anim === 'sad') return 'Deep Stillness • Meditating';
 
     switch (moodState) {
       case 'happy':
-        return '💖 Lulu • Peaceful & Content';
+        return 'Lulu • Peaceful & Content';
       case 'playful':
-        return '✨ Lulu • Ready for Action';
+        return 'Lulu • Ready for Action';
       case 'curious':
-        return '🐾 Lulu • Watching Over Desktop';
+        return 'Lulu • Watching Over Desktop';
       case 'tired':
-        return '🌙 Lulu • Resting Gently';
+        return 'Lulu • Resting Gently';
       case 'calm':
-        return '🍃 Lulu • Calm & Mindful';
+        return 'Lulu • Calm & Mindful';
       default:
-        return '🐾 Lulu • Shinobi Companion';
+        return 'Lulu • Shinobi Companion';
     }
   };
 
@@ -236,8 +287,13 @@ export const App: React.FC = () => {
         }
         if (item.title === '__LULU_CMD_SLEEP__') {
           setIsSleeping(true);
+          isSleepingRef.current = true;
           setAnimation('sleep');
-          messageManager.enqueue('Zzz... Peacefully resting soundly. 😴🌙', 'high', 'interaction');
+          if (isMusicPlaying) {
+            messageManager.enqueue('🌙 Peaceful Lullaby Mode • Sleeping soundly to the music... 😴🎵', 'high', 'interaction');
+          } else {
+            messageManager.enqueue('Zzz... Peacefully resting soundly. 😴🌙', 'high', 'interaction');
+          }
           return;
         }
         if (item.title === '__LULU_CMD_SING__') {
@@ -287,27 +343,44 @@ export const App: React.FC = () => {
       try {
         const sys = await invokeCommand<any>('get_system_info');
         if (sys) {
+          const memUsed = sys.memory?.used_mb ?? 0;
+          const memTotal = sys.memory?.total_mb ?? 0;
+          const memPercent =
+            typeof sys.memory?.usage_percent === 'number' && !isNaN(sys.memory.usage_percent)
+              ? sys.memory.usage_percent
+              : memTotal > 0
+              ? (memUsed / memTotal) * 100
+              : 0;
+
+          const cpuVal =
+            typeof sys.cpu?.usage_percent === 'number'
+              ? sys.cpu.usage_percent
+              : typeof sys.cpu?.global_usage_percent === 'number'
+              ? sys.cpu.global_usage_percent
+              : 0;
+
           setSystemTelemetry({
-            cpuPercent: sys.cpu?.global_usage_percent ?? 0,
+            cpuPercent: Math.max(0, Math.min(100, cpuVal)),
             cpuCores: sys.cpu?.logical_cores,
-            memUsedMb: sys.memory?.used_mb ?? 0,
-            memTotalMb: sys.memory?.total_mb ?? 0,
-            memPercent: sys.memory?.usage_percent ?? 0,
-            batteryPercent: sys.power?.battery_level_percent,
+            memUsedMb: memUsed,
+            memTotalMb: memTotal,
+            memPercent: Math.max(0, Math.min(100, memPercent)),
+            batteryPercent: sys.power?.battery_percentage ?? sys.power?.battery_level_percent,
             isCharging: sys.power?.is_charging,
-            osName: sys.os?.name ? `${sys.os.name} ${sys.os.kernel_version || ''}`.trim() : undefined,
-            profile: sys.active_profile,
+            osName: sys.os?.distro_name || sys.os?.os_name || (sys.os?.name ? `${sys.os.name} ${sys.os.kernel_version || ''}`.trim() : undefined),
+            profile: preferences.performance_profile || sys.active_profile,
           });
         }
       } catch {}
     };
 
     fetchTelemetry();
-    const telemetryTimer = setInterval(fetchTelemetry, 5000);
+    const intervalMs = preferences.telemetry_interval_ms || 2000;
+    const telemetryTimer = setInterval(fetchTelemetry, intervalMs);
     return () => clearInterval(telemetryTimer);
-  }, []);
+  }, [preferences.telemetry_interval_ms, preferences.performance_profile]);
 
-  // 4. Media & Lyrics Poller (MPRIS, Spotify, YouTube, YouTube Music)
+  // 4. Media & Lyrics Poller (MPRIS, Spotify, YouTube, YouTube Music) — 200ms Sync Loop
   useEffect(() => {
     const mediaTimer = setInterval(async () => {
       try {
@@ -320,83 +393,114 @@ export const App: React.FC = () => {
           setMusicPositionSecs(posSecs);
           setMusicDurationSecs(durSecs);
 
-          if (session.playing) {
-            if (!isMusicPlayingRef.current) {
-              isMusicPlayingRef.current = true;
-              setIsMusicPlaying(true);
-              setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
-              eventBus.emit('music:playback_changed', { status: 'Playing', title: normalized.title });
-            }
+          // Synced Lyrics Detection & Realtime Line Match
+          const trackKey = `${normalized.artist} - ${normalized.title}`.toLowerCase().trim();
+          const trackChanged =
+            !currentSpotifyTrackRef.current ||
+            currentSpotifyTrackRef.current.artist !== normalized.artist ||
+            currentSpotifyTrackRef.current.title !== normalized.title;
 
-            // Synced Lyrics Detection & Realtime Line Match
-            const trackKey = `${normalized.artist} - ${normalized.title}`.toLowerCase().trim();
-            const trackChanged =
-              !currentSpotifyTrackRef.current ||
-              currentSpotifyTrackRef.current.artist !== normalized.artist ||
-              currentSpotifyTrackRef.current.title !== normalized.title;
+          if (trackChanged && normalized.title) {
+            currentSpotifyTrackRef.current = { artist: normalized.artist, title: normalized.title };
+            setCurrentSpotifyTrack({ artist: normalized.artist, title: normalized.title });
+            // Immediate clear on track change — never show old lyrics over new track
+            lyricsSyncEngine.clear();
+            lyricsRef.current = null;
+            setSpotifyLyrics(null);
+            setPrevLyricText(null);
+            setActiveLyricText(null);
+            setNextLyricText(null);
+          }
 
-            if (trackChanged && normalized.title) {
-              currentSpotifyTrackRef.current = { artist: normalized.artist, title: normalized.title };
-              setCurrentSpotifyTrack({ artist: normalized.artist, title: normalized.title });
-            }
+          // Trigger lyrics fetch if track changed or not yet fetched for current track
+          const shouldFetchLyrics =
+            (trackChanged || (!lyricsRef.current && lastFetchedKeyRef.current !== trackKey)) &&
+            !isFetchingLyricsRef.current &&
+            !!normalized.title;
 
-            if (
-              (trackChanged || (!lyricsRef.current && lastFetchedKeyRef.current !== trackKey)) &&
-              !isFetchingLyricsRef.current &&
-              normalized.title
-            ) {
-              isFetchingLyricsRef.current = true;
-              lastFetchedKeyRef.current = trackKey;
-              lyricsRef.current = null;
-              setSpotifyLyrics(null);
+          if (shouldFetchLyrics) {
+            isFetchingLyricsRef.current = true;
+            lastFetchedKeyRef.current = trackKey;
+            lyricsRef.current = null;
+            setSpotifyLyrics(null);
 
-              spotifyLyricsService
-                .getLyricsForTrack(normalized.artist, normalized.title, durSecs)
-                .then((lrc) => {
-                  lyricsRef.current = lrc;
-                  setSpotifyLyrics(lrc);
-                  if (lrc) {
-                    const lineInfo = spotifyLyricsService.getSyncedLyricsLines(lrc, posSecs);
-                    setPrevLyricText(lineInfo.previous);
-                    setActiveLyricText(lineInfo.current);
-                    setNextLyricText(lineInfo.next);
-                    if (lineInfo.current) {
+            spotifyLyricsService
+              .getLyricsForTrack(normalized.artist, normalized.title, durSecs, normalized.searchQuery)
+              .then((lrc) => {
+                lyricsRef.current = lrc;
+                setSpotifyLyrics(lrc);
+                if (lrc) {
+                  lyricsSyncEngine.loadLyrics(parsedLrcToMs(lrc), trackKey, session.duration_ms || 0);
+                  const syncState = lyricsSyncEngine.updatePosition(
+                    session.position_ms || 0,
+                    session.playing ? 'Playing' : 'Paused'
+                  );
+                  setPrevLyricText(syncState.previousText);
+                  setActiveLyricText(syncState.currentText);
+                  setNextLyricText(syncState.nextText);
+                  if (session.playing) {
+                    if (isSleepingRef.current) {
+                      setAnimation('sleep');
+                    } else if (syncState.currentText) {
                       setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'sing'));
                     } else {
                       setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
                     }
-                  } else {
-                    setPrevLyricText(null);
-                    setActiveLyricText(null);
-                    setNextLyricText(null);
+                  }
+                } else {
+                  lyricsSyncEngine.clear();
+                  setPrevLyricText(null);
+                  setActiveLyricText(null);
+                  setNextLyricText(null);
+                  if (session.playing && !isSleepingRef.current) {
                     setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
                   }
-                })
-                .finally(() => {
-                  isFetchingLyricsRef.current = false;
-                });
-            } else if (lyricsRef.current) {
-              const lineInfo = spotifyLyricsService.getSyncedLyricsLines(lyricsRef.current, posSecs);
-              setPrevLyricText(lineInfo.previous);
-              setActiveLyricText(lineInfo.current);
-              setNextLyricText(lineInfo.next);
-              if (lineInfo.current) {
+                }
+              })
+              .finally(() => {
+                isFetchingLyricsRef.current = false;
+              });
+          }
+
+          if (session.playing) {
+            if (!isMusicPlayingRef.current) {
+              isMusicPlayingRef.current = true;
+              setIsMusicPlaying(true);
+              if (!isSleepingRef.current) {
+                setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
+              }
+              eventBus.emit('music:playback_changed', { status: 'Playing', title: normalized.title });
+            }
+
+            if (lyricsRef.current) {
+              // Lightweight 200ms sync progression using actual player position
+              const syncState = lyricsSyncEngine.updatePosition(session.position_ms || 0, 'Playing');
+              setPrevLyricText(syncState.previousText);
+              setActiveLyricText(syncState.currentText);
+              setNextLyricText(syncState.nextText);
+              if (isSleepingRef.current) {
+                setAnimation('sleep');
+              } else if (syncState.currentText) {
                 setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'sing'));
               } else {
                 setAnimation((prev) => (prev.startsWith('walk') || prev.startsWith('run') ? prev : 'dance'));
               }
             }
           } else {
-            // Paused: freeze lyrics and set paused state
+            // Paused: freeze lyrics and progress indicator, set animation to idle if not sleeping
+            lyricsSyncEngine.updatePosition(session.position_ms || 0, 'Paused');
             if (isMusicPlayingRef.current) {
               isMusicPlayingRef.current = false;
               setIsMusicPlaying(false);
-              setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
+              if (!isSleepingRef.current) {
+                setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
+              }
               eventBus.emit('music:playback_changed', { status: 'Paused' });
             }
           }
         } else {
           // No media session
+          lyricsSyncEngine.clear();
           if (isMusicPlayingRef.current) {
             isMusicPlayingRef.current = false;
             setIsMusicPlaying(false);
@@ -409,12 +513,14 @@ export const App: React.FC = () => {
             setActiveLyricText(null);
             setNextLyricText(null);
             setActiveMediaSession(null);
-            setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
+            if (!isSleepingRef.current) {
+              setAnimation((prev) => (prev === 'dance' || prev === 'sing' ? 'idle' : prev));
+            }
             eventBus.emit('music:playback_changed', { status: 'Paused' });
           }
         }
       } catch {}
-    }, 250);
+    }, 200);
 
     return () => clearInterval(mediaTimer);
   }, []);
@@ -625,13 +731,19 @@ export const App: React.FC = () => {
     if (isSleeping) {
       needSystemRef.current.wakeUp();
       setIsSleeping(false);
+      isSleepingRef.current = false;
       setAnimation('wake');
       messageManager.enqueue('Yawn... Awake and ready! ✨', 'normal', 'interaction');
       setTimeout(() => setAnimation(isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle'), 1500);
     } else {
       setIsSleeping(true);
+      isSleepingRef.current = true;
       setAnimation('sleep');
-      messageManager.enqueue('Zzz... Good night~ 🌙', 'normal', 'interaction');
+      if (isMusicPlaying) {
+        messageManager.enqueue('🌙 Peaceful Lullaby Mode • Sleeping soundly to the melody... 😴🎵', 'normal', 'interaction');
+      } else {
+        messageManager.enqueue('Zzz... Good night~ 🌙', 'normal', 'interaction');
+      }
     }
   };
 
@@ -651,6 +763,8 @@ export const App: React.FC = () => {
     const running = movementRef.current.toggleContinuousRun();
     setIsContinuousRunning(running);
     if (running) {
+      setIsContinuousWalking(false);
+      setIs40sRunActive(false);
       messageManager.enqueue('SHOW RUN active! Continuous sprint! ⚡🏃💨', 'normal', 'interaction');
     } else {
       messageManager.enqueue('Sprint paused. Catching breath! 🍃', 'normal', 'interaction');
@@ -669,16 +783,61 @@ export const App: React.FC = () => {
       movementRef.current.stop();
       setIs40sRunActive(false);
       setIsContinuousRunning(false);
+      setIsContinuousWalking(false);
       messageManager.enqueue('Sprint paused. Catching breath! 🍃', 'normal', 'interaction');
       return;
     }
     setIs40sRunActive(true);
     setIsContinuousRunning(true);
+    setIsContinuousWalking(false);
     messageManager.enqueue('Flame Sprint active! ⚡🏃💨', 'high', 'interaction');
     movementRef.current.startTimedRun(40, () => {
       setIs40sRunActive(false);
       setIsContinuousRunning(false);
       messageManager.enqueue('Sprint complete! Full speed achieved! 🏆🔥', 'high', 'interaction');
+    });
+  };
+
+  const handleToggleContinuousWalk = () => {
+    if (isControlCenterOpen) {
+      handleCloseControlCenter();
+    }
+    if (isSleeping) {
+      needSystemRef.current.wakeUp();
+      setIsSleeping(false);
+    }
+    const walking = movementRef.current.toggleContinuousWalk();
+    setIsContinuousWalking(walking);
+    if (walking) {
+      setIsContinuousRunning(false);
+      setIs40sRunActive(false);
+      messageManager.enqueue('Walk Go & Back active! Pacing desktop perimeter... 🐾🚶', 'normal', 'interaction');
+    } else {
+      messageManager.enqueue('Patrol walk paused. Resting peacefully! 🍃', 'normal', 'interaction');
+    }
+  };
+
+  const handleWalkGoAndBack = () => {
+    if (isControlCenterOpen) {
+      handleCloseControlCenter();
+    }
+    if (isSleeping) {
+      needSystemRef.current.wakeUp();
+      setIsSleeping(false);
+    }
+    if (isContinuousWalking) {
+      movementRef.current.stop();
+      setIsContinuousWalking(false);
+      messageManager.enqueue('Patrol walk paused. Resting peacefully! 🍃', 'normal', 'interaction');
+      return;
+    }
+    setIsContinuousWalking(true);
+    setIsContinuousRunning(false);
+    setIs40sRunActive(false);
+    messageManager.enqueue('Walk Go & Back patrol initiated! 🐾🚶', 'high', 'interaction');
+    movementRef.current.walkGoAndBack(() => {
+      setIsContinuousWalking(false);
+      messageManager.enqueue('Patrol walk cycle completed safely! 🛡️✨', 'high', 'interaction');
     });
   };
 
@@ -702,13 +861,31 @@ export const App: React.FC = () => {
     setShowContextMenu(true);
   };
 
+  const clickTimeoutRef = useRef<any>(null);
+
   // Single Click: Jump or Pet reaction
-  const handlePetClick = () => {
+  const handlePetClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (isSleeping) {
       handleToggleSleep();
     } else {
       setAnimation('jump');
       handlePetLulu();
+    }
+  };
+
+  // Coordinated click handler for Sprite (Single Click: Pet/Jump, Double Click: Control Center)
+  const handleSpriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      handleOpenControlCenter();
+    } else {
+      clickTimeoutRef.current = setTimeout(() => {
+        clickTimeoutRef.current = null;
+        handlePetClick();
+      }, 250);
     }
   };
 
@@ -744,8 +921,10 @@ export const App: React.FC = () => {
 
       await invokeCommand('set_window_size', { width: modalW, height: modalH });
       await invokeCommand('set_window_position', { x: targetX, y: targetY });
+      await invokeCommand('focus_window');
     } catch {
       await invokeCommand('set_window_size', { width: 820, height: 680 });
+      await invokeCommand('focus_window');
     }
   };
 
@@ -758,7 +937,7 @@ export const App: React.FC = () => {
           y: preModalPosRef.current.y,
         });
       }
-      await invokeCommand('set_window_size', { width: 260, height: 300 });
+      await invokeCommand('set_window_size', { width: 290, height: 420 });
       if (!movementPaused && !isSleeping) {
         movementRef.current.resume();
       }
@@ -786,310 +965,608 @@ export const App: React.FC = () => {
 
   const mediaTheme = getProviderTheme(activeMediaSession?.provider || 'spotify');
 
+  const isMediaSessionActive =
+    (isMusicPlaying || (activeMediaSession && activeMediaSession.paused && !!activeMediaSession.title)) &&
+    lyricsMode === 'auto_lyrics';
+
+  if (isControlCenterOpen) {
+    return (
+      <div
+        className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-center select-none bg-transparent"
+        style={{ background: 'transparent' }}
+      >
+        <ControlCenterModal
+          isOpen={true}
+          onClose={handleCloseControlCenter}
+          needs={needs}
+          mood={mood}
+          preferences={preferences}
+          onUpdatePreferences={handleUpdatePreferences}
+          onPetLulu={handlePetLulu}
+          onSendLove={handleSendLove}
+          onFeedSnack={handleFeedSnack}
+          onToggleSleep={handleToggleSleep}
+          isSleeping={isSleeping}
+          onTriggerAnimation={(anim) => {
+            if (anim === 'run-right' || anim === 'run') {
+              movementRef.current.sprintLap();
+            } else if (anim === 'walk-right' || anim === 'walk') {
+              movementRef.current.walkLap();
+            } else {
+              setAnimation(anim as AnimationState);
+            }
+          }}
+          onTriggerFocusEvent={handleTriggerFocusEvent}
+          focusIntervalSeconds={focusIntervalSeconds}
+          onSetFocusInterval={setFocusIntervalSeconds}
+          isContinuousRunning={isContinuousRunning}
+          onToggleContinuousRun={handleToggleContinuousRun}
+          isContinuousWalking={isContinuousWalking}
+          onToggleContinuousWalk={handleToggleContinuousWalk}
+          onWalkGoAndBack={handleWalkGoAndBack}
+          is40sRunActive={is40sRunActive}
+          onStart40sRun={handleStart40sRun}
+          parsedLrc={spotifyLyrics}
+          onStopMovement={() => {
+            movementRef.current.stop();
+            setIs40sRunActive(false);
+            setIsContinuousRunning(false);
+            setIsContinuousWalking(false);
+          }}
+          onPauseMovement={() => {
+            movementRef.current.pause();
+            setMovementPaused(true);
+          }}
+          onResumeMovement={() => {
+            movementRef.current.resume();
+            setMovementPaused(false);
+          }}
+          isMovementPaused={movementPaused}
+          currentDirection={movementRef.current.getState().runDirection}
+          currentFrame={movementRef.current.getState().currentFrame}
+          showText={showText}
+          onToggleShowText={() => setShowText((p) => !p)}
+          lyricsMode={lyricsMode}
+          onToggleLyricsMode={() => {
+            setLyricsMode((prev) => {
+              const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
+              messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
+              return next;
+            });
+          }}
+          speedMultiplier={speedMultiplier}
+          onSetSpeedMultiplier={(mult) => {
+            setSpeedMultiplier(mult);
+            movementRef.current.setSpeedMultiplier(mult);
+          }}
+          systemTelemetry={systemTelemetry}
+          activeMediaSession={activeMediaSession}
+          onUnlockAll={handleUnlockAll}
+          isLyricsCollapsed={isLyricsCollapsed}
+          onToggleCollapseLyrics={() => setIsLyricsCollapsed((p) => !p)}
+          lyricsPosition={lyricsPosition}
+          onToggleLyricsPosition={() => setLyricsPosition((p) => (p === 'top' ? 'bottom' : 'top'))}
+        />
+      </div>
+    );
+  }
+
+  // Multi-Provider Synced Live-Time Lyrics Card (Collapsible Pill & Full View)
+  const renderLyricsCard = () => {
+    if (!isMediaSessionActive) return null;
+
+    if (isLyricsCollapsed) {
+      return (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsLyricsCollapsed(false);
+          }}
+          className="px-2.5 py-1 rounded-full bg-[#090d16]/95 border flex items-center gap-2 cursor-pointer shadow-lg backdrop-blur-md transition-all hover:scale-102 pointer-events-auto shrink-0 select-none animate-fade-in"
+          style={{
+            borderColor: mediaTheme.borderColor,
+            boxShadow: `0 4px 16px ${mediaTheme.glowColor}`,
+          }}
+          title="Click to expand full lyrics card"
+        >
+          {renderProviderIcon(mediaTheme.iconType, 12)}
+          <span className="text-[10px] font-bold text-white truncate max-w-[130px]">
+            {currentSpotifyTrack?.title || 'Playing'}
+          </span>
+          <span className="text-[9px] font-mono text-gray-300">
+            {formatTime(musicPositionSecs)} / {formatTime(musicDurationSecs || 0)}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLyricsCollapsed(false);
+            }}
+            className="p-0.5 rounded hover:bg-white/10 text-gray-300 transition"
+            title="Expand Lyrics Card"
+          >
+            <ChevronDown size={12} />
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`w-full max-w-[270px] px-3 py-1.5 rounded-2xl bg-[#090d16]/95 border ${mediaTheme.borderColor} flex flex-col gap-1 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer backdrop-blur-md shrink-0 shadow-lg`}
+        style={{ boxShadow: `0 6px 20px ${mediaTheme.glowColor}` }}
+        title={`Click to open Lyrics Studio (${mediaTheme.badgeText})`}
+        onClick={handleOpenControlCenter}
+      >
+        {/* Header: Lulu + Equalizer & Live Synced Badge & View Toggle & Controls */}
+        <div
+          className="flex items-center justify-between pb-1"
+          style={{ borderBottom: `1px solid ${mediaTheme.primaryColor}33` }}
+        >
+          <span className="text-[11px] font-bold text-white tracking-wide flex items-center gap-1.5">
+            <PawPrint size={13} className="text-purple-400" />
+            <span style={{ color: mediaTheme.accentColor }}>Lulu</span>
+            {isSleeping && (
+              <span className="text-[9px] text-purple-300 font-medium px-1.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center gap-1">
+                <Moon size={10} /> Lullaby
+              </span>
+            )}
+          </span>
+          <div className="flex items-center gap-1">
+            {/* View Toggle: All Lyrics vs 3-Line Focus */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAllLyrics((p) => !p);
+              }}
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold transition flex items-center gap-1 cursor-pointer border shadow-sm"
+              style={{
+                backgroundColor: showAllLyrics ? `${mediaTheme.primaryColor}33` : 'rgba(255,255,255,0.06)',
+                borderColor: showAllLyrics ? mediaTheme.accentColor : 'rgba(255,255,255,0.15)',
+                color: showAllLyrics ? mediaTheme.accentColor : '#d1d5db',
+              }}
+              title={showAllLyrics ? 'Switch to 3-Line Focus View' : 'Show All Lyrics Scroll View'}
+            >
+              {showAllLyrics ? <ListMusic size={11} /> : <Music size={11} />}
+              <span>{showAllLyrics ? 'All' : '3-Line'}</span>
+            </button>
+
+            {/* Hinge / Position Toggle */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLyricsPosition((p) => (p === 'top' ? 'bottom' : 'top'));
+              }}
+              className="p-1 rounded font-bold hover:bg-white/10 text-gray-300 transition"
+              title={`Hinge Position: Currently ${lyricsPosition === 'top' ? 'Top' : 'Bottom'}. Click to move to ${lyricsPosition === 'top' ? 'Bottom' : 'Top'}`}
+            >
+              <ArrowUpDown size={11} />
+            </button>
+
+            {/* Collapse Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLyricsCollapsed(true);
+              }}
+              className="p-1 rounded font-bold hover:bg-white/10 text-gray-300 transition"
+              title="Collapse to Mini Bar (leaves full space for Lulu)"
+            >
+              <ChevronUp size={12} />
+            </button>
+
+            <div className="flex items-end gap-0.5 h-2.5 shrink-0 ml-0.5">
+              <span className={`w-0.5 rounded-full ${isMusicPlaying && !isSleeping ? 'animate-pulse' : ''} h-1.5`} style={{ backgroundColor: mediaTheme.primaryColor }} />
+              <span className={`w-0.5 rounded-full ${isMusicPlaying && !isSleeping ? 'animate-bounce' : ''} h-2.5`} style={{ backgroundColor: mediaTheme.primaryColor }} />
+              <span className={`w-0.5 rounded-full ${isMusicPlaying && !isSleeping ? 'animate-pulse' : ''} h-1.5`} style={{ backgroundColor: mediaTheme.accentColor }} />
+            </div>
+
+            <span
+              className="text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1 ml-0.5"
+              style={{ color: mediaTheme.accentColor }}
+            >
+              {renderProviderIcon(mediaTheme.iconType, 11)}
+              {isSleeping ? 'Lullaby' : isMusicPlaying ? mediaTheme.badgeText : `${mediaTheme.badgeText} (Paused)`}
+            </span>
+          </div>
+        </div>
+
+        {/* Artist - Song Header */}
+        <div className="text-center">
+          <p className="text-[10px] font-bold text-gray-300 truncate tracking-wide">
+            {currentSpotifyTrack?.artist || mediaTheme.badgeText} - {currentSpotifyTrack?.title || 'Unknown Track'}
+          </p>
+        </div>
+
+        {/* Lyrics Body: All Lyrics Scroll View vs 3-Line Focus View */}
+        {showAllLyrics && spotifyLyrics?.lines && spotifyLyrics.lines.length > 0 ? (
+          <div
+            ref={allLyricsContainerRef}
+            className="max-h-[76px] overflow-y-auto pr-1 py-0.5 space-y-0.5 select-none scrollbar-thin scrollbar-thumb-white/10 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {spotifyLyrics.lines.map((line, idx) => {
+              const isCurrent = line.text === activeLyricText;
+              return (
+                <div
+                  key={`${line.timeSeconds}-${idx}`}
+                  ref={isCurrent ? allLyricsActiveLineRef : null}
+                  className={`transition-all duration-200 px-1 py-0.5 rounded ${
+                    isCurrent
+                      ? 'font-extrabold text-[11px] leading-tight flex items-center justify-center'
+                      : 'text-[9.5px] opacity-60 text-gray-300'
+                  }`}
+                  style={
+                    isCurrent
+                      ? {
+                          color: mediaTheme.accentColor,
+                          backgroundColor: `${mediaTheme.primaryColor}22`,
+                          filter: `drop-shadow(0 0 8px ${mediaTheme.glowColor})`,
+                        }
+                      : {}
+                  }
+                >
+                  {isCurrent ? (
+                    <>
+                      <Play size={7} className="fill-current inline mr-1 opacity-80" />
+                      <span>{line.text || '♪'}</span>
+                      <Play size={7} className="fill-current inline ml-1 rotate-180 opacity-80" />
+                    </>
+                  ) : (
+                    line.text || '♪'
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-0.5 py-0.5 min-h-[46px] justify-center text-center">
+            {/* previous line */}
+            <p className="text-[9.5px] text-gray-400/70 truncate max-w-full px-1 font-medium select-none transition-all duration-300">
+              {prevLyricText ? prevLyricText : '···'}
+            </p>
+
+            {/* CURRENT LYRIC */}
+            <p
+              className="text-[11.5px] font-extrabold line-clamp-2 px-1 leading-snug tracking-wide transition-all duration-200 flex items-center justify-center"
+              style={{
+                color: mediaTheme.accentColor,
+                filter: `drop-shadow(0 0 8px ${mediaTheme.glowColor})`,
+              }}
+            >
+              <Play size={7} className="fill-current inline mr-1 opacity-80" />
+              <span>{activeLyricText ? activeLyricText : (nextLyricText ? 'Instrumental Melody' : (isMusicPlaying ? 'Singing to the rhythm...' : 'Paused'))}</span>
+              <Play size={7} className="fill-current inline ml-1 rotate-180 opacity-80" />
+            </p>
+
+            {/* next line */}
+            <p
+              className="text-[9.5px] truncate max-w-full px-1 font-medium select-none italic transition-all duration-300"
+              style={{ color: mediaTheme.accentColor, opacity: 0.6 }}
+            >
+              {nextLyricText ? nextLyricText : '···'}
+            </p>
+          </div>
+        )}
+
+        {/* Progress Bar & Timestamp */}
+        <div className="space-y-0.5 pt-0.5">
+          {musicDurationSecs > 0 && (
+            <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full transition-all duration-300"
+                style={{
+                  width: `${Math.min(100, Math.max(0, (musicPositionSecs / musicDurationSecs) * 100))}%`,
+                  background: `linear-gradient(to right, ${mediaTheme.primaryColor}, ${mediaTheme.accentColor})`,
+                }}
+              />
+            </div>
+          )}
+          <div className="text-center">
+            <span
+              className="text-[8.5px] font-mono font-bold bg-black/60 px-2 py-0.5 rounded border"
+              style={{
+                color: mediaTheme.accentColor,
+                borderColor: `${mediaTheme.primaryColor}33`,
+              }}
+            >
+              {formatTime(musicPositionSecs)} / {formatTime(musicDurationSecs || 0)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       onMouseMove={handleMouseMove}
       onContextMenu={handleContextMenu}
       onClick={() => setShowContextMenu(false)}
-      className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-center select-none bg-transparent"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="relative w-screen h-screen overflow-hidden flex flex-col items-center justify-between select-none bg-transparent pt-1 pb-1 px-1"
       style={{ background: 'transparent' }}
     >
-      {/* Drag handle container allowing window dragging via data-tauri-drag-region */}
+      {/* Drag handle container allowing window dragging via native start_dragging without GTK event hijacking */}
       <div
-        data-tauri-drag-region
+        onMouseDown={(e) => {
+          if (e.button === 0) {
+            invokeCommand('start_dragging').catch(() => {});
+          }
+        }}
         className="absolute inset-0 cursor-grab active:cursor-grabbing z-0"
         title="Drag Lulu anywhere on your screen"
       />
 
-      {/* Unified Text & Subtitle Displays (Show Txt: ON) */}
-      {showText && (
-        <div className="absolute top-2 left-0 right-0 z-40 flex flex-col items-center gap-1.5 pointer-events-none px-2">
-          {/* 1. Multi-Provider Synced Live-Time Lyrics Card (Exact 3-Line Blueprint) */}
-          {isMusicPlaying && lyricsMode === 'auto_lyrics' && (
-            <div
-              className={`max-w-[320px] w-full px-4 py-2.5 rounded-2xl bg-[#090d16]/95 border ${mediaTheme.borderColor} flex flex-col gap-1.5 pointer-events-auto transition-all duration-300 animate-fade-in group cursor-pointer backdrop-blur-md`}
-              style={{ boxShadow: `0 8px 28px ${mediaTheme.glowColor}` }}
-              title={`Click to open Lyrics Studio (${mediaTheme.badgeText})`}
-              onClick={handleOpenControlCenter}
-            >
-              {/* Header: Lulu + Equalizer & Live Synced Badge */}
-              <div
-                className="flex items-center justify-between pb-1"
-                style={{ borderBottom: `1px solid ${mediaTheme.primaryColor}33` }}
-              >
-                <span className="text-[11px] font-bold text-white tracking-wide flex items-center gap-1.5">
-                  🐾 <span style={{ color: mediaTheme.accentColor }}>Lulu</span>
+      {/* Top Section: Lyrics (if top hinged) or Telemetry / Status */}
+      <div className="w-full flex flex-col items-center gap-1 z-40 pointer-events-none shrink-0 min-h-[24px]">
+        {showText && (
+          <>
+            {lyricsPosition === 'top' && renderLyricsCard()}
+
+            {/* Floating Follow Computer Telemetry Badge */}
+            {!isMediaSessionActive && preferences.behavior_mode === 'SYSTEM_SYNC' && systemTelemetry && (
+              <div className="max-w-[260px] px-3 py-1 rounded-full bg-[#0f172a]/95 border border-cyan-500/60 shadow-[0_4px_16px_rgba(6,182,212,0.35)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in backdrop-blur-md">
+                <Cpu size={12} className="text-cyan-400 shrink-0" />
+                <span className="text-[10px] font-bold text-cyan-200 truncate">
+                  System Follow: CPU {Math.round(systemTelemetry.cpuPercent)}% • RAM {Math.round(systemTelemetry.memPercent)}%
                 </span>
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-end gap-0.5 h-2.5 shrink-0">
-                    <span className="w-0.5 rounded-full animate-pulse h-1.5" style={{ backgroundColor: mediaTheme.primaryColor }} />
-                    <span className="w-0.5 rounded-full animate-bounce h-2.5" style={{ backgroundColor: mediaTheme.primaryColor }} />
-                    <span className="w-0.5 rounded-full animate-pulse h-1.5" style={{ backgroundColor: mediaTheme.accentColor }} />
-                    <span className="w-0.5 rounded-full animate-bounce h-2" style={{ backgroundColor: mediaTheme.primaryColor }} />
-                  </div>
-                  <span
-                    className="text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1"
-                    style={{ color: mediaTheme.accentColor }}
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full animate-ping inline-block" style={{ backgroundColor: mediaTheme.accentColor }} />
-                    {mediaTheme.badgeIcon} {mediaTheme.badgeText}
-                  </span>
-                </div>
               </div>
+            )}
 
-              {/* Artist - Song Header */}
-              <div className="text-center pt-0.5">
-                <p className="text-[10px] font-bold text-gray-300 truncate tracking-wide">
-                  {currentSpotifyTrack?.artist || mediaTheme.badgeText} - {currentSpotifyTrack?.title || 'Unknown Track'}
-                </p>
+            {/* Floating Normal Lulu Text Badge */}
+            {!isMediaSessionActive && preferences.behavior_mode !== 'SYSTEM_SYNC' && (
+              <div
+                onClick={handlePetClick}
+                className="max-w-[260px] px-3.5 py-1 rounded-full bg-[#0b0f19]/90 border border-purple-500/50 shadow-[0_4px_16px_rgba(168,85,247,0.35)] flex items-center gap-1.5 pointer-events-auto cursor-pointer transition-all duration-300 animate-fade-in backdrop-blur-md hover:border-purple-400 group"
+                title="Lulu Normal Status — Click to interact"
+              >
+                <PawPrint size={12} className="text-purple-400 shrink-0" />
+                <span className="text-[10px] font-bold text-purple-200 truncate group-hover:text-white transition-colors">
+                  {getNormalLuluText(animation, mood, isSleeping, speedMultiplier)}
+                </span>
               </div>
+            )}
 
-              {/* 3-Line Synced Lyrics Display */}
-              <div className="flex flex-col items-center gap-1 py-1 min-h-[58px] justify-center text-center">
-                {/* previous line */}
-                <p className="text-[10px] text-gray-400/70 truncate max-w-full px-1 font-medium select-none transition-all duration-300">
-                  {prevLyricText ? prevLyricText : '···'}
-                </p>
-
-                {/* ► CURRENT LYRIC ◄ */}
-                <p
-                  className="text-[12px] font-extrabold line-clamp-2 px-1 leading-snug tracking-wide transition-all duration-200"
-                  style={{
-                    color: mediaTheme.accentColor,
-                    filter: `drop-shadow(0 0 10px ${mediaTheme.glowColor})`,
-                  }}
-                >
-                  ► {activeLyricText ? activeLyricText : (nextLyricText ? '♪ Instrumental Melody ♪' : 'Singing to the rhythm...')} ◄
-                </p>
-
-                {/* next line */}
-                <p
-                  className="text-[10px] truncate max-w-full px-1 font-medium select-none italic transition-all duration-300"
-                  style={{ color: mediaTheme.accentColor, opacity: 0.6 }}
-                >
-                  {nextLyricText ? nextLyricText : '···'}
-                </p>
-              </div>
-
-              {/* Progress Bar & 01:24 / 03:45 Timestamp */}
-              <div className="space-y-1 pt-0.5">
-                {musicDurationSecs > 0 && (
-                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className="h-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, Math.max(0, (musicPositionSecs / musicDurationSecs) * 100))}%`,
-                        background: `linear-gradient(to right, ${mediaTheme.primaryColor}, ${mediaTheme.accentColor})`,
-                      }}
-                    />
-                  </div>
-                )}
-                <div className="text-center">
-                  <span
-                    className="text-[9px] font-mono font-bold bg-black/60 px-2 py-0.5 rounded border"
-                    style={{
-                      color: mediaTheme.accentColor,
-                      borderColor: `${mediaTheme.primaryColor}33`,
-                    }}
-                  >
-                    {formatTime(musicPositionSecs)} / {formatTime(musicDurationSecs || 0)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 2. Floating Follow Computer Telemetry Badge (When in SYSTEM_SYNC mode & not in live lyrics) */}
-          {(!isMusicPlaying || lyricsMode === 'normal_text') && preferences.behavior_mode === 'SYSTEM_SYNC' && systemTelemetry && (
-            <div className="max-w-[260px] px-3 py-1 rounded-full bg-[#0f172a]/95 border border-cyan-500/60 shadow-[0_4px_16px_rgba(6,182,212,0.35)] flex items-center gap-1.5 pointer-events-none transition-all duration-300 animate-fade-in backdrop-blur-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
-              <span className="text-[10px] font-bold text-cyan-200 truncate">
-                💻 System Follow: CPU {Math.round(systemTelemetry.cpuPercent)}% • RAM {Math.round(systemTelemetry.memPercent)}%
-              </span>
-            </div>
-          )}
-
-          {/* 3. Floating Normal Lulu Text Badge (When not playing live lyrics & not in system sync) */}
-          {(!isMusicPlaying || lyricsMode === 'normal_text') && preferences.behavior_mode !== 'SYSTEM_SYNC' && (
-            <div
-              onClick={handlePetClick}
-              className="max-w-[260px] px-3.5 py-1 rounded-full bg-[#0b0f19]/90 border border-purple-500/50 shadow-[0_4px_16px_rgba(168,85,247,0.35)] flex items-center gap-1.5 pointer-events-auto cursor-pointer transition-all duration-300 animate-fade-in backdrop-blur-md hover:border-purple-400 group"
-              title="Lulu Normal Status — Click to interact"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span className="text-[10px] font-bold text-purple-200 truncate group-hover:text-white transition-colors">
-                {getNormalLuluText(animation, mood, isSleeping, speedMultiplier)}
-              </span>
-            </div>
-          )}
-
-          {/* 4. Thought & Speech Bubble: strictly disabled during live lyrics playback */}
-          {preferences.speech_enabled && (!isMusicPlaying || lyricsMode === 'normal_text') && (
-            <SpeechBubble mood={mood} />
-          )}
-        </div>
-      )}
-
-      {/* Main Character Sprite & Love Hearts */}
-      <div
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onClick={handlePetClick}
-        onDoubleClick={handleDoubleClick}
-        className="relative z-10 cursor-pointer pointer-events-auto transform hover:scale-105 active:scale-95 transition-transform mt-5"
-      >
-        {/* Floating Love Heart Particles */}
-        {showLoveHearts && (
-          <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
-            <span className="absolute -top-6 text-rose-500 animate-bounce text-xl">❤️</span>
-            <span className="absolute -top-9 -left-5 text-pink-400 animate-pulse text-lg">💖</span>
-            <span className="absolute -top-8 -right-5 text-purple-400 animate-pulse text-base">✨</span>
-            <span className="absolute top-2 right-9 text-rose-400 animate-bounce text-sm">💕</span>
-            <span className="absolute top-2 -left-8 text-amber-300 animate-pulse text-sm">⭐</span>
-          </div>
+            {/* Thought & Speech Bubble: strictly disabled during live lyrics playback */}
+            {preferences.speech_enabled && !isMediaSessionActive && (
+              <SpeechBubble mood={mood} />
+            )}
+          </>
         )}
-
-        <LuluSprite
-          animation={animation}
-          mood={mood}
-          scale={preferences.scale}
-          showShadow={true}
-          characterStyle={preferences.character_style || 'shadow_shinobi'}
-          cursorOffset={cursorOffset}
-          speedMultiplier={speedMultiplier}
-        />
       </div>
 
-      {/* Quick Action Floating Bar on Hover */}
-      {isHovered && (
-        <div className="absolute bottom-2 z-20 flex items-center gap-1.5 p-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white shadow-xl pointer-events-auto transition-opacity animate-fade-in">
-          <button
-            onClick={handlePetLulu}
-            className="p-1.5 rounded-full hover:bg-rose-500/30 text-rose-300 transition"
-            title="Pet Lulu"
-          >
-            <Heart size={13} />
-          </button>
+      {/* Main Character Sprite & Love Hearts (Centered in Viewport so Lulu is never forced down) */}
+      <div className="flex-1 w-full flex items-center justify-center relative z-10 pointer-events-auto my-auto">
+        <div
+          onClick={handleSpriteClick}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (clickTimeoutRef.current) {
+              clearTimeout(clickTimeoutRef.current);
+              clickTimeoutRef.current = null;
+            }
+            handleOpenControlCenter();
+          }}
+          className="relative cursor-pointer pointer-events-auto transform hover:scale-105 active:scale-95 transition-transform flex items-center justify-center select-none"
+        >
+          {/* Floating Love Heart Particles (100% Lucide SVG Icons) */}
+          {showLoveHearts && (
+            <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
+              <Heart size={22} className="absolute -top-6 text-rose-500 fill-rose-500 animate-bounce drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+              <Heart size={18} className="absolute -top-9 -left-5 text-pink-400 fill-pink-400 animate-pulse drop-shadow-[0_0_6px_rgba(244,114,182,0.6)]" />
+              <Sparkles size={18} className="absolute -top-8 -right-5 text-purple-400 fill-purple-400 animate-pulse drop-shadow-[0_0_6px_rgba(192,132,252,0.6)]" />
+              <Heart size={15} className="absolute top-2 right-9 text-rose-400 fill-rose-400 animate-bounce drop-shadow-[0_0_6px_rgba(251,113,133,0.6)]" />
+              <Sparkles size={16} className="absolute top-2 -left-8 text-amber-300 fill-amber-300 animate-pulse drop-shadow-[0_0_6px_rgba(252,211,77,0.6)]" />
+            </div>
+          )}
 
-          <button
-            onClick={handleSendLove}
-            className="p-1.5 rounded-full hover:bg-pink-500/30 text-pink-300 transition"
-            title="Lulu Aime (Send Love ❤️)"
-          >
-            <Sparkles size={13} className="text-yellow-300" />
-          </button>
-
-          <button
-            onClick={handleFeedSnack}
-            className="p-1.5 rounded-full hover:bg-amber-500/30 text-amber-300 transition"
-            title="Give Snack"
-          >
-            <Coffee size={13} />
-          </button>
-
-          <button
-            onClick={handleToggleSleep}
-            className="p-1.5 rounded-full hover:bg-indigo-500/30 text-indigo-300 transition"
-            title={isSleeping ? 'Wake Up' : 'Sleep'}
-          >
-            <Moon size={13} />
-          </button>
-
-          <button
-            onClick={() => setMovementPaused((p) => !p)}
-            className={`p-1.5 rounded-full transition ${
-              movementPaused ? 'bg-amber-500/30 text-amber-300' : 'hover:bg-white/20 text-gray-300'
-            }`}
-            title={movementPaused ? 'Resume Movement' : 'Pause Movement'}
-          >
-            <Footprints size={13} />
-          </button>
-
-          <button
-            onClick={() => {
-              setIsFollowingCursor((prev) => {
-                const next = !prev;
-                if (next) {
-                  messageManager.enqueue('Following cursor! ⚡', 'normal', 'interaction');
-                }
-                return next;
-              });
-            }}
-            className={`p-1.5 rounded-full transition ${
-              isFollowingCursor ? 'bg-cyan-500/40 text-cyan-200 ring-1 ring-cyan-400' : 'hover:bg-cyan-500/30 text-cyan-300'
-            }`}
-            title={isFollowingCursor ? 'Stop Following Cursor' : 'Follow Cursor'}
-          >
-            <Compass size={13} />
-          </button>
-
-          <button
-            onClick={handleToggleContinuousRun}
-            className={`p-1.5 rounded-full transition ${
-              isContinuousRunning ? 'bg-amber-500/50 text-yellow-300 ring-2 ring-yellow-400 animate-pulse' : 'hover:bg-yellow-500/30 text-yellow-300'
-            }`}
-            title={isContinuousRunning ? 'Stop SHOW RUN' : 'SHOW RUN'}
-          >
-            <Zap size={13} />
-          </button>
-
-          <button
-            onClick={() => {
-              setShowText((p) => {
-                const next = !p;
-                messageManager.enqueue(next ? 'Text & subtitles visible 💬' : 'Text hidden 🤫', 'normal', 'interaction');
-                return next;
-              });
-            }}
-            className={`p-1.5 rounded-full transition ${
-              showText ? 'bg-cyan-500/30 text-cyan-300' : 'hover:bg-white/20 text-gray-400'
-            }`}
-            title={showText ? 'Hide Text & Subtitles (Show Txt: ON)' : 'Show Text & Subtitles (Show Txt: OFF)'}
-          >
-            <FileText size={13} />
-          </button>
-
-          <button
-            onClick={() => {
-              setLyricsMode((prev) => {
-                const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
-                messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
-                return next;
-              });
-            }}
-            className={`p-1.5 rounded-full transition ${
-              lyricsMode === 'auto_lyrics' ? 'bg-emerald-500/30 text-emerald-300' : 'hover:bg-purple-500/20 text-purple-300'
-            }`}
-            title={lyricsMode === 'auto_lyrics' ? 'Switch to Normal Text Lulu' : 'Switch to Live Lyrics'}
-          >
-            <Music size={13} />
-          </button>
-
-          <button
-            onClick={handleOpenControlCenter}
-            className="p-1.5 rounded-full hover:bg-purple-500/30 text-purple-300 transition"
-            title="Open Control Center"
-          >
-            <Settings size={13} />
-          </button>
+          <LuluSprite
+            animation={animation}
+            mood={mood}
+            scale={preferences.scale}
+            showShadow={true}
+            characterStyle={preferences.character_style || 'shadow_shinobi'}
+            cursorOffset={cursorOffset}
+            speedMultiplier={speedMultiplier}
+            isMusicPlaying={isMusicPlaying}
+            fpsLimit={preferences.fps_limit}
+          />
         </div>
-      )}
+      </div>
 
-      {/* Right Click Context Menu (Section 10) */}
-      {/* Right Click Context Menu (Requirement 17) */}
+      {/* Bottom Section: Lyrics (if bottom hinged) & Quick Action Floating Bar */}
+      <div className="w-full flex flex-col items-center gap-1 z-30 pointer-events-none shrink-0 min-h-[24px]">
+        {showText && lyricsPosition === 'bottom' && renderLyricsCard()}
+
+        {/* Quick Action Floating Bar on Hover */}
+        {isHovered && (
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            className="flex items-center gap-1 p-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white shadow-xl pointer-events-auto transition-opacity animate-fade-in select-none"
+          >
+            <button
+              onClick={handlePetLulu}
+              className="p-1.5 rounded-full hover:bg-rose-500/30 text-rose-300 transition"
+              title="Pet Lulu"
+            >
+              <Heart size={13} />
+            </button>
+
+            <button
+              onClick={handleSendLove}
+              className="p-1.5 rounded-full hover:bg-pink-500/30 text-pink-300 transition"
+              title="Lulu Aime (Send Love)"
+            >
+              <Sparkles size={13} className="text-yellow-300" />
+            </button>
+
+            <button
+              onClick={handleFeedSnack}
+              className="p-1.5 rounded-full hover:bg-amber-500/30 text-amber-300 transition"
+              title="Give Snack"
+            >
+              <Coffee size={13} />
+            </button>
+
+            <button
+              onClick={handleToggleSleep}
+              className={`p-1.5 rounded-full transition ${
+                isSleeping
+                  ? 'bg-indigo-500/50 text-indigo-200 ring-1 ring-indigo-400'
+                  : 'hover:bg-indigo-500/30 text-indigo-300'
+              }`}
+              title={isSleeping ? (isMusicPlaying ? 'Wake Up (Lullaby Active)' : 'Wake Up') : (isMusicPlaying ? 'Lullaby Sleep Mode' : 'Sleep')}
+            >
+              <Moon size={13} />
+            </button>
+
+            <button
+              onClick={() => {
+                if (movementPaused) {
+                  movementRef.current.resume();
+                  setMovementPaused(false);
+                  messageManager.enqueue('Movement resumed!', 'normal', 'interaction');
+                } else {
+                  movementRef.current.pause();
+                  setMovementPaused(true);
+                  messageManager.enqueue('Movement paused.', 'normal', 'interaction');
+                }
+              }}
+              className={`p-1.5 rounded-full transition ${
+                movementPaused ? 'bg-amber-500/30 text-amber-300' : 'hover:bg-white/20 text-gray-300'
+              }`}
+              title={movementPaused ? 'Resume Movement' : 'Pause Movement'}
+            >
+              {movementPaused ? <Play size={13} /> : <Pause size={13} />}
+            </button>
+
+            {/* Walk Go & Back (Patrol back and forth across screen) */}
+            <button
+              onClick={handleToggleContinuousWalk}
+              className={`p-1.5 rounded-full transition ${
+                isContinuousWalking ? 'bg-blue-500/50 text-cyan-200 ring-2 ring-cyan-400 animate-pulse' : 'hover:bg-blue-500/30 text-cyan-300'
+              }`}
+              title={isContinuousWalking ? 'Stop Walk Go & Back' : 'Walk Go & Back (Patrol Pacing)'}
+            >
+              <Footprints size={13} />
+            </button>
+
+            <button
+              onClick={() => {
+                setIsFollowingCursor((prev) => {
+                  const next = !prev;
+                  if (next) {
+                    messageManager.enqueue('Following cursor!', 'normal', 'interaction');
+                  }
+                  return next;
+                });
+              }}
+              className={`p-1.5 rounded-full transition ${
+                isFollowingCursor ? 'bg-cyan-500/40 text-cyan-200 ring-1 ring-cyan-400' : 'hover:bg-cyan-500/30 text-cyan-300'
+              }`}
+              title={isFollowingCursor ? 'Stop Following Cursor' : 'Follow Cursor'}
+            >
+              <Compass size={13} />
+            </button>
+
+            <button
+              onClick={handleToggleContinuousRun}
+              className={`p-1.5 rounded-full transition ${
+                isContinuousRunning ? 'bg-amber-500/50 text-yellow-300 ring-2 ring-yellow-400 animate-pulse' : 'hover:bg-yellow-500/30 text-yellow-300'
+              }`}
+              title={isContinuousRunning ? 'Stop SHOW RUN' : 'SHOW RUN'}
+            >
+              <Zap size={13} />
+            </button>
+
+            {/* Collapse/Expand Lyrics Quick Action */}
+            {isMediaSessionActive && (
+              <button
+                onClick={() => setIsLyricsCollapsed((p) => !p)}
+                className={`p-1.5 rounded-full transition ${
+                  isLyricsCollapsed ? 'bg-purple-500/30 text-purple-300' : 'hover:bg-white/20 text-gray-300'
+                }`}
+                title={isLyricsCollapsed ? 'Expand Lyrics Card' : 'Collapse Lyrics Card to Mini Pill'}
+              >
+                {isLyricsCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setShowText((p) => {
+                  const next = !p;
+                  messageManager.enqueue(next ? 'Text & subtitles visible' : 'Text hidden', 'normal', 'interaction');
+                  return next;
+                });
+              }}
+              className={`p-1.5 rounded-full transition ${
+                showText ? 'bg-cyan-500/30 text-cyan-300' : 'hover:bg-white/20 text-gray-400'
+              }`}
+              title={showText ? 'Hide Text & Subtitles' : 'Show Text & Subtitles'}
+            >
+              <FileText size={13} />
+            </button>
+
+            <button
+              onClick={() => {
+                setLyricsMode((prev) => {
+                  const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
+                  messageManager.enqueue(next === 'auto_lyrics' ? 'Live Lyrics Studio Active' : 'Normal Text Lulu Active', 'normal', 'interaction');
+                  return next;
+                });
+              }}
+              className={`p-1.5 rounded-full transition ${
+                lyricsMode === 'auto_lyrics' ? 'bg-emerald-500/30 text-emerald-300' : 'hover:bg-purple-500/20 text-purple-300'
+              }`}
+              title={lyricsMode === 'auto_lyrics' ? 'Switch to Normal Text Lulu' : 'Switch to Live Lyrics'}
+            >
+              <Music size={13} />
+            </button>
+
+            <button
+              onClick={handleOpenControlCenter}
+              className="p-1.5 rounded-full hover:bg-purple-500/30 text-purple-300 transition"
+              title="Open Control Center"
+            >
+              <Settings size={13} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Right Click Context Menu (100% SVG Icons) */}
       {showContextMenu && (
         <div
           style={{ top: `${contextPos.y}px`, left: `${contextPos.x}px` }}
-          className="fixed z-50 bg-[#1e1e2e]/95 border border-[#313244] rounded-xl shadow-2xl py-1 text-xs text-gray-200 min-w-[175px] overflow-hidden backdrop-blur-md"
+          className="fixed z-50 bg-[#1e1e2e]/95 border border-[#313244] rounded-xl shadow-2xl py-1 text-xs text-gray-200 min-w-[190px] overflow-hidden backdrop-blur-md"
         >
           {/* Header */}
-          <div className="px-3 py-1.5 font-bold text-white flex items-center gap-1.5 select-none text-[13px]">
-            🐾 <span>Lulu</span>
+          <div className="px-3 py-1.5 font-bold text-white flex items-center gap-2 select-none text-[13px]">
+            <PawPrint size={14} className="text-purple-400" />
+            <span>Lulu</span>
           </div>
 
           <div className="h-[1px] bg-[#313244] my-1" />
 
-          {/* ⚡ Flame Sprint */}
+          {/* Walk Go & Back */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              handleToggleContinuousWalk();
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2 text-cyan-300 font-semibold"
+          >
+            <Footprints size={13} className="text-cyan-400" />
+            <span>{isContinuousWalking ? 'Stop Walk Go & Back' : 'Walk Go & Back'}</span>
+          </button>
+
+          {/* Flame Sprint */}
           <button
             onClick={() => {
               setShowContextMenu(false);
@@ -1097,11 +1574,11 @@ export const App: React.FC = () => {
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-yellow-600 hover:text-white flex items-center gap-2 text-yellow-300 font-semibold"
           >
-            <Zap size={13} className="text-yellow-400" />
-            <span>{is40sRunActive ? 'Stop Sprint ⚡' : '⚡ Flame Sprint'}</span>
+            <Flame size={13} className="text-yellow-400" />
+            <span>{is40sRunActive ? 'Stop Sprint' : 'Flame Sprint'}</span>
           </button>
 
-          {/* ⚡ SHOW RUN */}
+          {/* SHOW RUN */}
           <button
             onClick={() => {
               setShowContextMenu(false);
@@ -1110,59 +1587,68 @@ export const App: React.FC = () => {
             className="w-full text-left px-3 py-1.5 hover:bg-yellow-600 hover:text-white flex items-center gap-2 text-amber-300 font-semibold"
           >
             <Zap size={13} className="text-amber-400" />
-            <span>{isContinuousRunning ? 'Stop SHOW RUN ⚡' : '⚡ SHOW RUN'}</span>
+            <span>{isContinuousRunning ? 'Stop SHOW RUN' : 'SHOW RUN'}</span>
           </button>
 
-          {/* ⏸ Pause */}
+          {/* Pause */}
           <button
             onClick={() => {
               setShowContextMenu(false);
               movementRef.current.pause();
               setMovementPaused(true);
-              messageManager.enqueue('Movement paused. ⏸', 'normal', 'interaction');
+              messageManager.enqueue('Movement paused.', 'normal', 'interaction');
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-purple-600 hover:text-white flex items-center gap-2 text-gray-300"
           >
-            <span>⏸ Pause</span>
+            <Pause size={13} className="text-gray-400" />
+            <span>Pause Movement</span>
           </button>
 
-          {/* ▶ Resume */}
+          {/* Resume */}
           <button
             onClick={() => {
               setShowContextMenu(false);
               movementRef.current.resume();
               setMovementPaused(false);
-              messageManager.enqueue('Movement resumed! ▶', 'normal', 'interaction');
+              messageManager.enqueue('Movement resumed!', 'normal', 'interaction');
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-purple-600 hover:text-white flex items-center gap-2 text-gray-300"
           >
-            <span>▶ Resume</span>
+            <Play size={13} className="text-emerald-400" />
+            <span>Resume Movement</span>
           </button>
 
-          {/* 🧘 Step Down / Sit */}
+          {/* Step Down / Sit */}
           <button
             onClick={() => {
               setShowContextMenu(false);
               setIsSleeping(false);
               setAnimation('sit');
-              messageManager.enqueue('Resting peacefully cross-legged... 🧘✨', 'normal', 'interaction');
+              messageManager.enqueue('Resting peacefully cross-legged...', 'normal', 'interaction');
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-emerald-600 hover:text-white flex items-center gap-2 text-emerald-300 font-semibold"
           >
-            <span>🧘 Step Down / Sit</span>
+            <Armchair size={13} className="text-emerald-400" />
+            <span>Step Down / Sit</span>
           </button>
 
-          {/* 😴 Zen Slumber */}
+          {/* Zen Slumber / Lullaby Sleep */}
           <button
             onClick={() => {
               setShowContextMenu(false);
               setIsSleeping(true);
+              isSleepingRef.current = true;
               setAnimation('sleep');
-              messageManager.enqueue('Zzz... Peacefully resting soundly. 😴🌙', 'normal', 'interaction');
+              if (isMusicPlaying) {
+                messageManager.enqueue('Peaceful Lullaby Mode • Sleeping soundly to the melody...', 'normal', 'interaction');
+              } else {
+                messageManager.enqueue('Zzz... Peacefully resting soundly.', 'normal', 'interaction');
+              }
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 text-indigo-300 font-semibold"
           >
-            <span>😴 Zen Slumber</span>
+            <Moon size={13} className="text-indigo-400" />
+            <span>{isMusicPlaying ? 'Lullaby Sleep' : 'Zen Slumber'}</span>
           </button>
 
           <div className="h-[1px] bg-[#313244] my-1" />
@@ -1175,39 +1661,88 @@ export const App: React.FC = () => {
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-purple-600 hover:text-white flex items-center gap-2 text-gray-300"
           >
-            <span>💬 Open Chat</span>
+            <MessageSquare size={13} className="text-purple-400" />
+            <span>Open Chat</span>
           </button>
 
-          {/* 💬 Toggle Text / Subtitles */}
+          {/* Toggle Text / Subtitles */}
           <button
             onClick={() => {
               setShowContextMenu(false);
               setShowText((p) => {
                 const next = !p;
-                messageManager.enqueue(next ? 'Text & subtitles visible 💬' : 'Text hidden 🤫', 'normal', 'interaction');
+                messageManager.enqueue(next ? 'Text & subtitles visible' : 'Text hidden', 'normal', 'interaction');
                 return next;
               });
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-cyan-600 hover:text-white flex items-center gap-2 text-cyan-300 font-medium"
           >
-            <FileText size={13} />
-            <span>{showText ? '💬 Hide Text' : '💬 Show Text'}</span>
+            <FileText size={13} className="text-cyan-400" />
+            <span>{showText ? 'Hide Text' : 'Show Text'}</span>
           </button>
 
-          {/* 🎵 Live Lyrics / Normal Text Mode Toggle */}
+          {/* Live Lyrics / Normal Text Mode Toggle */}
           <button
             onClick={() => {
               setShowContextMenu(false);
               setLyricsMode((prev) => {
                 const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
-                messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
+                messageManager.enqueue(next === 'auto_lyrics' ? 'Live Lyrics Studio Active' : 'Normal Text Lulu Active', 'normal', 'interaction');
                 return next;
               });
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-emerald-600 hover:text-white flex items-center gap-2 text-emerald-300 font-medium"
           >
-            <Music size={13} />
-            <span>{lyricsMode === 'auto_lyrics' ? '🎵 Mode: Live Lyrics' : '🐾 Mode: Normal Text'}</span>
+            <Music size={13} className="text-emerald-400" />
+            <span>{lyricsMode === 'auto_lyrics' ? 'Mode: Live Lyrics' : 'Mode: Normal Text'}</span>
+          </button>
+
+          {/* Toggle All Lyrics View */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              setShowAllLyrics((p) => {
+                const next = !p;
+                messageManager.enqueue(next ? 'Showing full lyrics scroll' : 'Showing 3-line focused lyrics', 'normal', 'interaction');
+                return next;
+              });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-pink-600 hover:text-white flex items-center gap-2 text-pink-300 font-medium"
+          >
+            <ListMusic size={13} className="text-pink-400" />
+            <span>{showAllLyrics ? '3-Line Focus View' : 'Show All Lyrics'}</span>
+          </button>
+
+          {/* Collapse / Expand Lyrics Mini Pill */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              setIsLyricsCollapsed((p) => {
+                const next = !p;
+                messageManager.enqueue(next ? 'Lyrics collapsed to mini pill' : 'Lyrics expanded to full card', 'normal', 'interaction');
+                return next;
+              });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-blue-600 hover:text-white flex items-center gap-2 text-blue-300 font-medium"
+          >
+            {isLyricsCollapsed ? <ChevronDown size={13} className="text-blue-400" /> : <ChevronUp size={13} className="text-blue-400" />}
+            <span>{isLyricsCollapsed ? 'Expand Lyrics Card' : 'Collapse to Mini Pill'}</span>
+          </button>
+
+          {/* Hinge Lyrics: Top vs Bottom */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              setLyricsPosition((p) => {
+                const next = p === 'top' ? 'bottom' : 'top';
+                messageManager.enqueue(`Lyrics hinged at ${next}`, 'normal', 'interaction');
+                return next;
+              });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-indigo-600 hover:text-white flex items-center gap-2 text-indigo-300 font-medium"
+          >
+            <ArrowUpDown size={13} className="text-indigo-400" />
+            <span>{lyricsPosition === 'top' ? 'Hinge Lyrics: Bottom' : 'Hinge Lyrics: Top'}</span>
           </button>
 
           {/* Control Center */}
@@ -1218,7 +1753,7 @@ export const App: React.FC = () => {
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-purple-600 hover:text-white flex items-center gap-2 text-purple-300 font-medium"
           >
-            <Settings size={13} />
+            <Settings size={13} className="text-purple-400" />
             <span>Control Center</span>
           </button>
 
@@ -1230,7 +1765,8 @@ export const App: React.FC = () => {
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-purple-600 hover:text-white flex items-center gap-2 text-gray-300"
           >
-            <span>🎨 Settings</span>
+            <Sliders size={13} className="text-gray-400" />
+            <span>Settings</span>
           </button>
 
           {/* Quit */}
@@ -1241,74 +1777,11 @@ export const App: React.FC = () => {
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-red-600 hover:text-white flex items-center gap-2 text-red-400 font-medium"
           >
-            <span>🚪 Quit</span>
+            <LogOut size={13} className="text-red-400" />
+            <span>Quit Lulu</span>
           </button>
         </div>
       )}
-
-      {/* Control Center Modal */}
-      <ControlCenterModal
-        isOpen={isControlCenterOpen}
-        onClose={handleCloseControlCenter}
-        needs={needs}
-        mood={mood}
-        preferences={preferences}
-        onUpdatePreferences={handleUpdatePreferences}
-        onPetLulu={handlePetLulu}
-        onSendLove={handleSendLove}
-        onFeedSnack={handleFeedSnack}
-        onToggleSleep={handleToggleSleep}
-        isSleeping={isSleeping}
-        onTriggerAnimation={(anim) => {
-          if (anim === 'run-right' || anim === 'run') {
-            movementRef.current.sprintLap();
-          } else {
-            setAnimation(anim as AnimationState);
-          }
-        }}
-        onTriggerFocusEvent={handleTriggerFocusEvent}
-        focusIntervalSeconds={focusIntervalSeconds}
-        onSetFocusInterval={setFocusIntervalSeconds}
-        isContinuousRunning={isContinuousRunning}
-        onToggleContinuousRun={handleToggleContinuousRun}
-        is40sRunActive={is40sRunActive}
-        onStart40sRun={handleStart40sRun}
-        parsedLrc={spotifyLyrics}
-        onStopMovement={() => {
-          movementRef.current.stop();
-          setIs40sRunActive(false);
-          setIsContinuousRunning(false);
-        }}
-        onPauseMovement={() => {
-          movementRef.current.pause();
-          setMovementPaused(true);
-        }}
-        onResumeMovement={() => {
-          movementRef.current.resume();
-          setMovementPaused(false);
-        }}
-        isMovementPaused={movementPaused}
-        currentDirection={movementRef.current.getState().runDirection}
-        currentFrame={movementRef.current.getState().currentFrame}
-        showText={showText}
-        onToggleShowText={() => setShowText((p) => !p)}
-        lyricsMode={lyricsMode}
-        onToggleLyricsMode={() => {
-          setLyricsMode((prev) => {
-            const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
-            messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
-            return next;
-          });
-        }}
-        speedMultiplier={speedMultiplier}
-        onSetSpeedMultiplier={(mult) => {
-          setSpeedMultiplier(mult);
-          movementRef.current.setSpeedMultiplier(mult);
-        }}
-        systemTelemetry={systemTelemetry}
-        activeMediaSession={activeMediaSession}
-        onUnlockAll={handleUnlockAll}
-      />
     </div>
   );
 };

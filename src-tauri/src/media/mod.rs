@@ -69,16 +69,25 @@ pub trait MediaProvider {
 pub fn parse_youtube_title(raw_title: &str, raw_artist: Option<&str>) -> (String, Option<String>) {
     let mut title = raw_title.trim().to_string();
 
-    // Remove common YouTube suffixes
-    if title.to_lowercase().ends_with(" - youtube") {
-        title = title[..title.len() - 10].trim().to_string();
+    // Strip unread notification counts like "(809) " or "(1) "
+    if let Ok(re_notif) = regex::Regex::new(r"^\s*\(\d+\)\s*") {
+        title = re_notif.replace(&title, "").trim().to_string();
     }
-    if title.to_lowercase().ends_with(" | youtube") {
+
+    // Remove common YouTube suffixes
+    let lower = title.to_lowercase();
+    if lower.ends_with(" - youtube music") {
+        title = title[..title.len() - 16].trim().to_string();
+    } else if lower.ends_with(" | youtube music") {
+        title = title[..title.len() - 16].trim().to_string();
+    } else if lower.ends_with(" - youtube") {
+        title = title[..title.len() - 10].trim().to_string();
+    } else if lower.ends_with(" | youtube") {
         title = title[..title.len() - 10].trim().to_string();
     }
 
-    // Clean brackets like (Official Video), [Official Audio], etc.
-    let re_bracket = regex::Regex::new(r"(?i)\s*[\(\[](official\s*(music\s*)?video|audio|lyrics?|hd|4k|mv|remastered|visualizer)[\)\]]").unwrap();
+    // Clean brackets like (Official Video), [Official Audio], (Lyrics), (Color Coded Lyrics), etc.
+    let re_bracket = regex::Regex::new(r"(?i)\s*[\(\[](official\s*(music\s*)?(video|audio)?|video|audio|lyrics?|hd|4k|mv|remastered|visualizer|color\s*coded(\s*lyrics)?|eng\s*sub|live|acoustic|performance)[\)\]]").unwrap();
     let cleaned = re_bracket.replace_all(&title, "").trim().to_string();
 
     // If title has "Artist - Song", split it
@@ -355,5 +364,12 @@ mod tests {
         let (title, artist) = parse_youtube_title("Chilling lofi beats to relax", Some("Lofi Girl"));
         assert_eq!(title, "Chilling lofi beats to relax");
         assert_eq!(artist.as_deref(), Some("Lofi Girl"));
+    }
+
+    #[test]
+    fn test_parse_youtube_notification_count_and_lyrics_tag() {
+        let (title, artist) = parse_youtube_title("(809) Love Me Not - Ravyn Lenae (Lyrics) - YouTube", None);
+        assert_eq!(title, "Ravyn Lenae");
+        assert_eq!(artist.as_deref(), Some("Love Me Not"));
     }
 }

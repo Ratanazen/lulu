@@ -30,8 +30,15 @@ class SpotifyLyricsService {
     return this.currentSource;
   }
 
-  private cleanString(str: string): string {
+  public cleanString(str: string): string {
     return str
+      // Unread notification count from browser tabs like (809) or (1)
+      .replace(/^\s*\(\d+\)\s*/, '')
+      // YouTube browser suffixes
+      .replace(/\s*-\s*youtube(\s*music)?$/i, '')
+      .replace(/\s*\|\s*youtube(\s*music)?$/i, '')
+      // Specific video tags
+      .replace(/\s*[\(\[](official\s*(music\s*)?(video|audio|lyric\s*video|visualizer)?|video|audio|lyrics?|hd|4k|mv|remastered|visualizer|color\s*coded(\s*lyrics)?|eng\s*sub|live|acoustic|performance)[\)\]]/gi, '')
       .replace(/\s*\(feat\..*?\)/gi, '')
       .replace(/\s*\[feat\..*?\]/gi, '')
       .replace(/\s*\(with.*?\)/gi, '')
@@ -89,11 +96,19 @@ class SpotifyLyricsService {
     return [];
   }
 
-  public async getLyricsForTrack(artist: string, title: string, durationSecs?: number): Promise<ParsedLrc | null> {
-    if (!artist || !title) return null;
-    const key = `${artist.trim()} - ${title.trim()}`.toLowerCase();
+  public async getLyricsForTrack(
+    artist: string,
+    title: string,
+    durationSecs?: number,
+    rawSearchQuery?: string
+  ): Promise<ParsedLrc | null> {
+    if (!artist && !title && !rawSearchQuery) return null;
+    const safeArtist = (artist || '').trim();
+    const safeTitle = (title || '').trim();
+    const key = `${safeArtist} - ${safeTitle}`.toLowerCase();
+    const swappedKey = `${safeTitle} - ${safeArtist}`.toLowerCase();
 
-    if (this.activeTrackKey === key && this.currentLrc) {
+    if ((this.activeTrackKey === key || this.activeTrackKey === swappedKey) && this.currentLrc) {
       return this.currentLrc;
     }
 
@@ -103,58 +118,77 @@ class SpotifyLyricsService {
       this.currentLrc = cached;
       return cached;
     }
-
-    const cleanFilename = `${artist.replace(/[/\?%*:|"<>]/g, '_')} - ${title.replace(/[/\?%*:|"<>]/g, '_')}.lrc`;
-
-    // 1. Try local storage file first
-    try {
-      const localContent = await invokeCommand<string>('read_lyrics_file', {
-        filename: cleanFilename,
-      });
-      if (localContent && localContent.trim().length > 0) {
-        const parsed = LrcParser.parse(localContent);
-        this.cache.set(key, parsed);
-        this.activeTrackKey = key;
-        this.currentLrc = parsed;
-        this.currentSource = 'Local File';
-        return parsed;
-      }
-    } catch {
-      // Not cached locally, proceed to fetch
+    if (this.cache.has(swappedKey)) {
+      const cached = this.cache.get(swappedKey) || null;
+      this.activeTrackKey = key;
+      this.currentLrc = cached;
+      return cached;
     }
 
-    // 2. Fetch from LRCLIB API (Direct Get with or without duration)
-    try {
-      let data = null;
-      if (durationSecs && durationSecs > 0) {
-        const directUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}&duration=${Math.round(durationSecs)}`;
-        data = await this.fetchJson(directUrl);
-      }
-      if (!data || (!data.syncedLyrics && !data.plainLyrics)) {
-        const directNoDurUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
-        data = await this.fetchJson(directNoDurUrl);
-      }
+    const cleanFilename = `${safeArtist.replace(/[/\?%*:|"<>]/g, '_')} - ${safeTitle.replace(/[/\?%*:|"<>]/g, '_')}.lrc`;
+    const swappedFilename = `${safeTitle.replace(/[/\?%*:|"<>]/g, '_')} - ${safeArtist.replace(/[/\?%*:|"<>]/g, '_')}.lrc`;
 
-      const rawContent = data?.syncedLyrics || data?.plainLyrics;
-      if (rawContent && rawContent.trim().length > 0) {
-        const parsed = LrcParser.parse(rawContent);
-        await this.saveLocalCache(cleanFilename, rawContent);
-        this.cache.set(key, parsed);
-        this.activeTrackKey = key;
-        this.currentLrc = parsed;
-        this.currentSource = data.syncedLyrics ? 'LRCLIB (Synced)' : 'LRCLIB (Plain)';
-        return parsed;
-      }
-    } catch (e) {
-      console.warn('[SpotifyLyrics] Direct fetch error:', e);
-    }
-
-    // 3. Fallback: Cleaned Artist & Title Search
-    const cleanArtist = this.cleanString(artist);
-    const cleanTitle = this.cleanString(title);
-    if (cleanArtist !== artist || cleanTitle !== title) {
+    // 1. Try local storage file first (direct or swapped)
+    for (const filename of [cleanFilename, swappedFilename]) {
       try {
-        const cleanUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`;
+        const localContent = await invokeCommand<string>('read_lyrics_file', { filename });
+        if (localContent && localContent.trim().length > 0) {
+          const parsed = LrcParser.parse(localContent);
+          this.cache.set(key, parsed);
+          this.activeTrackKey = key;
+          this.currentLrc = parsed;
+          this.currentSource = 'Local File';
+          return parsed;
+        }
+      } catch {
+        // Not cached locally
+      }
+    }
+
+    // 2. Fetch from LRCLIB API: Direct Get (Artist & Title)
+    const directPairs = [
+      { a: safeArtist, t: safeTitle },
+      { a: safeTitle, t: safeArtist },
+    ].filter((p) => p.a.length > 0 && p.t.length > 0);
+
+    for (const pair of directPairs) {
+      try {
+        let data = null;
+        if (durationSecs && durationSecs > 0) {
+          const directUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(pair.a)}&track_name=${encodeURIComponent(pair.t)}&duration=${Math.round(durationSecs)}`;
+          data = await this.fetchJson(directUrl);
+        }
+        if (!data || (!data.syncedLyrics && !data.plainLyrics)) {
+          const directNoDurUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(pair.a)}&track_name=${encodeURIComponent(pair.t)}`;
+          data = await this.fetchJson(directNoDurUrl);
+        }
+
+        const rawContent = data?.syncedLyrics || data?.plainLyrics;
+        if (rawContent && rawContent.trim().length > 0) {
+          const parsed = LrcParser.parse(rawContent);
+          await this.saveLocalCache(cleanFilename, rawContent);
+          this.cache.set(key, parsed);
+          this.activeTrackKey = key;
+          this.currentLrc = parsed;
+          this.currentSource = data.syncedLyrics ? 'LRCLIB (Synced)' : 'LRCLIB (Plain)';
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('[SpotifyLyrics] Direct fetch error:', e);
+      }
+    }
+
+    // 3. Fallback: Cleaned Artist & Title Direct Match
+    const cleanArtist = this.cleanString(safeArtist);
+    const cleanTitle = this.cleanString(safeTitle);
+    const cleanedPairs = [
+      { a: cleanArtist, t: cleanTitle },
+      { a: cleanTitle, t: cleanArtist },
+    ].filter((p) => p.a.length > 0 && p.t.length > 0 && (p.a !== safeArtist || p.t !== safeTitle));
+
+    for (const pair of cleanedPairs) {
+      try {
+        const cleanUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(pair.a)}&track_name=${encodeURIComponent(pair.t)}`;
         const data = await this.fetchJson(cleanUrl);
         const rawContent = data?.syncedLyrics || data?.plainLyrics;
         if (rawContent && rawContent.trim().length > 0) {
@@ -163,7 +197,7 @@ class SpotifyLyricsService {
           this.cache.set(key, parsed);
           this.activeTrackKey = key;
           this.currentLrc = parsed;
-          this.currentSource = 'LRCLIB (Cleaned Match)';
+          this.currentSource = data.syncedLyrics ? 'LRCLIB (Cleaned Synced)' : 'LRCLIB (Cleaned Plain)';
           return parsed;
         }
       } catch (e) {
@@ -171,25 +205,75 @@ class SpotifyLyricsService {
       }
     }
 
-    // 4. Fallback: Query Search API
-    try {
-      const searchResults = await this.searchLyrics(`${cleanArtist} ${cleanTitle}`);
-      if (searchResults.length > 0) {
-        // Prioritize items with synced lyrics
-        const best = searchResults.find((r) => r.syncedLyrics) || searchResults[0];
-        const rawContent = best.syncedLyrics || best.plainLyrics;
-        if (rawContent && rawContent.trim().length > 0) {
-          const parsed = LrcParser.parse(rawContent);
-          await this.saveLocalCache(cleanFilename, rawContent);
-          this.cache.set(key, parsed);
-          this.activeTrackKey = key;
-          this.currentLrc = parsed;
-          this.currentSource = best.syncedLyrics ? 'LRCLIB Search (Synced)' : 'LRCLIB Search (Plain)';
-          return parsed;
+    // 4. Fallback: Multi-Candidate Query Search API (Handles YouTube Titles, Inverted Artist/Title & Custom Channels)
+    const isGenericArtist =
+      !cleanArtist ||
+      ['youtube channel', 'unknown artist', 'various artists', 'youtube', 'mpris'].includes(
+        cleanArtist.toLowerCase()
+      );
+
+    const candidateQueries: string[] = [];
+    if (rawSearchQuery) {
+      const cleanedRaw = this.cleanString(rawSearchQuery);
+      if (cleanedRaw) candidateQueries.push(cleanedRaw);
+    }
+    if (cleanArtist && cleanTitle && !isGenericArtist) {
+      candidateQueries.push(`${cleanArtist} ${cleanTitle}`);
+      candidateQueries.push(`${cleanTitle} ${cleanArtist}`);
+    }
+    if (cleanTitle && cleanTitle.length > 2) {
+      candidateQueries.push(cleanTitle);
+    }
+    if (cleanArtist && cleanArtist.length > 2 && !isGenericArtist) {
+      candidateQueries.push(cleanArtist);
+    }
+
+    // Deduplicate candidate queries
+    const uniqueQueries = Array.from(new Set(candidateQueries.map((q) => q.trim()).filter((q) => q.length > 1)));
+
+    for (const query of uniqueQueries) {
+      try {
+        const searchResults = await this.searchLyrics(query);
+        if (searchResults.length > 0) {
+          // Score results: prioritize synced lyrics and duration proximity
+          const scored = searchResults.map((item) => {
+            let score = 0;
+            if (item.syncedLyrics) score += 50;
+            if (durationSecs && durationSecs > 0 && item.duration) {
+              const diff = Math.abs(item.duration - durationSecs);
+              if (diff <= 3) score += 40;
+              else if (diff <= 8) score += 25;
+              else if (diff <= 15) score += 10;
+            }
+            const itemTrack = (item.trackName || '').toLowerCase();
+            const itemArtist = (item.artistName || '').toLowerCase();
+            const lTitle = cleanTitle.toLowerCase();
+            const lArtist = cleanArtist.toLowerCase();
+
+            if (itemTrack === lTitle || itemTrack === lArtist) score += 20;
+            if (itemArtist === lArtist || itemArtist === lTitle) score += 15;
+            if (lTitle.includes(itemTrack) || itemTrack.includes(lTitle)) score += 10;
+
+            return { item, score };
+          });
+
+          scored.sort((a, b) => b.score - a.score);
+          const best = scored[0].item;
+
+          const rawContent = best.syncedLyrics || best.plainLyrics;
+          if (rawContent && rawContent.trim().length > 0) {
+            const parsed = LrcParser.parse(rawContent);
+            await this.saveLocalCache(cleanFilename, rawContent);
+            this.cache.set(key, parsed);
+            this.activeTrackKey = key;
+            this.currentLrc = parsed;
+            this.currentSource = best.syncedLyrics ? 'LRCLIB Search (Synced)' : 'LRCLIB Search (Plain)';
+            return parsed;
+          }
         }
+      } catch (e) {
+        console.warn(`[SpotifyLyrics] Fallback search error for "${query}":`, e);
       }
-    } catch (e) {
-      console.warn('[SpotifyLyrics] Fallback search error:', e);
     }
 
     this.cache.set(key, null);

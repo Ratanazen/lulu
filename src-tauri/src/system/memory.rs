@@ -13,6 +13,7 @@ pub struct MemoryInfo {
     pub used_mb: u64,
     pub swap_total_mb: u64,
     pub swap_used_mb: u64,
+    pub usage_percent: f32,
 }
 
 impl MemoryInfo {
@@ -22,6 +23,12 @@ impl MemoryInfo {
         let used = sys.used_memory();
         let swap_total = sys.total_swap();
         let swap_used = sys.used_swap();
+
+        let usage_percent = if total > 0 {
+            ((used as f64 / total as f64) * 100.0) as f32
+        } else {
+            0.0
+        };
 
         Self {
             total_bytes: total,
@@ -34,6 +41,7 @@ impl MemoryInfo {
             used_mb: used / 1024 / 1024,
             swap_total_mb: swap_total / 1024 / 1024,
             swap_used_mb: swap_used / 1024 / 1024,
+            usage_percent,
         }
     }
 }

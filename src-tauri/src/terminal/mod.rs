@@ -79,6 +79,35 @@ pub fn parse_lrc_lines(content: &str) -> Vec<LrcLine> {
     lines
 }
 
+pub fn find_active_line_index(lines: &[LrcLine], pos_secs: f64, tolerance_secs: f64) -> Option<usize> {
+    if lines.is_empty() {
+        return None;
+    }
+    let effective_pos = pos_secs + tolerance_secs;
+    if effective_pos < lines[0].time_secs {
+        return None;
+    }
+
+    let mut low = 0;
+    let mut high = lines.len() - 1;
+    let mut active = None;
+
+    while low <= high {
+        let mid = (low + high) / 2;
+        if lines[mid].time_secs <= effective_pos {
+            active = Some(mid);
+            low = mid + 1;
+        } else {
+            if mid == 0 {
+                break;
+            }
+            high = mid - 1;
+        }
+    }
+
+    active
+}
+
 pub fn fetch_lyrics_lrclib(artist: &str, title: &str) -> Option<String> {
     // 1. Try cache
     if let Some(cached) = get_cached_lyric("lrclib", artist, title) {
@@ -148,6 +177,9 @@ pub fn run_terminal_media_loop(filter_provider: Option<String>) {
     let mut last_track_key = String::new();
     let mut current_lyrics_lines: Vec<LrcLine> = Vec::new();
     let mut lyrics_status = "Searching...".to_string();
+    let mut prev_line = "···".to_string();
+    let mut curr_line = "♪ (Instrumental Melody) ♪".to_string();
+    let mut next_line = "···".to_string();
 
     while RUNNING.load(Ordering::SeqCst) {
         let session = get_media_session(filter_provider.clone()).unwrap_or_default();
@@ -161,6 +193,9 @@ pub fn run_terminal_media_loop(filter_provider: Option<String>) {
         if track_key != last_track_key && !session.title.is_empty() {
             last_track_key = track_key.clone();
             current_lyrics_lines.clear();
+            prev_line = "···".to_string();
+            curr_line = "♪ (Instrumental Melody) ♪".to_string();
+            next_line = "···".to_string();
 
             if let Some(ref art) = session.artist {
                 if let Some(raw_lrc) = fetch_lyrics_lrclib(art, &session.title) {
@@ -178,33 +213,27 @@ pub fn run_terminal_media_loop(filter_provider: Option<String>) {
             }
         }
 
-        // Calculate active lines
+        // Calculate active lines with 100ms tolerance and freeze on pause
         let pos_secs = session.position_ms.unwrap_or(0) as f64 / 1000.0;
         let dur_secs = session.duration_ms.unwrap_or(0) as f64 / 1000.0;
 
-        let mut prev_line = "···".to_string();
-        let mut curr_line = "♪ (Instrumental Melody) ♪".to_string();
-        let mut next_line = "···".to_string();
-
-        if !current_lyrics_lines.is_empty() {
-            let mut active_idx: Option<usize> = None;
-            for (idx, line) in current_lyrics_lines.iter().enumerate() {
-                if line.time_secs <= pos_secs {
-                    active_idx = Some(idx);
-                } else {
-                    break;
-                }
-            }
-
+        if !session.paused && !current_lyrics_lines.is_empty() {
+            let active_idx = find_active_line_index(&current_lyrics_lines, pos_secs, 0.100);
             if let Some(idx) = active_idx {
                 if idx > 0 {
                     prev_line = sanitize_terminal_text(&current_lyrics_lines[idx - 1].text);
+                } else {
+                    prev_line = "···".to_string();
                 }
                 curr_line = sanitize_terminal_text(&current_lyrics_lines[idx].text);
                 if idx + 1 < current_lyrics_lines.len() {
                     next_line = sanitize_terminal_text(&current_lyrics_lines[idx + 1].text);
+                } else {
+                    next_line = "···".to_string();
                 }
             } else {
+                prev_line = "···".to_string();
+                curr_line = "♪ (Instrumental Melody) ♪".to_string();
                 next_line = sanitize_terminal_text(&current_lyrics_lines[0].text);
             }
         }
@@ -303,5 +332,22 @@ mod tests {
     fn test_url_encode() {
         assert_eq!(url_encode("Cigarettes After Sex"), "Cigarettes%20After%20Sex");
         assert_eq!(url_encode("K."), "K.");
+    }
+
+    #[test]
+    fn test_find_active_line_index_tolerance_and_boundaries() {
+        let lines = vec![
+            LrcLine { time_secs: 5.0, text: "First".to_string() },
+            LrcLine { time_secs: 10.0, text: "Second".to_string() },
+            LrcLine { time_secs: 15.0, text: "Third".to_string() },
+        ];
+        // Before first line with 100ms tolerance
+        assert_eq!(find_active_line_index(&lines, 4.8, 0.100), None);
+        // Hits line 0 at 4.9s due to +100ms tolerance
+        assert_eq!(find_active_line_index(&lines, 4.9, 0.100), Some(0));
+        // Inside line 1
+        assert_eq!(find_active_line_index(&lines, 12.0, 0.100), Some(1));
+        // Final line
+        assert_eq!(find_active_line_index(&lines, 25.0, 0.100), Some(2));
     }
 }

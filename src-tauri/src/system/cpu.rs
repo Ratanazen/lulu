@@ -14,6 +14,10 @@ pub struct CpuInfo {
 
 impl CpuInfo {
     pub fn probe(sys: &System) -> Self {
+        Self::probe_with_usage(sys, sys.global_cpu_usage())
+    }
+
+    pub fn probe_with_usage(sys: &System, usage_percent: f32) -> Self {
         let cpus = sys.cpus();
         let logical_cores = cpus.len();
         let physical_cores = sys.physical_core_count().unwrap_or(logical_cores);
@@ -28,7 +32,6 @@ impl CpuInfo {
             ("UNKNOWN".into(), "UNKNOWN".into(), 0)
         };
 
-        let usage_percent = sys.global_cpu_usage();
         let architecture = std::env::consts::ARCH.to_string();
 
         Self {

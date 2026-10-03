@@ -96,6 +96,8 @@ type i32 = number;
 
 export type CharacterStyle = 'shadow_shinobi' | 'anime_chibi' | 'celestial_kitsune';
 
+export type PerformanceProfileType = 'Auto' | 'PowerSaver' | 'Balanced' | 'High' | 'Low';
+
 export interface PetPreferences {
   scale: number;
   theme: string;
@@ -109,6 +111,9 @@ export interface PetPreferences {
   sound_volume: number;
   always_on_top: boolean;
   fps_limit: number;
+  performance_profile?: PerformanceProfileType;
+  telemetry_interval_ms?: number;
+  low_spec_mode?: boolean;
 }
 
 export interface SpeechMessage {
