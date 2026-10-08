@@ -133,6 +133,10 @@ export interface LuluTask {
   reward: string;
   actionId: string;
   category: string;
+  currentProgress?: number;
+  maxProgress?: number;
+  unit?: string;
+  xpReward?: number;
 }
 
 export const LULU_TASKS: LuluTask[] = [

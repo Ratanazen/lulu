@@ -64,6 +64,7 @@ import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/
 import { MediaSession, getProviderTheme } from '../../features/media/mediaSession';
 import { AudioVisualizer } from '../audio/AudioVisualizer';
 import { audioReactiveEngine, AudioReactiveMode } from '../../features/audio/AudioReactiveEngine';
+import { questProgressionEngine, ProgressionState, SHINOBI_RANKS } from '../../features/progression/QuestProgressionEngine';
 import shinobiIdle from '../../assets/avatars/shinobi_idle.png';
 import shinobiRun from '../../assets/avatars/shinobi_run.png';
 import shinobiHappy from '../../assets/avatars/shinobi_happy.png';
@@ -322,6 +323,16 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     audioReactiveEngine.setMode(mode);
     messageManager.enqueue(`🎵 Audio Mode: ${mode === 'beat_bounce' ? 'Beat Bounce' : mode === 'equalizer_groove' ? 'Equalizer Groove' : mode === 'gentle_ambient' ? 'Gentle Ambient' : 'Visualizer Off'}`, 'normal', 'interaction');
   };
+
+  // Shinobi Quest Progression & Rank State
+  const [progression, setProgression] = useState<ProgressionState>(() => questProgressionEngine.getState());
+  const [taskStatusFilter, setTaskStatusFilter] = useState<'All' | 'Active' | 'Completed'>('All');
+
+  useEffect(() => {
+    return questProgressionEngine.subscribe((state) => {
+      setProgression(state);
+    });
+  }, []);
 
   // Load capabilities & monitors when modal opens
   useEffect(() => {
@@ -1730,49 +1741,84 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
             {/* TASKS & PROGRESSION TAB (Full Master Catalog & Ability Suite) */}
             {activeTab === 'tasks' && (
               <div className="space-y-4">
-                {/* Header Banner */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-purple-950/40 border border-emerald-500/30 p-3.5 rounded-2xl shadow-lg">
-                  <div>
-                    <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                      <CheckSquare size={16} className="text-emerald-400" /> Tasks & Ability Progression Suite
-                    </h3>
-                    <p className="text-[11px] text-gray-300 mt-0.5">
-                      All {LULU_TASKS.length} companion katas, YouTube & Spotify media sync, and system telemetry tasks
-                    </p>
+                {/* Shinobi Rank & Live XP Progression Hub */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-emerald-950/60 via-purple-950/40 to-cyan-950/50 border border-emerald-500/40 p-4 rounded-2xl shadow-xl backdrop-blur-md">
+                  <div className="flex items-center gap-3">
+                    <div className="w-13 h-13 rounded-2xl bg-black/50 border border-emerald-400/40 flex items-center justify-center text-2xl shadow-inner shrink-0 p-1">
+                      <span>{progression.currentRank.badge}</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                          Level {progression.currentRank.level}
+                        </span>
+                        <h3 className="text-base font-extrabold text-white">
+                          {progression.currentRank.title}
+                        </h3>
+                      </div>
+                      <p className="text-[11px] text-gray-300 mt-0.5">
+                        {progression.currentRank.description}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
-                      <CheckCircle2 size={13} className="text-emerald-400" />
-                      {LULU_TASKS.filter((t) => t.isCompleted).length}/{LULU_TASKS.length} Completed (100%)
-                    </span>
-                    <button
-                      onClick={() => {
-                        onUnlockAll?.();
-                        messageManager.enqueue(`🎉 All ${LULU_TASKS.length} Master Tasks & Abilities 100% Unlocked!`, 'high', 'interaction');
-                      }}
-                      className="py-1 px-3 rounded-xl bg-emerald-600/40 border border-emerald-400/50 text-emerald-200 hover:bg-emerald-600/60 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
-                    >
-                      <Unlock size={12} className="text-emerald-300" />
-                      <span>Unlock All</span>
-                    </button>
+
+                  <div className="flex flex-col items-end gap-1.5 shrink-0 min-w-[200px]">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-400">Total Shinobi XP:</span>
+                      <span className="font-extrabold font-mono text-emerald-300 text-sm">
+                        {progression.totalXp} XP
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-black/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                        style={{ width: `${progression.rankProgressPercent}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between w-full text-[9.5px] text-gray-400">
+                      <span>{progression.rankProgressPercent}% to next promotion</span>
+                      <span>{progression.nextRank ? `${progression.xpToNextRank} XP left` : 'Max Rank!'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1">
+                      <button
+                        onClick={() => {
+                          questProgressionEngine.unlockAllTasks();
+                          onUnlockAll?.();
+                          messageManager.enqueue(`🎉 All Master Tasks 100% Unlocked! Ascended to Rikudo Shadow Sage! ✨`, 'high', 'interaction');
+                        }}
+                        className="py-1 px-2.5 rounded-xl bg-emerald-600/40 border border-emerald-400/50 text-emerald-200 hover:bg-emerald-600/60 flex items-center gap-1.5 text-[10px] font-bold transition shadow-sm"
+                        title="Instantly complete all quests and unlock all flames"
+                      >
+                        <Unlock size={11} className="text-emerald-300" />
+                        <span>Unlock All</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          questProgressionEngine.resetProgression();
+                          messageManager.enqueue(`🔄 Shinobi Quests Reset to Level 1. Begin your journey anew! 🍃`, 'normal', 'interaction');
+                        }}
+                        className="py-1 px-2 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white flex items-center gap-1 text-[10px] transition"
+                        title="Reset quest progress to replay"
+                      >
+                        <RefreshCw size={10} />
+                        <span>Reset</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Progress Bar & Summary Stats */}
-                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-gray-300 font-semibold flex items-center gap-1.5">
-                      <Sparkles size={12} className="text-amber-400" /> Total Mastery Progress
-                    </span>
-                    <span className="text-emerald-400 font-mono font-bold">100% Unlocked</span>
-                  </div>
-                  <div className="w-full bg-black/50 h-2 rounded-full overflow-hidden p-0.5 border border-white/5">
-                    <div className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full w-full shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px] text-gray-400">
+                {/* Summary Stats Overview */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-gray-400">
                     <div className="bg-black/30 p-1.5 rounded-lg border border-white/5 text-center">
-                      <span className="text-emerald-300 font-bold block">{LULU_TASKS.length} Tasks</span>
-                      <span className="text-[9px]">Full Suite</span>
+                      <span className="text-emerald-300 font-bold block">
+                        {progression.completedCount} / {progression.totalTasks} Done
+                      </span>
+                      <span className="text-[9px]">Quests Mastered</span>
                     </div>
                     <div className="bg-black/30 p-1.5 rounded-lg border border-white/5 text-center">
                       <span className="text-amber-300 font-bold block">{Object.keys(LULU_FLAME_STYLES).length} Flames</span>
@@ -1784,7 +1830,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     </div>
                     <div className="bg-black/30 p-1.5 rounded-lg border border-white/5 text-center">
                       <span className="text-cyan-300 font-bold block">100% Ready</span>
-                      <span className="text-[9px]">System & Media</span>
+                      <span className="text-[9px]">Audio & Traversal</span>
                     </div>
                   </div>
                 </div>
@@ -1816,6 +1862,26 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       })}
                     </div>
 
+                    {/* Status Filter Chips */}
+                    <div className="flex items-center gap-1 bg-black/30 p-0.5 rounded-lg border border-white/5">
+                      {(['All', 'Active', 'Completed'] as const).map((st) => {
+                        const isSel = taskStatusFilter === st;
+                        return (
+                          <button
+                            key={st}
+                            onClick={() => setTaskStatusFilter(st)}
+                            className={`px-2 py-0.5 rounded text-[9.5px] font-bold transition ${
+                              isSel
+                                ? 'bg-purple-600 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            {st}
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     {/* Search Input */}
                     <div className="relative min-w-[180px]">
                       <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -1841,17 +1907,32 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 {/* Tasks Cards Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {LULU_TASKS.filter((task) => {
+                    const qState = progression.tasks[task.id];
+                    const isCompleted = qState?.isCompleted ?? task.isCompleted;
+
                     const matchesCategory =
                       taskCategoryFilter === 'All' ||
                       task.category.toLowerCase() === taskCategoryFilter.toLowerCase();
+                    const matchesStatus =
+                      taskStatusFilter === 'All' ||
+                      (taskStatusFilter === 'Completed' && isCompleted) ||
+                      (taskStatusFilter === 'Active' && !isCompleted);
                     const matchesSearch =
                       !taskSearchQuery.trim() ||
                       task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                       task.description.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                       task.reward.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
                       task.category.toLowerCase().includes(taskSearchQuery.toLowerCase());
-                    return matchesCategory && matchesSearch;
+                    return matchesCategory && matchesStatus && matchesSearch;
                   }).map((task) => {
+                    const qState = progression.tasks[task.id];
+                    const isCompleted = qState?.isCompleted ?? task.isCompleted;
+                    const current = qState?.currentProgress ?? (isCompleted ? 1 : 0);
+                    const max = qState?.maxProgress ?? 1;
+                    const unit = qState?.unit ?? 'pt';
+                    const xp = qState?.xpReward ?? 200;
+                    const percent = Math.min(100, Math.round((current / max) * 100));
+
                     // Category badge colors
                     const getCategoryColor = (cat: string) => {
                       switch (cat.toLowerCase()) {
@@ -1878,7 +1959,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     return (
                       <div
                         key={task.id}
-                        className="bg-[#181825] border border-[#313244] hover:border-emerald-500/50 p-3 rounded-xl transition-all duration-200 flex gap-3 items-start group hover:bg-[#1e1e30] shadow-sm hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]"
+                        className={`bg-[#181825] border ${
+                          isCompleted ? 'border-emerald-500/40' : 'border-[#313244]'
+                        } hover:border-emerald-500/50 p-3 rounded-xl transition-all duration-200 flex gap-3 items-start group hover:bg-[#1e1e30] shadow-sm hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]`}
                       >
                         <div className="relative flex-shrink-0">
                           <img
@@ -1886,9 +1969,15 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             alt={task.title}
                             className="w-14 h-14 object-contain rounded-xl bg-black/40 p-1 border border-white/10 filter drop-shadow-md group-hover:scale-105 transition duration-200"
                           />
-                          <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
-                            <CheckCircle2 size={12} className="text-black fill-emerald-400" />
-                          </div>
+                          {isCompleted ? (
+                            <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
+                              <CheckCircle2 size={12} className="text-black fill-emerald-400" />
+                            </div>
+                          ) : (
+                            <div className="absolute -top-1 -right-1 bg-amber-500 text-black rounded-full px-1 text-[8px] font-bold shadow">
+                              {percent}%
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -1900,37 +1989,73 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             >
                               {task.category}
                             </span>
-                            <span className="text-[9px] text-emerald-300 font-semibold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
-                              ✓ 100% Mastered
+                            <span
+                              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                                isCompleted
+                                  ? 'text-emerald-300 bg-emerald-950/60 border-emerald-800/40'
+                                  : 'text-amber-300 bg-amber-950/60 border-amber-800/40'
+                              }`}
+                            >
+                              {isCompleted ? '✓ Complete' : 'In Progress'}
                             </span>
                           </div>
+
                           <h4 className="text-xs font-bold text-white truncate mt-1">{task.title}</h4>
                           <p className="text-[10px] text-gray-400 line-clamp-2 mt-0.5 leading-snug">
                             {task.description}
                           </p>
+
+                          {/* Dynamic Quest Progress Bar */}
+                          <div className="mt-1.5 space-y-0.5">
+                            <div className="flex items-center justify-between text-[8.5px]">
+                              <span className="text-gray-400">Quest Progress</span>
+                              <span className="text-emerald-300 font-mono font-bold">
+                                {current} / {max} {unit} ({percent}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-black/60 h-1.5 rounded-full overflow-hidden border border-white/5">
+                              <div
+                                className={`h-full transition-all duration-300 ${
+                                  isCompleted
+                                    ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]'
+                                    : 'bg-gradient-to-r from-teal-400 to-cyan-400'
+                                }`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                          </div>
+
                           <div className="mt-2 flex items-center justify-between gap-1.5">
                             <span className="text-[9px] text-amber-300 font-medium truncate flex-1" title={task.reward}>
                               🎁 {task.reward}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (task.actionId === 'sprint_dash') {
-                                  onStart40sRun?.();
-                                } else if (task.actionId === 'walk_go_and_back') {
-                                  onWalkGoAndBack?.();
-                                } else if (task.actionId === 'all') {
-                                  onUnlockAll?.();
-                                } else {
-                                  onTriggerAnimation?.(task.actionId);
-                                }
-                                messageManager.enqueue(`⚡ Activated Task: ${task.title}!`, 'normal', 'interaction');
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-200 text-[10px] font-bold transition flex items-center gap-1 shrink-0"
-                            >
-                              <Zap size={11} className="text-yellow-400" />
-                              <span>Execute</span>
-                            </button>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                +{xp} XP
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (task.actionId === 'sprint_dash') {
+                                    onStart40sRun?.();
+                                  } else if (task.actionId === 'walk_go_and_back') {
+                                    onWalkGoAndBack?.();
+                                  } else if (task.actionId === 'all') {
+                                    questProgressionEngine.unlockAllTasks();
+                                    onUnlockAll?.();
+                                  } else {
+                                    onTriggerAnimation?.(task.actionId);
+                                  }
+                                  messageManager.enqueue(`⚡ Activated Task: ${task.title}!`, 'normal', 'interaction');
+                                }}
+                                className="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-200 text-[9.5px] font-bold transition flex items-center gap-1 shrink-0"
+                              >
+                                <Zap size={10} className="text-yellow-400" />
+                                <span>Execute</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>

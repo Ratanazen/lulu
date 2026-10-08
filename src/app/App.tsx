@@ -53,6 +53,7 @@ import { MediaSession, normalizeMediaSession, getProviderTheme } from '../featur
 import { LULU_TASKS, LULU_FLAME_STYLES } from '../config/luluFlameConfig';
 import { audioReactiveEngine, AudioReactiveState } from '../features/audio/AudioReactiveEngine';
 import { AudioVisualizer } from '../components/audio/AudioVisualizer';
+import { questProgressionEngine } from '../features/progression/QuestProgressionEngine';
 
 const renderProviderIcon = (iconType: string, size = 12) => {
   switch (iconType) {
@@ -112,6 +113,26 @@ export const App: React.FC = () => {
     return audioReactiveEngine.subscribe((state) => {
       setAudioState(state);
     });
+  }, []);
+
+  // Listen to Shinobi Rank Up and Quest Completion events
+  useEffect(() => {
+    const unlistenRank = questProgressionEngine.onRankUp((newRank) => {
+      messageManager.enqueue(`🎉 RANK UP! Promoted to ${newRank.title} (${newRank.badge})! 🏆✨`, 'high', 'interaction');
+      setShowLoveHearts(true);
+      setTimeout(() => setShowLoveHearts(false), 3000);
+      setAnimation('happy');
+    });
+
+    const unlistenTask = questProgressionEngine.onTaskComplete((taskId, xp) => {
+      const task = LULU_TASKS.find((t) => t.id === taskId);
+      messageManager.enqueue(`⭐ Quest Complete: ${task?.title || taskId} (+${xp} XP)! 💥`, 'normal', 'interaction');
+    });
+
+    return () => {
+      unlistenRank();
+      unlistenTask();
+    };
   }, []);
 
   // Auto-scroll active lyric line in All Lyrics scroll view
@@ -611,6 +632,7 @@ export const App: React.FC = () => {
       needSystemRef.current.wakeUp();
       setIsSleeping(false);
     }
+    questProgressionEngine.recordFocusSession();
     const event = behaviorRef.current.getRandomFocusEvent(focusIntervalSeconds);
     if (event.thought && preferences.speech_enabled) {
       messageManager.enqueue(event.thought, 'high', 'system');
@@ -710,6 +732,7 @@ export const App: React.FC = () => {
   // Petting interaction
   const handlePetLulu = () => {
     needSystemRef.current.petInteraction();
+    questProgressionEngine.recordPet();
     setNeeds(needSystemRef.current.getNeeds());
     setAnimation('happy');
     setShowLoveHearts(true);
@@ -734,6 +757,7 @@ export const App: React.FC = () => {
 
   const handleFeedSnack = () => {
     needSystemRef.current.feedSnack();
+    questProgressionEngine.recordSnack();
     setNeeds(needSystemRef.current.getNeeds());
     setAnimation('happy');
     messageManager.enqueue('Yummy! Delicious snack! 🧁', 'high', 'interaction');
@@ -751,6 +775,7 @@ export const App: React.FC = () => {
     } else {
       setIsSleeping(true);
       isSleepingRef.current = true;
+      questProgressionEngine.recordSleep();
       setAnimation('sleep');
       if (isMusicPlaying) {
         messageManager.enqueue('🌙 Peaceful Lullaby Mode • Sleeping soundly to the melody... 😴🎵', 'normal', 'interaction');
@@ -803,6 +828,7 @@ export const App: React.FC = () => {
     setIs40sRunActive(true);
     setIsContinuousRunning(true);
     setIsContinuousWalking(false);
+    questProgressionEngine.recordSprintLap();
     messageManager.enqueue('Flame Sprint active! ⚡🏃💨', 'high', 'interaction');
     movementRef.current.startTimedRun(40, () => {
       setIs40sRunActive(false);
@@ -822,6 +848,7 @@ export const App: React.FC = () => {
     const walking = movementRef.current.toggleContinuousWalk();
     setIsContinuousWalking(walking);
     if (walking) {
+      questProgressionEngine.recordWalkLap();
       setIsContinuousRunning(false);
       setIs40sRunActive(false);
       messageManager.enqueue('Walk Go & Back active! Pacing desktop perimeter... 🐾🚶', 'normal', 'interaction');
@@ -847,6 +874,7 @@ export const App: React.FC = () => {
     setIsContinuousWalking(true);
     setIsContinuousRunning(false);
     setIs40sRunActive(false);
+    questProgressionEngine.recordWalkLap();
     messageManager.enqueue('Walk Go & Back patrol initiated! 🐾🚶', 'high', 'interaction');
     movementRef.current.walkGoAndBack(() => {
       setIsContinuousWalking(false);
@@ -1002,10 +1030,13 @@ export const App: React.FC = () => {
           isSleeping={isSleeping}
           onTriggerAnimation={(anim) => {
             if (anim === 'run-right' || anim === 'run') {
+              questProgressionEngine.recordSprintLap();
               movementRef.current.sprintLap();
             } else if (anim === 'walk-right' || anim === 'walk') {
+              questProgressionEngine.recordWalkLap();
               movementRef.current.walkLap();
             } else {
+              if (anim === 'protect') questProgressionEngine.recordShield();
               setAnimation(anim as AnimationState);
             }
           }}
