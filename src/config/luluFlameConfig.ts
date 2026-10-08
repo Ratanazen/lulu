@@ -106,9 +106,9 @@ export const LULU_FLAME_STYLES: Record<string, LuluFlameStyle> = {
 export const DEFAULT_FLAME_SPEED_MULTIPLIER = 1.0; // Normal, balanced, and smooth cadence
 
 export const FLAME_SPEED_PRESETS = {
-  slow: { id: 'slow', label: '🐢 Relaxed (Slow)', multiplier: 0.75 },
-  normal: { id: 'normal', label: '✨ Normal & Smooth', multiplier: 1.0 },
-  turbo: { id: 'turbo', label: '⚡ Fast', multiplier: 1.25 },
+  slow: { id: 'slow', label: 'Relaxed (Slow)', multiplier: 0.75 },
+  normal: { id: 'normal', label: 'Normal & Smooth', multiplier: 1.0 },
+  turbo: { id: 'turbo', label: 'Fast (Turbo)', multiplier: 1.25 },
 } as const;
 
 export function getEffectiveFps(baseFps: number, multiplier: number = DEFAULT_FLAME_SPEED_MULTIPLIER): number {

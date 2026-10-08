@@ -35,11 +35,12 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({ mood, fallbackText, 
     textToShow.toLowerCase().includes('notification') ||
     textToShow.toLowerCase().includes('chrome');
 
-  const isMusic = textToShow.includes('🎵') ||
+  const isMusic =
     textToShow.toLowerCase().includes('now playing') ||
-    textToShow.includes('🎤') ||
-    textToShow.includes('♪') ||
-    textToShow.includes('♫');
+    textToShow.toLowerCase().includes('lullaby') ||
+    textToShow.toLowerCase().includes('melody') ||
+    textToShow.toLowerCase().includes('lyrics') ||
+    textToShow.toLowerCase().includes('music');
 
   const moodIcon = isNotification ? (
     <Bell size={12} className="text-amber-400 inline shrink-0 animate-bounce" />

@@ -60,7 +60,20 @@ import {
   Flame,
   RotateCcw,
   MonitorPlay,
+  HardDrive,
+  BatteryCharging,
+  Copy,
+  Check,
+  Crown,
+  Swords,
+  Eye,
+  Star,
+  Leaf,
+  Award,
+  Layers,
+  Terminal,
 } from 'lucide-react';
+import { useSystemStore } from '../../stores/useSystemStore';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
 import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
 import { MediaSession, getProviderTheme } from '../../features/media/mediaSession';
@@ -231,6 +244,46 @@ type TabType =
   | 'privacy_storage'
   | 'diagnostics_about';
 
+const renderProviderIcon = (iconType: string, size = 12) => {
+  switch (iconType) {
+    case 'spotify':
+      return <Music size={size} className="text-emerald-400" />;
+    case 'youtube':
+      return <Youtube size={size} className="text-red-400" />;
+    case 'youtube_music':
+      return <Radio size={size} className="text-rose-400" />;
+    case 'mpris':
+      return <Headphones size={size} className="text-indigo-400" />;
+    default:
+      return <Music size={size} className="text-purple-400" />;
+  }
+};
+
+const renderRankBadge = (badgeKey: string, size = 20) => {
+  switch (badgeKey) {
+    case 'leaf':
+      return <Leaf size={size} className="text-emerald-400" />;
+    case 'swords':
+      return <Swords size={size} className="text-cyan-400" />;
+    case 'shield':
+      return <Shield size={size} className="text-blue-400" />;
+    case 'zap':
+      return <Zap size={size} className="text-amber-400" />;
+    case 'flame':
+      return <Flame size={size} className="text-orange-400" />;
+    case 'eye':
+      return <Eye size={size} className="text-purple-400" />;
+    case 'crown':
+      return <Crown size={size} className="text-yellow-400" />;
+    case 'star':
+      return <Star size={size} className="text-amber-300" />;
+    case 'sparkles':
+      return <Sparkles size={size} className="text-pink-400" />;
+    default:
+      return <Award size={size} className="text-emerald-400" />;
+  }
+};
+
 export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   isOpen,
   onClose,
@@ -289,6 +342,21 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   const [capabilities, setCapabilities] = useState<any>(null);
   const [doctorReport, setDoctorReport] = useState<any>(null);
   const [isDoctorRunning, setIsDoctorRunning] = useState(false);
+  const [isCopiedReport, setIsCopiedReport] = useState(false);
+
+  const handleCopyReport = async () => {
+    const success = await useSystemStore.getState().copyReport();
+    if (success) {
+      setIsCopiedReport(true);
+      messageManager.enqueue('Hardware and system telemetry report copied to clipboard!', 'normal', 'system');
+      setTimeout(() => setIsCopiedReport(false), 2500);
+    }
+  };
+
+  const handleRefreshTelemetry = async () => {
+    await useSystemStore.getState().refreshSystemInfo();
+    messageManager.enqueue('Hardware telemetry probes refreshed.', 'low', 'system');
+  };
 
   // Monitors
   const [monitors, setMonitors] = useState<NativeMonitorInfo[]>([]);
@@ -336,7 +404,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   const handleSetVisualizerMode = (mode: AudioReactiveMode) => {
     setVisualizerMode(mode);
     audioReactiveEngine.setMode(mode);
-    messageManager.enqueue(`🎵 Audio Mode: ${mode === 'beat_bounce' ? 'Beat Bounce' : mode === 'equalizer_groove' ? 'Equalizer Groove' : mode === 'gentle_ambient' ? 'Gentle Ambient' : 'Visualizer Off'}`, 'normal', 'interaction');
+    messageManager.enqueue(`Audio Mode: ${mode === 'beat_bounce' ? 'Beat Bounce' : mode === 'equalizer_groove' ? 'Equalizer Groove' : mode === 'gentle_ambient' ? 'Gentle Ambient' : 'Visualizer Off'}`, 'normal', 'interaction');
   };
 
   // Shinobi Quest Progression & Rank State
@@ -735,7 +803,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         onUnlockAll?.();
-                        messageManager.enqueue(`🎉 All ${LULU_TASKS.length} Tasks and ${Object.keys(LULU_FLAME_STYLES).length} Flames 100% Unlocked!`, 'high', 'interaction');
+                        messageManager.enqueue(`All ${LULU_TASKS.length} Tasks and ${Object.keys(LULU_FLAME_STYLES).length} Flames 100% Unlocked!`, 'high', 'interaction');
                       }}
                       className="py-1.5 px-3 rounded-xl bg-emerald-600/40 border border-emerald-400/50 text-emerald-200 hover:bg-emerald-600/60 flex items-center gap-1.5 text-xs font-bold transition shadow"
                     >
@@ -1008,8 +1076,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             {task.description}
                           </p>
                           <div className="mt-1.5 flex items-center justify-between">
-                            <span className="text-[8px] text-amber-300 font-medium truncate max-w-[100px]">
-                              🎁 {task.reward}
+                            <span className="text-[8px] text-amber-300 font-medium truncate max-w-[100px] flex items-center gap-1">
+                              <Award size={10} className="text-amber-400 shrink-0" />
+                              <span>{task.reward}</span>
                             </span>
                             <button
                               type="button"
@@ -1075,7 +1144,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <button
                         onClick={() => {
                           onTriggerAnimation?.('sing');
-                          messageManager.enqueue('🎤 Lulu is singing along with Spotify!', 'normal', 'interaction');
+                          messageManager.enqueue('Lulu is singing along with Spotify!', 'normal', 'interaction');
                         }}
                         className="px-2.5 py-1 rounded-lg bg-pink-600/30 border border-pink-500/40 text-pink-200 hover:bg-pink-600/50 flex items-center gap-1 text-xs font-bold transition shadow-sm"
                       >
@@ -1093,7 +1162,8 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <span className="text-[10px] text-gray-400 flex items-center gap-1.5 truncate">
                           {activeMediaSession ? (
                             <span style={{ color: getProviderTheme(activeMediaSession.provider).accentColor }} className="font-semibold flex items-center gap-1">
-                              {getProviderTheme(activeMediaSession.provider).badgeIcon} {getProviderTheme(activeMediaSession.provider).badgeText}
+                              {renderProviderIcon(getProviderTheme(activeMediaSession.provider).iconType, 12)}
+                              <span>{getProviderTheme(activeMediaSession.provider).badgeText}</span>
                             </span>
                           ) : (
                             `Player: ${musicStatus?.player || 'None'}`
@@ -1275,9 +1345,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
-                {/* 5. CPU & RAM HARDWARE CONFIG & TELEMETRY */}
+                {/* 5. HARDWARE, CPU, GPU, RAM, DISK & TELEMETRY STUDIO */}
                 <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-4">
-                  {/* Header & System Sync Toggle */}
+                  {/* Header & Quick Action Buttons */}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 bg-cyan-500/10 rounded-lg text-cyan-400 border border-cyan-500/20">
@@ -1285,21 +1355,38 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-white tracking-wider flex items-center gap-1.5">
-                          CPU & RAM Performance Engine
+                          Hardware & Performance Studio
                         </h4>
-                        <p className="text-[10px] text-gray-400">Real-time hardware telemetry & resource throttling</p>
+                        <p className="text-[10px] text-gray-400">Live CPU, RAM, GPU, Swap, Disk storage & power telemetry</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleCopyReport}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-bold transition flex items-center gap-1.5 shadow"
+                        title="Copy complete native hardware and OS audit to clipboard"
+                      >
+                        {isCopiedReport ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} className="text-cyan-400" />}
+                        <span>{isCopiedReport ? 'Report Copied' : 'Copy Report'}</span>
+                      </button>
+
+                      <button
+                        onClick={handleRefreshTelemetry}
+                        className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 text-xs transition"
+                        title="Refresh live system probes"
+                      >
+                        <RefreshCw size={13} />
+                      </button>
+
                       <button
                         onClick={() => {
                           const newMode = preferences.behavior_mode === 'SYSTEM_SYNC' ? 'NORMAL' : 'SYSTEM_SYNC';
                           onUpdatePreferences({ ...preferences, behavior_mode: newMode });
                           messageManager.enqueue(
                             newMode === 'SYSTEM_SYNC'
-                              ? '💻 Follow Computer System Mode activated! Lulu now syncs with CPU & Battery! ⚡'
-                              : '🐾 Returned to Normal companion mode.',
+                              ? 'Follow Computer System Mode activated! Lulu now syncs with CPU, GPU & Battery.'
+                              : 'Returned to Normal companion mode.',
                             'high',
                             'interaction'
                           );
@@ -1311,15 +1398,15 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         }`}
                       >
                         <Laptop size={13} />
-                        <span>{preferences.behavior_mode === 'SYSTEM_SYNC' ? '✓ System Follow Active' : 'Enable System Follow'}</span>
+                        <span>{preferences.behavior_mode === 'SYSTEM_SYNC' ? 'System Follow Active' : 'Enable System Follow'}</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Telemetry Metrics Grid (CPU, RAM, Battery, OS) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {/* CPU Usage */}
-                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                  {/* 6 Comprehensive Hardware Telemetry Metric Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {/* 1. CPU Load & Model */}
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-gray-400">
                         <span className="flex items-center gap-1 font-medium"><Cpu size={12} className="text-cyan-400" /> CPU Load</span>
                         <span className="font-mono font-bold text-white text-xs">{Math.round(systemTelemetry?.cpuPercent ?? 0)}%</span>
@@ -1333,15 +1420,21 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         />
                       </div>
                       <div className="flex justify-between text-[9px] text-gray-400">
-                        <span>{systemTelemetry?.cpuCores ? `${systemTelemetry.cpuCores} Cores` : 'Multi-core'}</span>
-                        <span className={systemTelemetry && systemTelemetry.cpuPercent > 70 ? 'text-red-400 font-bold' : 'text-emerald-400'}>
-                          {systemTelemetry && systemTelemetry.cpuPercent > 70 ? 'High' : 'Normal'}
+                        <span>
+                          {systemTelemetry?.cpuCores ? `${systemTelemetry.cpuCores} Cores` : 'Multi-core'}
+                          {systemTelemetry?.cpuFreqMhz ? ` • ${systemTelemetry.cpuFreqMhz} MHz` : ''}
+                        </span>
+                        <span className={systemTelemetry && systemTelemetry.cpuPercent > 70 ? 'text-red-400 font-bold' : systemTelemetry && systemTelemetry.cpuPercent > 40 ? 'text-amber-400 font-medium' : 'text-emerald-400'}>
+                          {systemTelemetry && systemTelemetry.cpuPercent > 70 ? 'High' : systemTelemetry && systemTelemetry.cpuPercent > 40 ? 'Moderate' : 'Optimal'}
                         </span>
                       </div>
+                      <p className="text-[9px] text-gray-400 truncate pt-1 border-t border-white/5">
+                        {systemTelemetry?.cpuModel || 'Host Processor'}
+                      </p>
                     </div>
 
-                    {/* RAM Usage */}
-                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                    {/* 2. RAM & Swap Memory */}
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-gray-400">
                         <span className="flex items-center gap-1 font-medium"><Activity size={12} className="text-purple-400" /> RAM Memory</span>
                         <span className="font-mono font-bold text-white text-xs">{Math.round(systemTelemetry?.memPercent ?? 0)}%</span>
@@ -1356,12 +1449,61 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       </div>
                       <div className="flex justify-between text-[9px] text-gray-400">
                         <span>{Math.round((systemTelemetry?.memUsedMb ?? 0) / 1024 * 10) / 10} / {Math.round((systemTelemetry?.memTotalMb ?? 1) / 1024 * 10) / 10} GB</span>
-                        <span className="text-purple-300">{Math.round(systemTelemetry?.memUsedMb ?? 0)} MB</span>
+                        <span className="text-purple-300">{Math.round(systemTelemetry?.memUsedMb ?? 0)} MB Used</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] text-gray-400 pt-1 border-t border-white/5">
+                        <span>Swap: {Math.round(systemTelemetry?.swapUsedMb ?? 0)} / {Math.round(systemTelemetry?.swapTotalMb ?? 0)} MB</span>
+                        <span className="text-purple-300 font-mono">{Math.round(systemTelemetry?.swapPercent ?? 0)}%</span>
                       </div>
                     </div>
 
-                    {/* Battery Status */}
-                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                    {/* 3. GPU Graphics Engine */}
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-2">
+                      <div className="flex justify-between items-center text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1 font-medium"><Layers size={12} className="text-amber-400" /> GPU Graphics</span>
+                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                          systemTelemetry?.gpuIsDiscrete
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        }`}>
+                          {systemTelemetry?.gpuIsDiscrete ? 'Discrete GPU' : 'Integrated / iGPU'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-bold text-white truncate">
+                        {systemTelemetry?.gpuName || 'Graphics Adapter'}
+                      </p>
+                      <div className="flex justify-between text-[9px] text-gray-400">
+                        <span>Driver: <strong className="text-cyan-300 font-normal">{systemTelemetry?.gpuDriver || systemTelemetry?.gpuRenderer || 'DRM'}</strong></span>
+                        <span className="text-emerald-400">{systemTelemetry?.gpuStatus || 'Detected'}</span>
+                      </div>
+                      <p className="text-[9px] text-gray-400 truncate pt-1 border-t border-white/5">
+                        VRAM: <span className="text-amber-300 font-medium">{systemTelemetry?.gpuVramMb ? `${systemTelemetry.gpuVramMb} MB Dedicated` : 'Shared Dynamic'}</span>
+                      </p>
+                    </div>
+
+                    {/* 4. Root Storage & Filesystem */}
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-2">
+                      <div className="flex justify-between items-center text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1 font-medium"><HardDrive size={12} className="text-emerald-400" /> Storage (/)</span>
+                        <span className="font-mono font-bold text-white text-xs">{Math.round(systemTelemetry?.diskRootPercent ?? 0)}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-[#313244] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-300"
+                          style={{ width: `${Math.min(100, systemTelemetry?.diskRootPercent ?? 0)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[9px] text-gray-400">
+                        <span>{systemTelemetry?.diskRootUsedGb ?? 0} / {systemTelemetry?.diskRootTotalGb ?? 0} GB</span>
+                        <span className="text-emerald-300">{systemTelemetry?.diskRootAvailGb ?? 0} GB Free</span>
+                      </div>
+                      <p className="text-[9px] text-gray-400 truncate pt-1 border-t border-white/5">
+                        Filesystem: <span className="text-white font-mono">{systemTelemetry?.diskRootFs || 'ext4'}</span>
+                      </p>
+                    </div>
+
+                    {/* 5. Battery & Power Delivery */}
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-gray-400">
                         <span className="flex items-center gap-1 font-medium"><Battery size={12} className="text-emerald-400" /> Battery / Power</span>
                         <span className="font-mono font-bold text-white text-xs">
@@ -1374,21 +1516,32 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           style={{ width: `${systemTelemetry?.batteryPercent ?? 100}%` }}
                         />
                       </div>
-                      <p className="text-[9px] text-gray-400 truncate">
-                        {systemTelemetry?.isCharging ? '⚡ Charging Active' : 'Power Connected'}
+                      <div className="flex justify-between items-center text-[9px] text-gray-400">
+                        <span className="flex items-center gap-1 text-emerald-300">
+                          {systemTelemetry?.isCharging ? <BatteryCharging size={11} /> : <Zap size={11} />}
+                          {systemTelemetry?.isCharging ? 'Charging Active' : systemTelemetry?.powerSource ? `${systemTelemetry.powerSource} Power` : 'Power Connected'}
+                        </span>
+                        <span>{systemTelemetry?.autoPowerSave ? 'Power Saver' : 'Balanced'}</span>
+                      </div>
+                      <p className="text-[9px] text-gray-400 truncate pt-1 border-t border-white/5">
+                        Status: <span className="text-gray-300">{systemTelemetry?.powerStatus || 'Normal Operation'}</span>
                       </p>
                     </div>
 
-                    {/* OS Platform */}
-                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-1.5">
+                    {/* 6. OS & Desktop Environment */}
+                    <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-gray-400">
                         <span className="flex items-center gap-1 font-medium"><Monitor size={12} className="text-blue-400" /> Environment</span>
-                        <span className="font-bold text-emerald-400 text-[9px]">Sway Wayland</span>
+                        <span className="font-bold text-emerald-400 text-[9px]">{systemTelemetry?.compositor || 'Sway Wayland'}</span>
                       </div>
-                      <p className="text-[10px] font-bold text-white truncate mt-1">
+                      <p className="text-[10px] font-bold text-white truncate">
                         {systemTelemetry?.osName || 'Linux Desktop'}
                       </p>
-                      <p className="text-[9px] text-gray-400 truncate">
+                      <div className="flex justify-between text-[9px] text-gray-400">
+                        <span>Kernel: <strong className="text-cyan-300 font-normal">{systemTelemetry?.kernelVersion || 'Linux'}</strong></span>
+                        <span className="text-gray-400">{systemTelemetry?.sessionType || 'wayland'}</span>
+                      </div>
+                      <p className="text-[9px] text-gray-400 truncate pt-1 border-t border-white/5">
                         Profile: <span className="text-cyan-300 font-medium">{preferences.performance_profile || systemTelemetry?.profile || 'Auto'}</span>
                       </p>
                     </div>
@@ -1423,7 +1576,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                                 telemetry_interval_ms: prof.poll,
                                 low_spec_mode: prof.lowSpec,
                               });
-                              messageManager.enqueue(`⚡ Performance Profile set to ${prof.label} (${prof.fps} FPS)!`, 'normal', 'system');
+                              messageManager.enqueue(`Performance Profile set to ${prof.label} (${prof.fps} FPS)`, 'normal', 'system');
                             }}
                             className={`p-2 rounded-lg text-left transition border ${
                               isCurrent
@@ -1433,7 +1586,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           >
                             <p className="text-[11px] font-bold truncate flex items-center justify-between">
                               {prof.label}
-                              {isCurrent && <span className="text-[9px] text-cyan-400">✓</span>}
+                              {isCurrent && <span className="text-[9px] text-cyan-400">Active</span>}
                             </p>
                             <p className="text-[9px] text-gray-500 truncate">{prof.fps} FPS • {prof.poll / 1000}s poll</p>
                           </button>
@@ -1450,13 +1603,13 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <span className="text-gray-300 font-medium">FPS Cap</span>
                         <span className="text-cyan-400 font-mono font-bold">{preferences.fps_limit || 30} FPS</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-1">
-                        {[15, 30, 60].map((rate) => (
+                      <div className="grid grid-cols-4 gap-1">
+                        {[15, 30, 60, 120].map((rate) => (
                           <button
                             key={rate}
                             onClick={() => {
                               onUpdatePreferences({ ...preferences, fps_limit: rate });
-                              messageManager.enqueue(`🎯 Target rendering cap set to ${rate} FPS`, 'low', 'system');
+                              messageManager.enqueue(`Target rendering cap set to ${rate} FPS`, 'low', 'system');
                             }}
                             className={`py-1 text-[10px] font-bold rounded-md transition ${
                               (preferences.fps_limit || 30) === rate
@@ -1464,7 +1617,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                                 : 'bg-white/5 text-gray-400 hover:bg-white/10'
                             }`}
                           >
-                            {rate} FPS
+                            {rate}
                           </button>
                         ))}
                       </div>
@@ -1476,17 +1629,18 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <span className="text-gray-300 font-medium">Telemetry Poll</span>
                         <span className="text-purple-400 font-mono font-bold">{(preferences.telemetry_interval_ms || 2000) / 1000}s</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-1">
+                      <div className="grid grid-cols-4 gap-1">
                         {[
-                          { ms: 1000, label: '1s Fast' },
-                          { ms: 2000, label: '2s Norm' },
-                          { ms: 5000, label: '5s Eco' },
+                          { ms: 500, label: '0.5s' },
+                          { ms: 1000, label: '1s' },
+                          { ms: 2000, label: '2s' },
+                          { ms: 5000, label: '5s' },
                         ].map((item) => (
                           <button
                             key={item.ms}
                             onClick={() => {
                               onUpdatePreferences({ ...preferences, telemetry_interval_ms: item.ms });
-                              messageManager.enqueue(`⏱️ System telemetry polling set to ${item.label}`, 'low', 'system');
+                              messageManager.enqueue(`System telemetry polling set to ${item.label}`, 'low', 'system');
                             }}
                             className={`py-1 text-[10px] font-bold rounded-md transition ${
                               (preferences.telemetry_interval_ms || 2000) === item.ms
@@ -1517,7 +1671,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             fps_limit: nextVal ? 15 : preferences.fps_limit,
                           });
                           messageManager.enqueue(
-                            nextVal ? '🛡️ Low-Spec Mode enabled: throttled animations & lower RAM footprint.' : '🚀 Low-Spec Mode disabled.',
+                            nextVal ? 'Low-Spec Mode enabled: throttled animations & lower RAM footprint.' : 'Low-Spec Mode disabled.',
                             'normal',
                             'system'
                           );
@@ -1528,7 +1682,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             : 'bg-white/5 text-gray-300 hover:bg-white/10'
                         }`}
                       >
-                        {preferences.low_spec_mode ? '✓ Low-Spec Active' : 'Enable Low-Spec'}
+                        {preferences.low_spec_mode ? 'Low-Spec Active' : 'Enable Low-Spec'}
                       </button>
                     </div>
                   </div>
@@ -1708,15 +1862,25 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <Cpu size={13} className="text-cyan-400" />
                       <span>Host Hardware Telemetry</span>
                     </p>
-                    <span className="text-[10px] text-cyan-300 font-mono">
-                      {preferences.performance_profile || 'Balanced'} Profile
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleCopyReport}
+                        className="text-[10px] text-gray-400 hover:text-white flex items-center gap-1 transition px-1.5 py-0.5 rounded bg-white/5 border border-white/10"
+                        title="Copy full hardware report"
+                      >
+                        {isCopiedReport ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} className="text-cyan-400" />}
+                        <span>{isCopiedReport ? 'Copied' : 'Audit'}</span>
+                      </button>
+                      <span className="text-[10px] text-cyan-300 font-mono">
+                        {preferences.performance_profile || 'Balanced'} Profile
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="bg-black/30 border border-white/5 p-2 rounded-lg">
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-gray-400">CPU Load</span>
+                        <span className="text-gray-400 flex items-center gap-1"><Cpu size={10} className="text-cyan-400" /> CPU</span>
                         <span className="font-bold text-white font-mono">{Math.round(systemTelemetry?.cpuPercent ?? 0)}%</span>
                       </div>
                       <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden mt-1">
@@ -1727,11 +1891,14 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           style={{ width: `${Math.min(100, systemTelemetry?.cpuPercent ?? 0)}%` }}
                         />
                       </div>
+                      <p className="text-[9px] text-gray-400 truncate mt-1">
+                        {systemTelemetry?.cpuCores ? `${systemTelemetry.cpuCores} Cores` : 'Active'}
+                      </p>
                     </div>
 
                     <div className="bg-black/30 border border-white/5 p-2 rounded-lg">
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-gray-400">RAM Load</span>
+                        <span className="text-gray-400 flex items-center gap-1"><Activity size={10} className="text-purple-400" /> RAM</span>
                         <span className="font-bold text-white font-mono">{Math.round(systemTelemetry?.memPercent ?? 0)}%</span>
                       </div>
                       <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden mt-1">
@@ -1742,11 +1909,43 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           style={{ width: `${Math.min(100, systemTelemetry?.memPercent ?? 0)}%` }}
                         />
                       </div>
+                      <p className="text-[9px] text-gray-400 truncate mt-1">
+                        {Math.round((systemTelemetry?.memUsedMb ?? 0) / 1024 * 10) / 10} / {Math.round((systemTelemetry?.memTotalMb ?? 1) / 1024 * 10) / 10} GB
+                      </p>
+                    </div>
+
+                    <div className="bg-black/30 border border-white/5 p-2 rounded-lg">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400 flex items-center gap-1"><Layers size={10} className="text-amber-400" /> GPU</span>
+                        <span className="font-bold text-amber-300 text-[9px]">{systemTelemetry?.gpuIsDiscrete ? 'Discrete' : 'iGPU'}</span>
+                      </div>
+                      <p className="text-[9px] text-white truncate mt-1 font-medium">
+                        {systemTelemetry?.gpuVendor || 'Graphics'}
+                      </p>
+                      <p className="text-[9px] text-gray-400 truncate mt-0.5">
+                        {systemTelemetry?.gpuVramMb ? `${systemTelemetry.gpuVramMb} MB VRAM` : 'Dynamic RAM'}
+                      </p>
+                    </div>
+
+                    <div className="bg-black/30 border border-white/5 p-2 rounded-lg">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400 flex items-center gap-1"><HardDrive size={10} className="text-emerald-400" /> Storage</span>
+                        <span className="font-bold text-white font-mono">{Math.round(systemTelemetry?.diskRootPercent ?? 0)}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#313244] rounded-full overflow-hidden mt-1">
+                        <div
+                          className="h-full bg-emerald-500 transition-all duration-300"
+                          style={{ width: `${Math.min(100, systemTelemetry?.diskRootPercent ?? 0)}%` }}
+                        />
+                      </div>
+                      <p className="text-[9px] text-gray-400 truncate mt-1">
+                        {systemTelemetry?.diskRootAvailGb ?? 0} GB Free
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-[10px] text-gray-500 pt-0.5">
-                    <span>RAM: {Math.round((systemTelemetry?.memUsedMb ?? 0) / 1024 * 10) / 10} / {Math.round((systemTelemetry?.memTotalMb ?? 1) / 1024 * 10) / 10} GB</span>
+                  <div className="flex justify-between items-center text-[10px] text-gray-500 pt-0.5 border-t border-white/5">
+                    <span>OS: {systemTelemetry?.osName || 'Linux Desktop'} ({systemTelemetry?.compositor || 'Sway'})</span>
                     <span>FPS Cap: {preferences.fps_limit || 30} FPS</span>
                   </div>
                 </div>
@@ -1760,7 +1959,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-emerald-950/60 via-purple-950/40 to-cyan-950/50 border border-emerald-500/40 p-4 rounded-2xl shadow-xl backdrop-blur-md">
                   <div className="flex items-center gap-3">
                     <div className="w-13 h-13 rounded-2xl bg-black/50 border border-emerald-400/40 flex items-center justify-center text-2xl shadow-inner shrink-0 p-1">
-                      <span>{progression.currentRank.badge}</span>
+                      <span>{renderRankBadge(progression.currentRank.badge, 24)}</span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -1802,7 +2001,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         onClick={() => {
                           questProgressionEngine.unlockAllTasks();
                           onUnlockAll?.();
-                          messageManager.enqueue(`🎉 All Master Tasks 100% Unlocked! Ascended to Rikudo Shadow Sage! ✨`, 'high', 'interaction');
+                          messageManager.enqueue(`All Master Tasks 100% Unlocked! Ascended to Rikudo Shadow Sage!`, 'high', 'interaction');
                         }}
                         className="py-1 px-2.5 rounded-xl bg-emerald-600/40 border border-emerald-400/50 text-emerald-200 hover:bg-emerald-600/60 flex items-center gap-1.5 text-[10px] font-bold transition shadow-sm"
                         title="Instantly complete all quests and unlock all flames"
@@ -1814,7 +2013,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <button
                         onClick={() => {
                           questProgressionEngine.resetProgression();
-                          messageManager.enqueue(`🔄 Shinobi Quests Reset to Level 1. Begin your journey anew! 🍃`, 'normal', 'interaction');
+                          messageManager.enqueue(`Shinobi Quests Reset to Level 1. Begin your journey anew!`, 'normal', 'interaction');
                         }}
                         className="py-1 px-2 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white flex items-center gap-1 text-[10px] transition"
                         title="Reset quest progress to replay"
@@ -2011,7 +2210,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                                   : 'text-amber-300 bg-amber-950/60 border-amber-800/40'
                               }`}
                             >
-                              {isCompleted ? '✓ Complete' : 'In Progress'}
+                              {isCompleted ? 'Complete' : 'In Progress'}
                             </span>
                           </div>
 
@@ -2041,8 +2240,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           </div>
 
                           <div className="mt-2 flex items-center justify-between gap-1.5">
-                            <span className="text-[9px] text-amber-300 font-medium truncate flex-1" title={task.reward}>
-                              🎁 {task.reward}
+                            <span className="text-[9px] text-amber-300 font-medium truncate flex-1 flex items-center gap-1" title={task.reward}>
+                              <Award size={10} className="text-amber-400 shrink-0" />
+                              <span>{task.reward}</span>
                             </span>
 
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -2063,7 +2263,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                                   } else {
                                     onTriggerAnimation?.(task.actionId);
                                   }
-                                  messageManager.enqueue(`⚡ Activated Task: ${task.title}!`, 'normal', 'interaction');
+                                  messageManager.enqueue(`Activated Task: ${task.title}!`, 'normal', 'interaction');
                                 }}
                                 className="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/60 border border-emerald-500/40 text-emerald-200 text-[9.5px] font-bold transition flex items-center gap-1 shrink-0"
                               >
@@ -2096,7 +2296,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           } else {
                             onTriggerAnimation?.(flame.animation);
                           }
-                          messageManager.enqueue(`🔥 Triggered Flame: ${flame.name}!`, 'normal', 'interaction');
+                          messageManager.enqueue(`Triggered Flame: ${flame.name}!`, 'normal', 'interaction');
                         }}
                         className="flex items-center gap-2 p-2 rounded-xl bg-black/40 border border-white/5 hover:border-amber-500/50 hover:bg-amber-950/20 text-gray-300 hover:text-amber-200 transition text-left group"
                       >
@@ -2235,7 +2435,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           : 'bg-white/10 text-gray-400 hover:text-white'
                       }`}
                     >
-                      {showText ? '✓ Text Visible' : 'Hidden'}
+                      {showText ? 'Text Visible' : 'Hidden'}
                     </button>
                   </div>
 
@@ -2246,10 +2446,10 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       </p>
                       <span className="text-[10px] font-mono text-amber-300 font-bold">
                         {speedMultiplier < 0.9
-                          ? '🐢 Relaxed (Slow)'
+                          ? 'Relaxed (Slow)'
                           : speedMultiplier > 1.1
-                          ? '⚡ Fast'
-                          : '✨ Normal & Smooth'}
+                          ? 'Fast (Turbo)'
+                          : 'Normal & Smooth'}
                       </span>
                     </div>
 
@@ -2288,7 +2488,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         onUnlockAll?.();
-                        messageManager.enqueue('🎉 All 9 Master Flames and Shinobi abilities are 100% Unlocked!', 'high', 'interaction');
+                        messageManager.enqueue('All 9 Master Flames and Shinobi abilities are 100% Unlocked!', 'high', 'interaction');
                       }}
                       className="py-1 px-3 rounded-lg bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-600/50 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
                     >
@@ -2351,7 +2551,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-                    {/* [🚶 Walk Go & Back] */}
+                    {/* [Walk Go & Back] */}
                     <button
                       type="button"
                       onClick={() => {
@@ -2423,7 +2623,8 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       }`}
                       title={isMovementPaused ? 'Resume movement' : 'Pause movement'}
                     >
-                      <span>{isMovementPaused ? '▶ Resume' : '⏸ Pause'}</span>
+                      {isMovementPaused ? <Play size={11} className="shrink-0" /> : <Pause size={11} className="shrink-0" />}
+                      <span>{isMovementPaused ? 'Resume' : 'Pause'}</span>
                     </button>
                   </div>
                 </div>
@@ -2669,7 +2870,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <p className="text-sm font-bold text-white flex items-center gap-1.5">
                         {activeMediaSession ? (
                           <>
-                            <span>{getProviderTheme(activeMediaSession.provider).badgeIcon}</span>
+                            <span>{renderProviderIcon(getProviderTheme(activeMediaSession.provider).iconType, 14)}</span>
                             <span style={{ color: getProviderTheme(activeMediaSession.provider).accentColor }}>
                               {getProviderTheme(activeMediaSession.provider).badgeText}
                             </span>
@@ -2809,28 +3010,36 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <Music size={12} className="text-emerald-400" /> Spotify
                       </span>
                       <span className="text-gray-400 text-[9px]">Native & Web D-Bus</span>
-                      <span className="text-emerald-300 font-semibold text-[9px]">✓ Synced LRC</span>
+                      <span className="text-emerald-300 font-semibold text-[9px] flex items-center gap-1">
+                        <Check size={9} /> Synced LRC
+                      </span>
                     </div>
                     <div className="p-2 rounded-lg bg-black/30 border border-red-500/30 flex flex-col gap-0.5">
                       <span className="font-bold text-red-400 flex items-center gap-1.5">
                         <Youtube size={12} className="text-red-400" /> YouTube
                       </span>
                       <span className="text-gray-400 text-[9px]">Browser MPRIS</span>
-                      <span className="text-red-300 font-semibold text-[9px]">✓ Clean Metadata</span>
+                      <span className="text-red-300 font-semibold text-[9px] flex items-center gap-1">
+                        <Check size={9} /> Clean Metadata
+                      </span>
                     </div>
                     <div className="p-2 rounded-lg bg-black/30 border border-rose-500/30 flex flex-col gap-0.5">
                       <span className="font-bold text-rose-400 flex items-center gap-1.5">
                         <Radio size={12} className="text-rose-400" /> YT Music
                       </span>
                       <span className="text-gray-400 text-[9px]">Web App / PWA</span>
-                      <span className="text-rose-300 font-semibold text-[9px]">✓ Live Position</span>
+                      <span className="text-rose-300 font-semibold text-[9px] flex items-center gap-1">
+                        <Check size={9} /> Live Position
+                      </span>
                     </div>
                     <div className="p-2 rounded-lg bg-black/30 border border-indigo-500/30 flex flex-col gap-0.5">
                       <span className="font-bold text-indigo-400 flex items-center gap-1.5">
                         <Headphones size={12} className="text-indigo-400" /> MPRIS
                       </span>
                       <span className="text-gray-400 text-[9px]">VLC / MPV / Firefox</span>
-                      <span className="text-indigo-300 font-semibold text-[9px]">✓ Local / Online</span>
+                      <span className="text-indigo-300 font-semibold text-[9px] flex items-center gap-1">
+                        <Check size={9} /> Local / Online
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2894,7 +3103,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         onTriggerAnimation?.('sing');
-                        messageManager.enqueue('🎤 Lulu is singing along with your Spotify music!', 'normal', 'interaction');
+                        messageManager.enqueue('Lulu is singing along with your Spotify music!', 'normal', 'interaction');
                       }}
                       className="px-2.5 py-1 rounded-lg bg-pink-600/30 border border-pink-500/40 text-pink-200 hover:bg-pink-600/50 flex items-center gap-1.5 text-xs font-bold transition shadow-sm"
                     >
@@ -3088,7 +3297,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         onSetBoundaryPhysicsMode?.('bounce');
-                        messageManager.enqueue('Boundary physics set to Edge Bounce 🛡️', 'normal', 'interaction');
+                        messageManager.enqueue('Boundary physics set to Edge Bounce', 'normal', 'interaction');
                       }}
                       className={`p-2.5 rounded-lg border text-left transition flex flex-col gap-1 ${
                         boundaryPhysicsMode === 'bounce'
@@ -3109,7 +3318,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         onSetBoundaryPhysicsMode?.('wrap');
-                        messageManager.enqueue('Boundary physics set to Screen Wrapping 🌀', 'normal', 'interaction');
+                        messageManager.enqueue('Boundary physics set to Screen Wrapping', 'normal', 'interaction');
                       }}
                       className={`p-2.5 rounded-lg border text-left transition flex flex-col gap-1 ${
                         boundaryPhysicsMode === 'wrap'
@@ -3130,7 +3339,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         onSetBoundaryPhysicsMode?.('roam_multi');
-                        messageManager.enqueue('Boundary physics set to Multi-Monitor Roam 🖥️', 'normal', 'interaction');
+                        messageManager.enqueue('Boundary physics set to Multi-Monitor Roam', 'normal', 'interaction');
                       }}
                       className={`p-2.5 rounded-lg border text-left transition flex flex-col gap-1 ${
                         boundaryPhysicsMode === 'roam_multi'
@@ -3196,7 +3405,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           <button
                             onClick={() => {
                               onJumpToMonitor?.(mon.name);
-                              messageManager.enqueue(`Lulu jumped to ${mon.name} 🚀`, 'normal', 'interaction');
+                              messageManager.enqueue(`Lulu jumped to ${mon.name}`, 'normal', 'interaction');
                               soundFxEngine.playSprintWhoosh();
                             }}
                             className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-semibold transition"
@@ -3247,7 +3456,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <button
                       onClick={() => {
                         const muted = soundFxEngine.toggleMute();
-                        messageManager.enqueue(muted ? 'Sound effects muted 🔇' : 'Sound effects unmuted 🔔', 'normal', 'interaction');
+                        messageManager.enqueue(muted ? 'Sound effects muted.' : 'Sound effects unmuted.', 'normal', 'interaction');
                       }}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
                         soundConfig.isMuted
@@ -3471,6 +3680,37 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Native System & Hardware Telemetry Report */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-gray-200">System Hardware Audit</p>
+                      <p className="text-[10px] text-gray-400">Complete telemetry dump of CPU, GPU, RAM, Disk & Session</p>
+                    </div>
+                    <button
+                      onClick={handleCopyReport}
+                      className="px-2.5 py-1 bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-cyan-200 rounded text-xs flex items-center gap-1.5 transition font-medium"
+                    >
+                      {isCopiedReport ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      <span>{isCopiedReport ? 'Report Copied' : 'Copy System Report'}</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px]">
+                    <div className="p-1.5 rounded bg-black/30 border border-white/5">
+                      <span className="text-gray-400">CPU:</span> <strong className="text-white font-mono">{systemTelemetry?.cpuModel?.slice(0, 18) || 'Processor'}</strong>
+                    </div>
+                    <div className="p-1.5 rounded bg-black/30 border border-white/5">
+                      <span className="text-gray-400">RAM:</span> <strong className="text-white font-mono">{Math.round((systemTelemetry?.memTotalMb ?? 0) / 1024)} GB</strong>
+                    </div>
+                    <div className="p-1.5 rounded bg-black/30 border border-white/5">
+                      <span className="text-gray-400">GPU:</span> <strong className="text-white font-mono">{systemTelemetry?.gpuVendor || 'DRM'}</strong>
+                    </div>
+                    <div className="p-1.5 rounded bg-black/30 border border-white/5">
+                      <span className="text-gray-400">Disk:</span> <strong className="text-white font-mono">{systemTelemetry?.diskRootTotalGb ?? 0} GB</strong>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="text-center text-[10px] text-gray-500 pt-2">

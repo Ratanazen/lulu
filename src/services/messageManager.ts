@@ -50,7 +50,7 @@ class MessageManager {
 
     eventBus.on('music:playback_changed', (info: { status: string; title?: string }) => {
       if (info.status === 'Playing' && info.title) {
-        this.enqueue(`🎵 Now Playing: ${info.title}`, 'high', 'music');
+        this.enqueue(`Now Playing: ${info.title}`, 'high', 'music');
       }
     });
   }

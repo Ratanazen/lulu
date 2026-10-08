@@ -30,42 +30,42 @@ export const LULU_ROUTINE_POOL: LuluRoutine[] = [
     animation: 'happy_dance',
     frames: 1,
     movement: 'none',
-    message: 'Feeling fantastic! Flame dance! ✨',
+    message: 'Feeling fantastic! Flame dance!',
   },
   {
     id: 'music-jam',
     animation: 'music_jam',
     frames: 1,
     movement: 'none',
-    message: 'Vibing with the rhythm! Music dance session! 🎵🎧',
+    message: 'Vibing with the rhythm! Music dance session!',
   },
   {
     id: 'protect-shield',
     animation: 'protect',
     frames: 1,
     movement: 'none',
-    message: 'Susanoo shield active! Defending your workstation! 🛡️⚡',
+    message: 'Susanoo shield active! Defending your workstation!',
   },
   {
     id: 'wave-salute',
     animation: 'wave',
     frames: 1,
     movement: 'none',
-    message: "Ninja salute! Let's conquer the next goal! ⚡",
+    message: "Ninja salute! Let's conquer the next goal!",
   },
   {
     id: 'sad-contemplate',
     animation: 'sad_contemplate',
     frames: 1,
     movement: 'none',
-    message: 'Deep concentration mode... maintaining warrior focus! 🌧️⚔️',
+    message: 'Deep concentration mode... maintaining warrior focus!',
   },
   {
     id: 'patrol-wander',
     animation: 'wander',
     frames: 1,
     movement: 'wander',
-    message: 'Patrolling the desktop perimeter... all clear! 🐾',
+    message: 'Patrolling the desktop perimeter... all clear!',
   },
 ];
 
@@ -158,7 +158,7 @@ export class BehaviorEngine {
         return {
           action: 'run_sprint',
           animation: 'run-right',
-          thought: `System CPU load at ${Math.round(systemTelemetry.cpuPercent)}%! Overclocking chakra sprint! 💻🔥`,
+          thought: `System CPU load at ${Math.round(systemTelemetry.cpuPercent)}%! Overclocking chakra sprint!`,
         };
       }
       if (
@@ -169,14 +169,21 @@ export class BehaviorEngine {
         return {
           action: 'sleep',
           animation: 'sleep',
-          thought: `Battery low (${systemTelemetry.batteryPercent}%)! Conserving power to protect your workstation! 🔋🌙`,
+          thought: `Battery low (${systemTelemetry.batteryPercent}%)! Conserving power to protect your workstation!`,
         };
       }
       if (systemTelemetry.memPercent >= 85) {
         return {
           action: 'protect',
           animation: 'protect',
-          thought: `Memory usage high (${Math.round(systemTelemetry.memPercent)}%)! Susanoo barrier guarding system! 🛡️⚡`,
+          thought: `Memory usage high (${Math.round(systemTelemetry.memPercent)}%)! Susanoo barrier guarding system!`,
+        };
+      }
+      if (systemTelemetry.gpuIsDiscrete && systemTelemetry.cpuPercent >= 45) {
+        return {
+          action: 'protect',
+          animation: 'protect',
+          thought: `Discrete GPU active! Shielding workstation for rendering and compute!`,
         };
       }
       // System normal
@@ -185,14 +192,14 @@ export class BehaviorEngine {
         return {
           action: 'wave',
           animation: 'wave',
-          thought: `System nominal (CPU ${Math.round(systemTelemetry.cpuPercent)}% • RAM ${Math.round(systemTelemetry.memPercent)}%)! All clear! 💻✨`,
+          thought: `System nominal (CPU ${Math.round(systemTelemetry.cpuPercent)}% • RAM ${Math.round(systemTelemetry.memPercent)}%)! All clear!`,
         };
       }
       if (r < 0.60) {
         return {
           action: 'wander',
           animation: 'walk-right',
-          thought: 'Patrolling system perimeter... smooth performance! 🐾',
+          thought: 'Patrolling system perimeter... smooth performance!',
         };
       }
       return {
@@ -214,7 +221,7 @@ export class BehaviorEngine {
       return {
         action: 'sleep',
         animation: 'sleep',
-        thought: 'Taking a peaceful rest... (Zzz) 🌙',
+        thought: 'Taking a peaceful rest... (Zzz)',
       };
     }
 
@@ -223,7 +230,7 @@ export class BehaviorEngine {
       return {
         action: 'wake',
         animation: 'wake',
-        thought: 'Awake and ready for action! ⚡',
+        thought: 'Awake and ready for action!',
       };
     }
 
@@ -244,7 +251,7 @@ export class BehaviorEngine {
       return {
         action: isRun ? 'run_sprint' : 'wander',
         animation: isRun ? 'run-right' : 'walk-right',
-        thought: isRun ? 'Shinobi sprint dash! 💨' : 'Patrolling the desktop perimeter...',
+        thought: isRun ? 'Shinobi sprint dash!' : 'Patrolling the desktop perimeter...',
       };
     }
 
@@ -253,7 +260,7 @@ export class BehaviorEngine {
       return {
         action: 'happy_dance',
         animation: 'happy',
-        thought: "Energy flowing! Feeling awesome today! ✨",
+        thought: 'Energy flowing! Feeling awesome today!',
       };
     }
 
@@ -262,7 +269,7 @@ export class BehaviorEngine {
       return {
         action: 'wave',
         animation: 'wave',
-        thought: 'Sharp reflexes on duty! ⚡',
+        thought: 'Sharp reflexes on duty!',
       };
     }
 

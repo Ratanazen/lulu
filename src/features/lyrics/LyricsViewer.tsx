@@ -62,7 +62,7 @@ export const LyricsViewer: React.FC<LyricsViewerProps> = ({
                 : 'text-gray-300 text-xs opacity-75'
             }`}
           >
-            {line.text || '♪'}
+            {line.text || '...'}
           </div>
         );
       })}

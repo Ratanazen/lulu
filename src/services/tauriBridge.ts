@@ -89,6 +89,103 @@ function mockInvoke<T>(cmd: string, _args?: Record<string, unknown>): Promise<T>
         ],
       } as unknown as T);
 
+    case 'get_system_info':
+      return Promise.resolve({
+        cpu: {
+          vendor: 'GenuineIntel',
+          model: '12th Gen Intel(R) Core(TM) i7-12700H',
+          architecture: 'x86_64',
+          logical_cores: 16,
+          physical_cores: 12,
+          frequency_mhz: 2700,
+          usage_percent: 24.5,
+        },
+        memory: {
+          total_bytes: 17179869184,
+          available_bytes: 10737418240,
+          used_bytes: 6442450944,
+          swap_total_bytes: 4294967296,
+          swap_used_bytes: 1073741824,
+          total_mb: 16384,
+          available_mb: 10240,
+          used_mb: 6144,
+          swap_total_mb: 4096,
+          swap_used_mb: 1024,
+          usage_percent: 37.5,
+        },
+        gpu: {
+          name: 'Intel Graphics (i915)',
+          vendor: 'Intel',
+          renderer: 'i915',
+          is_discrete: false,
+          vram_mb: null,
+          driver: 'i915',
+          status: 'DETECTED',
+        },
+        disk: {
+          root: {
+            mount_point: '/',
+            name: '/dev/nvme0n1p2',
+            filesystem: 'ext4',
+            total_space_bytes: 536870912000,
+            available_space_bytes: 322122547200,
+            total_space_gb: 500.0,
+            available_space_gb: 300.0,
+          },
+          mounts: [],
+        },
+        display: {
+          session_type: 'wayland',
+          monitor_count: 1,
+          primary_resolution: '1920x1080',
+          refresh_rate_hz: 60,
+          scale_factor: 1.0,
+          monitors: [],
+          status: 'DETECTED',
+        },
+        power: {
+          source: 'AC',
+          is_charging: true,
+          battery_percentage: 95,
+          status_text: 'Charging',
+          auto_power_save_recommended: false,
+        },
+        os: {
+          distro_name: 'Arch Linux',
+          kernel_version: '6.8.9-arch1-1',
+          os_name: 'Linux',
+          host_name: 'workstation',
+          arch: 'x86_64',
+        },
+        session: {
+          compositor: 'Sway',
+          session_type: 'wayland',
+          desktop_environment: 'sway',
+          is_wayland: true,
+          socket_path: null,
+        },
+        network: {
+          is_online: true,
+          primary_interface: 'wlan0',
+          interfaces: [],
+        },
+        processes: {
+          total_processes: 215,
+          running_processes: 2,
+          system_load_1m: 1.12,
+          system_load_5m: 1.05,
+          system_load_15m: 0.98,
+        },
+        recommended_profile: 'BALANCED',
+        active_profile: 'BALANCED',
+        is_low_spec: false,
+      } as unknown as T);
+
+    case 'get_system_report':
+      return Promise.resolve(
+        'LULU DESKTOP — SYSTEM & HARDWARE REPORT\nOS: Arch Linux\nCPU: Intel Core i7 (16 cores)\nRAM: 16384 MB (6144 MB used)\nGPU: Intel Graphics' as unknown as T
+      );
+
     default:
       return Promise.resolve(null as unknown as T);
   }

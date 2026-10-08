@@ -19,15 +19,15 @@ export interface ShinobiRank {
 }
 
 export const SHINOBI_RANKS: ShinobiRank[] = [
-  { level: 1, title: 'Academy Student', minXp: 0, maxXp: 250, badge: '🍃', description: 'Beginning ninja fundamentals & chakra control' },
-  { level: 2, title: 'Shinobi Genin', minXp: 250, maxXp: 650, badge: '⚔️', description: 'Official shinobi with basic desktop traversal jutsu' },
-  { level: 3, title: 'Chunin Vanguard', minXp: 650, maxXp: 1300, badge: '🛡️', description: 'Squad leader skilled in tactical patrols & stamina' },
-  { level: 4, title: 'Special Jonin', minXp: 1300, maxXp: 2200, badge: '⚡', description: 'Elite specialist in high-speed sprints & audio sync' },
-  { level: 5, title: 'Jonin Commander', minXp: 2200, maxXp: 3500, badge: '🔥', description: 'Master shinobi possessing advanced chakra shields' },
-  { level: 6, title: 'ANBU Black Ops', minXp: 3500, maxXp: 5200, badge: '🦅', description: 'Shadow operative executing seamless background patrols' },
-  { level: 7, title: 'Legendary Sannin', minXp: 5200, maxXp: 7500, badge: '👑', description: 'Renowned master of all 8 shinobi katas and karaoke' },
-  { level: 8, title: 'Hokage Guardian', minXp: 7500, maxXp: 10500, badge: '🌟', description: 'Supreme protector and guardian of the desktop realm' },
-  { level: 9, title: 'Rikudo Shadow Sage', minXp: 10500, maxXp: 15000, badge: '✨', description: 'Ascended sage wielding infinite chakra and mastery' },
+  { level: 1, title: 'Academy Student', minXp: 0, maxXp: 250, badge: 'leaf', description: 'Beginning ninja fundamentals & chakra control' },
+  { level: 2, title: 'Shinobi Genin', minXp: 250, maxXp: 650, badge: 'swords', description: 'Official shinobi with basic desktop traversal jutsu' },
+  { level: 3, title: 'Chunin Vanguard', minXp: 650, maxXp: 1300, badge: 'shield', description: 'Squad leader skilled in tactical patrols & stamina' },
+  { level: 4, title: 'Special Jonin', minXp: 1300, maxXp: 2200, badge: 'zap', description: 'Elite specialist in high-speed sprints & audio sync' },
+  { level: 5, title: 'Jonin Commander', minXp: 2200, maxXp: 3500, badge: 'flame', description: 'Master shinobi possessing advanced chakra shields' },
+  { level: 6, title: 'ANBU Black Ops', minXp: 3500, maxXp: 5200, badge: 'eye', description: 'Shadow operative executing seamless background patrols' },
+  { level: 7, title: 'Legendary Sannin', minXp: 5200, maxXp: 7500, badge: 'crown', description: 'Renowned master of all 8 shinobi katas and karaoke' },
+  { level: 8, title: 'Hokage Guardian', minXp: 7500, maxXp: 10500, badge: 'star', description: 'Supreme protector and guardian of the desktop realm' },
+  { level: 9, title: 'Rikudo Shadow Sage', minXp: 10500, maxXp: 15000, badge: 'sparkles', description: 'Ascended sage wielding infinite chakra and mastery' },
 ];
 
 export interface QuestTaskState {

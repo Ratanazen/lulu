@@ -32,15 +32,54 @@ export type BehaviorMode =
   | 'SYSTEM_SYNC';
 
 export interface SystemTelemetry {
+  // CPU Telemetry
   cpuPercent: number;
   cpuCores?: number;
+  cpuPhysicalCores?: number;
+  cpuModel?: string;
+  cpuVendor?: string;
+  cpuFreqMhz?: number;
+
+  // Memory & Swap Telemetry
   memUsedMb: number;
   memTotalMb: number;
   memPercent: number;
+  memAvailableMb?: number;
+  swapUsedMb?: number;
+  swapTotalMb?: number;
+  swapPercent?: number;
+
+  // GPU Telemetry
+  gpuName?: string;
+  gpuVendor?: string;
+  gpuRenderer?: string;
+  gpuIsDiscrete?: boolean;
+  gpuVramMb?: number | null;
+  gpuDriver?: string;
+  gpuStatus?: string;
+
+  // Storage Telemetry
+  diskRootUsedGb?: number;
+  diskRootTotalGb?: number;
+  diskRootAvailGb?: number;
+  diskRootPercent?: number;
+  diskRootFs?: string;
+
+  // Power & Battery Telemetry
   batteryPercent?: number;
   isCharging?: boolean;
+  powerSource?: string;
+  powerStatus?: string;
+  autoPowerSave?: boolean;
+
+  // Environment & Session Telemetry
   osName?: string;
+  kernelVersion?: string;
+  compositor?: string;
+  sessionType?: string;
+  desktopEnv?: string;
   profile?: string;
+  isLowSpec?: boolean;
 }
 
 export interface PersonalityTraits {

@@ -59,6 +59,8 @@ import { AudioVisualizer } from '../components/audio/AudioVisualizer';
 import { questProgressionEngine } from '../features/progression/QuestProgressionEngine';
 import { BoundaryPhysicsMode } from '../movement/MovementEngine';
 import { soundFxEngine } from '../features/audio/SoundFxEngine';
+import { useSystemStore } from '../stores/useSystemStore';
+import { ComprehensiveSystemInfo } from '../types/system';
 
 const renderProviderIcon = (iconType: string, size = 12) => {
   switch (iconType) {
@@ -127,7 +129,7 @@ export const App: React.FC = () => {
     const unlistenRank = questProgressionEngine.onRankUp((newRank) => {
       soundFxEngine.playRankUp();
       questProgressionEngine.recordChime();
-      messageManager.enqueue(`🎉 RANK UP! Promoted to ${newRank.title} (${newRank.badge})! 🏆✨`, 'high', 'interaction');
+      messageManager.enqueue(`RANK UP! Promoted to ${newRank.title}!`, 'high', 'interaction');
       setShowLoveHearts(true);
       setTimeout(() => setShowLoveHearts(false), 3000);
       setAnimation('happy');
@@ -135,7 +137,7 @@ export const App: React.FC = () => {
 
     const unlistenTask = questProgressionEngine.onTaskComplete((taskId, xp) => {
       const task = LULU_TASKS.find((t) => t.id === taskId);
-      messageManager.enqueue(`⭐ Quest Complete: ${task?.title || taskId} (+${xp} XP)! 💥`, 'normal', 'interaction');
+      messageManager.enqueue(`Quest Complete: ${task?.title || taskId} (+${xp} XP)!`, 'normal', 'interaction');
     });
 
     return () => {
@@ -258,7 +260,7 @@ export const App: React.FC = () => {
         }
 
         // Welcome speech line
-        messageManager.enqueue('Wake up to reality! Lulu is ready. ⚔️', 'high', 'startup');
+        messageManager.enqueue('Wake up to reality! Lulu is ready.', 'high', 'startup');
       } catch {
         // Fallback in web/preview
       }
@@ -327,13 +329,13 @@ export const App: React.FC = () => {
         }
         if (item.title === '__LULU_CMD_FOLLOW_SYSTEM__') {
           handleUpdatePreferences({ ...preferences, behavior_mode: 'SYSTEM_SYNC' });
-          messageManager.enqueue('💻 Follow Computer System mode activated! ⚡', 'high', 'interaction');
+          messageManager.enqueue('Follow Computer System mode activated!', 'high', 'interaction');
           return;
         }
         if (item.title === '__LULU_CMD_SIT__') {
           setIsSleeping(false);
           setAnimation('sit');
-          messageManager.enqueue('Taking a calm cross-legged breather... 🧘✨', 'high', 'interaction');
+          messageManager.enqueue('Taking a calm cross-legged breather...', 'high', 'interaction');
           return;
         }
         if (item.title === '__LULU_CMD_SLEEP__') {
@@ -341,16 +343,16 @@ export const App: React.FC = () => {
           isSleepingRef.current = true;
           setAnimation('sleep');
           if (isMusicPlaying) {
-            messageManager.enqueue('🌙 Peaceful Lullaby Mode • Sleeping soundly to the music... 😴🎵', 'high', 'interaction');
+            messageManager.enqueue('Peaceful Lullaby Mode • Sleeping soundly to the music...', 'high', 'interaction');
           } else {
-            messageManager.enqueue('Zzz... Peacefully resting soundly. 😴🌙', 'high', 'interaction');
+            messageManager.enqueue('Zzz... Peacefully resting soundly.', 'high', 'interaction');
           }
           return;
         }
         if (item.title === '__LULU_CMD_SING__') {
           setIsSleeping(false);
           setAnimation('sing');
-          messageManager.enqueue('🎤 ♪ Singing karaoke with joy! ♪ ✨', 'high', 'music');
+          messageManager.enqueue('Singing karaoke with joy!', 'high', 'music');
           return;
         }
 
@@ -388,38 +390,87 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isControlCenterOpen]);
 
-  // Periodic System Telemetry Poller (Computer CPU, RAM, Battery, OS)
+  // Periodic System Telemetry Poller (Computer CPU, RAM, GPU, Swap, Disk, Battery, OS)
   useEffect(() => {
     const fetchTelemetry = async () => {
       try {
-        const sys = await invokeCommand<any>('get_system_info');
+        const sys = await invokeCommand<ComprehensiveSystemInfo>('get_system_info');
         if (sys) {
+          useSystemStore.setState({
+            systemInfo: sys,
+            lastUpdated: new Date().toLocaleTimeString(),
+          });
+
           const memUsed = sys.memory?.used_mb ?? 0;
           const memTotal = sys.memory?.total_mb ?? 0;
           const memPercent =
-            typeof sys.memory?.usage_percent === 'number' && !isNaN(sys.memory.usage_percent)
-              ? sys.memory.usage_percent
-              : memTotal > 0
+            memTotal > 0
               ? (memUsed / memTotal) * 100
               : 0;
+
+          const swapUsed = sys.memory?.swap_used_mb ?? 0;
+          const swapTotal = sys.memory?.swap_total_mb ?? 0;
+          const swapPercent = swapTotal > 0 ? (swapUsed / swapTotal) * 100 : 0;
+
+          const diskTotal = sys.disk?.root?.total_space_gb ?? 0;
+          const diskAvail = sys.disk?.root?.available_space_gb ?? 0;
+          const diskUsed = Math.max(0, Math.round((diskTotal - diskAvail) * 10) / 10);
+          const diskPercent = diskTotal > 0 ? (diskUsed / diskTotal) * 100 : 0;
 
           const cpuVal =
             typeof sys.cpu?.usage_percent === 'number'
               ? sys.cpu.usage_percent
-              : typeof sys.cpu?.global_usage_percent === 'number'
-              ? sys.cpu.global_usage_percent
               : 0;
 
           setSystemTelemetry({
+            // CPU
             cpuPercent: Math.max(0, Math.min(100, cpuVal)),
             cpuCores: sys.cpu?.logical_cores,
+            cpuPhysicalCores: sys.cpu?.physical_cores,
+            cpuModel: sys.cpu?.model,
+            cpuVendor: sys.cpu?.vendor,
+            cpuFreqMhz: sys.cpu?.frequency_mhz,
+
+            // RAM & Swap
             memUsedMb: memUsed,
             memTotalMb: memTotal,
             memPercent: Math.max(0, Math.min(100, memPercent)),
-            batteryPercent: sys.power?.battery_percentage ?? sys.power?.battery_level_percent,
+            memAvailableMb: sys.memory?.available_mb,
+            swapUsedMb: swapUsed,
+            swapTotalMb: swapTotal,
+            swapPercent: Math.max(0, Math.min(100, swapPercent)),
+
+            // GPU
+            gpuName: sys.gpu?.name,
+            gpuVendor: sys.gpu?.vendor,
+            gpuRenderer: sys.gpu?.renderer,
+            gpuIsDiscrete: sys.gpu?.is_discrete,
+            gpuVramMb: sys.gpu?.vram_mb ?? undefined,
+            gpuDriver: sys.gpu?.driver,
+            gpuStatus: sys.gpu?.status,
+
+            // Storage / Disk
+            diskRootUsedGb: diskUsed,
+            diskRootTotalGb: diskTotal,
+            diskRootAvailGb: diskAvail,
+            diskRootPercent: Math.max(0, Math.min(100, diskPercent)),
+            diskRootFs: sys.disk?.root?.filesystem,
+
+            // Power & Battery
+            batteryPercent: sys.power?.battery_percentage ?? undefined,
             isCharging: sys.power?.is_charging,
-            osName: sys.os?.distro_name || sys.os?.os_name || (sys.os?.name ? `${sys.os.name} ${sys.os.kernel_version || ''}`.trim() : undefined),
+            powerSource: sys.power?.source,
+            powerStatus: sys.power?.status_text,
+            autoPowerSave: sys.power?.auto_power_save_recommended,
+
+            // OS & Session
+            osName: sys.os?.distro_name || sys.os?.os_name,
+            kernelVersion: sys.os?.kernel_version,
+            compositor: sys.session?.compositor,
+            sessionType: sys.session?.session_type,
+            desktopEnv: sys.session?.desktop_environment,
             profile: preferences.performance_profile || sys.active_profile,
+            isLowSpec: sys.is_low_spec,
           });
         }
       } catch {}
@@ -716,19 +767,19 @@ export const App: React.FC = () => {
   };
 
   const SHINOBI_AFFECTION_LINES = [
-    "Wake up to reality... I acknowledge your greatness! 🔥✨",
-    "Would you like these clones to use Susanoo or not? ⚡❤️",
-    "Hmph... Even the legendary shinobi needs a loyal comrade. ⚔️💕",
-    "These hands were forged for battle... but your bond is worthy! ✨",
-    "A legendary warrior's bond transcends all boundaries! 💥❤️",
+    "Wake up to reality... I acknowledge your greatness!",
+    "Would you like these clones to use Susanoo or not?",
+    "Hmph... Even the legendary shinobi needs a loyal comrade.",
+    "These hands were forged for battle... but your bond is worthy!",
+    "A legendary warrior's bond transcends all boundaries!",
   ];
 
   const ANIME_AFFECTION_LINES = [
-    "Lulu t'aime de tout son cœur! ❤️✨",
-    "Nyaa~ Daisuki dayo! (♥‿♥) ✨",
-    "Lulu loves you so much! 🥰💕",
-    "Je t'aime! Tu es le meilleur! 💖",
-    "Purr... Lulu is so happy with you! ✨❤️",
+    "Lulu t'aime de tout son cœur!",
+    "Nyaa~ Daisuki dayo!",
+    "Lulu loves you so much!",
+    "Je t'aime! Tu es le meilleur!",
+    "Purr... Lulu is so happy with you!",
   ];
 
   // Affection burst (Lulu Aime / Shinobi Bond)
@@ -762,14 +813,14 @@ export const App: React.FC = () => {
     setShowLoveHearts(true);
     const pool = (preferences.character_style || 'shadow_shinobi') === 'shadow_shinobi'
       ? [
-          "Hmph! You dare pat the legendary shinobi? ...Do not stop. (⁄ ⁄•⁄ω⁄•⁄ ⁄)",
-          "A true warrior appreciates such gentle treatment. ⚔️✨",
-          "The Gunbai is ready. Our power is unmatched! 💥",
+          "Hmph! You dare pat the legendary shinobi? ...Do not stop.",
+          "A true warrior appreciates such gentle treatment.",
+          "The Gunbai is ready. Our power is unmatched!",
         ]
       : [
-          "Nyaa~ That tickles! Daisuki! ❤️",
-          "Hehe, Lulu loves headpats! ✨",
-          "Purr... Lulu t'aime! 💕",
+          "Nyaa~ That tickles! Daisuki!",
+          "Hehe, Lulu loves headpats!",
+          "Purr... Lulu t'aime!",
         ];
     const line = pool[Math.floor(Math.random() * pool.length)];
     messageManager.enqueue(line, 'high', 'interaction');
@@ -786,7 +837,7 @@ export const App: React.FC = () => {
     questProgressionEngine.recordChime();
     setNeeds(needSystemRef.current.getNeeds());
     setAnimation('happy');
-    messageManager.enqueue('Yummy! Delicious snack! 🧁', 'high', 'interaction');
+    messageManager.enqueue('Yummy! Delicious snack!', 'high', 'interaction');
     setTimeout(() => setAnimation(isSleeping ? 'sleep' : isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle'), 2500);
   };
 
@@ -796,7 +847,7 @@ export const App: React.FC = () => {
       setIsSleeping(false);
       isSleepingRef.current = false;
       setAnimation('wake');
-      messageManager.enqueue('Yawn... Awake and ready! ✨', 'normal', 'interaction');
+      messageManager.enqueue('Yawn... Awake and ready!', 'normal', 'interaction');
       setTimeout(() => setAnimation(isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle'), 1500);
     } else {
       setIsSleeping(true);
@@ -806,9 +857,9 @@ export const App: React.FC = () => {
       questProgressionEngine.recordChime();
       setAnimation('sleep');
       if (isMusicPlaying) {
-        messageManager.enqueue('🌙 Peaceful Lullaby Mode • Sleeping soundly to the melody... 😴🎵', 'normal', 'interaction');
+        messageManager.enqueue('Peaceful Lullaby Mode • Sleeping soundly to the melody...', 'normal', 'interaction');
       } else {
-        messageManager.enqueue('Zzz... Good night~ 🌙', 'normal', 'interaction');
+        messageManager.enqueue('Zzz... Good night~', 'normal', 'interaction');
       }
     }
   };
@@ -833,9 +884,9 @@ export const App: React.FC = () => {
       questProgressionEngine.recordChime();
       setIsContinuousWalking(false);
       setIs40sRunActive(false);
-      messageManager.enqueue('SHOW RUN active! Continuous sprint! ⚡🏃💨', 'normal', 'interaction');
+      messageManager.enqueue('SHOW RUN active! Continuous sprint!', 'normal', 'interaction');
     } else {
-      messageManager.enqueue('Sprint paused. Catching breath! 🍃', 'normal', 'interaction');
+      messageManager.enqueue('Sprint paused. Catching breath!', 'normal', 'interaction');
     }
   };
 
@@ -852,7 +903,7 @@ export const App: React.FC = () => {
       setIs40sRunActive(false);
       setIsContinuousRunning(false);
       setIsContinuousWalking(false);
-      messageManager.enqueue('Sprint paused. Catching breath! 🍃', 'normal', 'interaction');
+      messageManager.enqueue('Sprint paused. Catching breath!', 'normal', 'interaction');
       return;
     }
     setIs40sRunActive(true);
@@ -861,11 +912,11 @@ export const App: React.FC = () => {
     questProgressionEngine.recordSprintLap();
     soundFxEngine.playSprintWhoosh();
     questProgressionEngine.recordChime();
-    messageManager.enqueue('Flame Sprint active! ⚡🏃💨', 'high', 'interaction');
+    messageManager.enqueue('Flame Sprint active!', 'high', 'interaction');
     movementRef.current.startTimedRun(40, () => {
       setIs40sRunActive(false);
       setIsContinuousRunning(false);
-      messageManager.enqueue('Sprint complete! Full speed achieved! 🏆🔥', 'high', 'interaction');
+      messageManager.enqueue('Sprint complete! Full speed achieved!', 'high', 'interaction');
     });
   };
 
@@ -883,9 +934,9 @@ export const App: React.FC = () => {
       questProgressionEngine.recordWalkLap();
       setIsContinuousRunning(false);
       setIs40sRunActive(false);
-      messageManager.enqueue('Walk Go & Back active! Pacing desktop perimeter... 🐾🚶', 'normal', 'interaction');
+      messageManager.enqueue('Walk Go & Back active! Pacing desktop perimeter...', 'normal', 'interaction');
     } else {
-      messageManager.enqueue('Patrol walk paused. Resting peacefully! 🍃', 'normal', 'interaction');
+      messageManager.enqueue('Patrol walk paused. Resting peacefully!', 'normal', 'interaction');
     }
   };
 
@@ -900,17 +951,17 @@ export const App: React.FC = () => {
     if (isContinuousWalking) {
       movementRef.current.stop();
       setIsContinuousWalking(false);
-      messageManager.enqueue('Patrol walk paused. Resting peacefully! 🍃', 'normal', 'interaction');
+      messageManager.enqueue('Patrol walk paused. Resting peacefully!', 'normal', 'interaction');
       return;
     }
     setIsContinuousWalking(true);
     setIsContinuousRunning(false);
     setIs40sRunActive(false);
     questProgressionEngine.recordWalkLap();
-    messageManager.enqueue('Walk Go & Back patrol initiated! 🐾🚶', 'high', 'interaction');
+    messageManager.enqueue('Walk Go & Back patrol initiated!', 'high', 'interaction');
     movementRef.current.walkGoAndBack(() => {
       setIsContinuousWalking(false);
-      messageManager.enqueue('Patrol walk cycle completed safely! 🛡️✨', 'high', 'interaction');
+      messageManager.enqueue('Patrol walk cycle completed safely!', 'high', 'interaction');
     });
   };
 
@@ -1020,7 +1071,7 @@ export const App: React.FC = () => {
   const handleUnlockAll = () => {
     setAnimation('happy');
     setShowLoveHearts(true);
-    messageManager.enqueue(`🎉 All ${Object.keys(LULU_FLAME_STYLES).length} Master Flames and ${LULU_TASKS.length} Shinobi Tasks are 100% Unlocked! 💥✨`, 'high', 'interaction');
+    messageManager.enqueue(`All ${Object.keys(LULU_FLAME_STYLES).length} Master Flames and ${LULU_TASKS.length} Shinobi Tasks are 100% Unlocked!`, 'high', 'interaction');
     setTimeout(() => {
       setShowLoveHearts(false);
       setAnimation(isMusicPlaying ? (activeLyricText ? 'sing' : 'dance') : 'idle');
@@ -1112,7 +1163,7 @@ export const App: React.FC = () => {
           onToggleLyricsMode={() => {
             setLyricsMode((prev) => {
               const next = prev === 'auto_lyrics' ? 'normal_text' : 'auto_lyrics';
-              messageManager.enqueue(next === 'auto_lyrics' ? '🎵 Live Lyrics Studio Active' : '🐾 Normal Text Lulu Active', 'normal', 'interaction');
+              messageManager.enqueue(next === 'auto_lyrics' ? 'Live Lyrics Studio Active' : 'Normal Text Lulu Active', 'normal', 'interaction');
               return next;
             });
           }}
@@ -1300,11 +1351,11 @@ export const App: React.FC = () => {
                   {isCurrent ? (
                     <>
                       <Play size={7} className="fill-current inline mr-1 opacity-80" />
-                      <span>{line.text || '♪'}</span>
+                      <span>{line.text || '...'}</span>
                       <Play size={7} className="fill-current inline ml-1 rotate-180 opacity-80" />
                     </>
                   ) : (
-                    line.text || '♪'
+                    line.text || '...'
                   )}
                 </div>
               );
@@ -1842,7 +1893,7 @@ export const App: React.FC = () => {
               const nextMode = boundaryMode === 'wrap' ? 'bounce' : 'wrap';
               setBoundaryMode(nextMode);
               movementRef.current.setBoundaryPhysicsMode(nextMode);
-              messageManager.enqueue(nextMode === 'wrap' ? 'Screen Wrapping enabled! 🌀' : 'Edge Bounce physics enabled! 🛡️', 'normal', 'interaction');
+              messageManager.enqueue(nextMode === 'wrap' ? 'Screen Wrapping enabled!' : 'Edge Bounce physics enabled!', 'normal', 'interaction');
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-purple-600 hover:text-white flex items-center gap-2 text-purple-300 font-medium"
           >
@@ -1855,7 +1906,7 @@ export const App: React.FC = () => {
             onClick={() => {
               setShowContextMenu(false);
               const muted = soundFxEngine.toggleMute();
-              messageManager.enqueue(muted ? 'Sound effects muted 🔇' : 'Sound effects unmuted 🔔', 'normal', 'interaction');
+              messageManager.enqueue(muted ? 'Sound effects muted' : 'Sound effects unmuted', 'normal', 'interaction');
             }}
             className="w-full text-left px-3 py-1.5 hover:bg-pink-600 hover:text-white flex items-center gap-2 text-pink-300 font-medium"
           >
