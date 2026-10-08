@@ -47,6 +47,8 @@ interface LuluSpriteProps {
   speedMultiplier?: number;
   isMusicPlaying?: boolean;
   fpsLimit?: number;
+  beatPulse?: number;
+  audioEnergy?: number;
 }
 
 export const LuluSprite: React.FC<LuluSpriteProps> = ({
@@ -61,6 +63,8 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
   speedMultiplier = 1.0, // Normal, smooth cadence default
   isMusicPlaying = false,
   fpsLimit = 30,
+  beatPulse = 0,
+  audioEnergy = 0,
 }) => {
   const [frame, setFrame] = useState(0);
   const [tick, setTick] = useState(0);
@@ -167,7 +171,8 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
     ? Math.sin(tick * 0.4) * 4
     : 0;
 
-  // Expressive jumping, sitting, or joyful bouncing
+  // Expressive jumping, sitting, or joyful bouncing (modulated by live audio beatPulse)
+  const beatHop = (isDancing || isSinging) ? beatPulse * -7 : 0;
   const bounceY = isJumping
     ? -26
     : isSitting
@@ -175,16 +180,17 @@ export const LuluSprite: React.FC<LuluSpriteProps> = ({
     : isSurprised
     ? -8
     : (animation === 'happy' || isJoyful)
-    ? Math.abs(Math.sin(tick * 0.2)) * -5
-    : 0;
+    ? Math.abs(Math.sin(tick * 0.2)) * -5 + beatHop
+    : beatHop;
 
   // Dynamic tilt & sway: running lean, dancing groove, walking wobble, singing gentle sway
+  const dynamicDanceTilt = Math.sin(tick * 0.25) * (4 + beatPulse * 4);
   const tiltDeg = isRunning
     ? Math.sin(tick * 0.35) * 4
     : isDancing
-    ? Math.sin(tick * 0.2) * 5
+    ? dynamicDanceTilt
     : isSinging
-    ? Math.sin(tick * 0.15) * 3
+    ? Math.sin(tick * 0.15) * (3 + audioEnergy * 2.5)
     : isJoyful
     ? Math.sin(tick * 0.2) * 3
     : isWalking

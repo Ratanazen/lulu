@@ -356,6 +356,17 @@ export const LULU_TASKS: LuluTask[] = [
     actionId: 'celebration_cheer',
     category: 'System',
   },
+  {
+    id: 'audio_reactive_beat_dance',
+    title: 'Audio-Reactive Beat Dancing & Frequency Visualizer',
+    description: 'Dynamic beat pulse detection [0..1] and 16-band equalizer spectrum with rhythm-synchronized dance hops.',
+    isCompleted: true,
+    unlockedItems: ['spotify_dance', 'spotify_sing'],
+    imageKey: 'sing',
+    reward: 'Live 16-Band Equalizer & Beat-Reactive Grooving',
+    actionId: 'spotify_dance',
+    category: 'Audio',
+  },
 ];
 
 /**

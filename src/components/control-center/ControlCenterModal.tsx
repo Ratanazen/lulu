@@ -62,6 +62,8 @@ import {
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
 import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
 import { MediaSession, getProviderTheme } from '../../features/media/mediaSession';
+import { AudioVisualizer } from '../audio/AudioVisualizer';
+import { audioReactiveEngine, AudioReactiveMode } from '../../features/audio/AudioReactiveEngine';
 import shinobiIdle from '../../assets/avatars/shinobi_idle.png';
 import shinobiRun from '../../assets/avatars/shinobi_run.png';
 import shinobiHappy from '../../assets/avatars/shinobi_happy.png';
@@ -310,6 +312,16 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   // Tasks Filter & Search
   const [taskCategoryFilter, setTaskCategoryFilter] = useState('All');
   const [taskSearchQuery, setTaskSearchQuery] = useState('');
+
+  // Audio-Reactive Visualizer & Beat Dance State
+  const [visualizerMode, setVisualizerMode] = useState<AudioReactiveMode>(() => audioReactiveEngine.getMode());
+  const [visualizerStyle, setVisualizerStyle] = useState<'bars' | 'wave'>('bars');
+
+  const handleSetVisualizerMode = (mode: AudioReactiveMode) => {
+    setVisualizerMode(mode);
+    audioReactiveEngine.setMode(mode);
+    messageManager.enqueue(`🎵 Audio Mode: ${mode === 'beat_bounce' ? 'Beat Bounce' : mode === 'equalizer_groove' ? 'Equalizer Groove' : mode === 'gentle_ambient' ? 'Gentle Ambient' : 'Visualizer Off'}`, 'normal', 'interaction');
+  };
 
   // Load capabilities & monitors when modal opens
   useEffect(() => {
@@ -1092,6 +1104,57 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <button onClick={handleMusicNext} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-300">
                           <SkipForward size={14} />
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Live Audio-Reactive Frequency Spectrum & Equalizer */}
+                    <div className="bg-black/30 border border-white/5 p-3 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Activity size={13} className="text-cyan-400" />
+                          <span className="text-[10px] font-bold text-white">Audio-Reactive Frequency Spectrum</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {(['bars', 'wave'] as const).map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => setVisualizerStyle(s)}
+                              className={`px-2 py-0.5 rounded text-[9px] font-bold transition ${
+                                visualizerStyle === s
+                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                                  : 'bg-black/40 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {s === 'bars' ? '16 Bars' : 'Wave'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <AudioVisualizer
+                        variant={visualizerStyle}
+                        accentColor={activeMediaSession ? getProviderTheme(activeMediaSession.provider).accentColor : '#10b981'}
+                        showBeatIndicator={true}
+                        height={64}
+                      />
+
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[9px]">
+                        <span className="text-gray-400">Beat Dance Reaction:</span>
+                        <div className="flex items-center gap-1">
+                          {(['beat_bounce', 'equalizer_groove', 'gentle_ambient', 'off'] as const).map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => handleSetVisualizerMode(m)}
+                              className={`px-1.5 py-0.5 rounded text-[8.5px] transition ${
+                                visualizerMode === m
+                                  ? 'bg-purple-600 text-white font-bold'
+                                  : 'bg-black/40 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {m === 'beat_bounce' ? 'Bounce' : m === 'equalizer_groove' ? 'Groove' : m === 'gentle_ambient' ? 'Gentle' : 'Off'}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
@@ -2536,6 +2599,57 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     >
                       <SkipForward size={16} />
                     </button>
+                  </div>
+                </div>
+
+                {/* Live Audio-Reactive Frequency Spectrum & Equalizer */}
+                <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Activity size={16} className="text-cyan-400" />
+                      <span className="text-sm font-bold text-white">Audio-Reactive 16-Band Spectrum Visualizer</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {(['bars', 'wave'] as const).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setVisualizerStyle(s)}
+                          className={`px-2.5 py-1 rounded text-xs font-bold transition ${
+                            visualizerStyle === s
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                              : 'bg-black/30 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {s === 'bars' ? '16 Bars' : 'Chakra Soundwave'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <AudioVisualizer
+                    variant={visualizerStyle}
+                    accentColor={activeMediaSession ? getProviderTheme(activeMediaSession.provider).accentColor : '#ec4899'}
+                    showBeatIndicator={true}
+                    height={80}
+                  />
+
+                  <div className="flex items-center justify-between pt-1 border-t border-white/5 text-xs">
+                    <span className="text-gray-400">Beat Dance Reaction:</span>
+                    <div className="flex items-center gap-1.5">
+                      {(['beat_bounce', 'equalizer_groove', 'gentle_ambient', 'off'] as const).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => handleSetVisualizerMode(m)}
+                          className={`px-2.5 py-1 rounded text-xs transition ${
+                            visualizerMode === m
+                              ? 'bg-purple-600 text-white font-bold shadow'
+                              : 'bg-black/30 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          {m === 'beat_bounce' ? 'Beat Bounce' : m === 'equalizer_groove' ? 'Equalizer Groove' : m === 'gentle_ambient' ? 'Gentle Ambient' : 'Off'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

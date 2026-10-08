@@ -51,6 +51,8 @@ import { ParsedLrc } from '../features/lyrics/lrcParser';
 import { lyricsSyncEngine, parsedLrcToMs } from '../features/lyrics/lyricsSyncEngine';
 import { MediaSession, normalizeMediaSession, getProviderTheme } from '../features/media/mediaSession';
 import { LULU_TASKS, LULU_FLAME_STYLES } from '../config/luluFlameConfig';
+import { audioReactiveEngine, AudioReactiveState } from '../features/audio/AudioReactiveEngine';
+import { AudioVisualizer } from '../components/audio/AudioVisualizer';
 
 const renderProviderIcon = (iconType: string, size = 12) => {
   switch (iconType) {
@@ -103,6 +105,14 @@ export const App: React.FC = () => {
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
   const [showText, setShowText] = useState<boolean>(true);
   const [lyricsMode, setLyricsMode] = useState<'auto_lyrics' | 'normal_text'>('auto_lyrics');
+  const [audioState, setAudioState] = useState<AudioReactiveState>(() => audioReactiveEngine.getState());
+
+  // Subscribe to audio-reactive engine for beat detection & spectrum
+  useEffect(() => {
+    return audioReactiveEngine.subscribe((state) => {
+      setAudioState(state);
+    });
+  }, []);
 
   // Auto-scroll active lyric line in All Lyrics scroll view
   useEffect(() => {
@@ -463,6 +473,7 @@ export const App: React.FC = () => {
           }
 
           if (session.playing) {
+            audioReactiveEngine.updatePlayback(true, session.position_ms || 0);
             if (!isMusicPlayingRef.current) {
               isMusicPlayingRef.current = true;
               setIsMusicPlaying(true);
@@ -488,6 +499,7 @@ export const App: React.FC = () => {
             }
           } else {
             // Paused: freeze lyrics and progress indicator, set animation to idle if not sleeping
+            audioReactiveEngine.updatePlayback(false, session.position_ms || 0);
             lyricsSyncEngine.updatePosition(session.position_ms || 0, 'Paused');
             if (isMusicPlayingRef.current) {
               isMusicPlayingRef.current = false;
@@ -500,6 +512,7 @@ export const App: React.FC = () => {
           }
         } else {
           // No media session
+          audioReactiveEngine.updatePlayback(false, 0);
           lyricsSyncEngine.clear();
           if (isMusicPlayingRef.current) {
             isMusicPlayingRef.current = false;
@@ -1062,7 +1075,7 @@ export const App: React.FC = () => {
             e.stopPropagation();
             setIsLyricsCollapsed(false);
           }}
-          className="px-2.5 py-1 rounded-full bg-[#090d16]/95 border flex items-center gap-2 cursor-pointer shadow-lg backdrop-blur-md transition-all hover:scale-102 pointer-events-auto shrink-0 select-none animate-fade-in"
+          className="px-2.5 py-1 rounded-full bg-[#090d16]/95 border flex items-center gap-1.5 cursor-pointer shadow-lg backdrop-blur-md transition-all hover:scale-102 pointer-events-auto shrink-0 select-none animate-fade-in"
           style={{
             borderColor: mediaTheme.borderColor,
             boxShadow: `0 4px 16px ${mediaTheme.glowColor}`,
@@ -1070,7 +1083,8 @@ export const App: React.FC = () => {
           title="Click to expand full lyrics card"
         >
           {renderProviderIcon(mediaTheme.iconType, 12)}
-          <span className="text-[10px] font-bold text-white truncate max-w-[130px]">
+          <AudioVisualizer variant="mini" accentColor={mediaTheme.accentColor} />
+          <span className="text-[10px] font-bold text-white truncate max-w-[120px]">
             {currentSpotifyTrack?.title || 'Playing'}
           </span>
           <span className="text-[9px] font-mono text-gray-300">
@@ -1158,11 +1172,8 @@ export const App: React.FC = () => {
               <ChevronUp size={12} />
             </button>
 
-            <div className="flex items-end gap-0.5 h-2.5 shrink-0 ml-0.5">
-              <span className={`w-0.5 rounded-full ${isMusicPlaying && !isSleeping ? 'animate-pulse' : ''} h-1.5`} style={{ backgroundColor: mediaTheme.primaryColor }} />
-              <span className={`w-0.5 rounded-full ${isMusicPlaying && !isSleeping ? 'animate-bounce' : ''} h-2.5`} style={{ backgroundColor: mediaTheme.primaryColor }} />
-              <span className={`w-0.5 rounded-full ${isMusicPlaying && !isSleeping ? 'animate-pulse' : ''} h-1.5`} style={{ backgroundColor: mediaTheme.accentColor }} />
-            </div>
+            {/* Real-time audio reactive mini visualizer */}
+            <AudioVisualizer variant="mini" accentColor={mediaTheme.accentColor} />
 
             <span
               className="text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1 ml-0.5"
@@ -1375,6 +1386,8 @@ export const App: React.FC = () => {
             speedMultiplier={speedMultiplier}
             isMusicPlaying={isMusicPlaying}
             fpsLimit={preferences.fps_limit}
+            beatPulse={audioState.beatPulse}
+            audioEnergy={audioState.audioEnergy}
           />
         </div>
       </div>
