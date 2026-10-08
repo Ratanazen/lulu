@@ -12,11 +12,13 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:cargo": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test:all": "vitest run && cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri": "tauri",
     "tauri:dev": "npm run build && npx tauri dev",
     "tauri:build": "npm run build && npx tauri build",
-    "install:bin": "cp src-tauri/target/release/lulu /home/reny/.local/bin/lulu && chmod +x /home/reny/.local/bin/lulu",
-    "run:bin": "/home/reny/.local/bin/lulu"
+    "install:bin": "install -m 755 src-tauri/target/release/lulu-desktop ~/.local/bin/lulu",
+    "run:bin": "~/.local/bin/lulu"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1",
