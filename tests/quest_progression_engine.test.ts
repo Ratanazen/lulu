@@ -121,4 +121,16 @@ describe('QuestProgressionEngine & Shinobi Rank Ladder', () => {
     expect(state.completedCount).toBe(0);
     expect(state.currentRank.level).toBe(1);
   });
+
+  it('8. Phase 8 & 10 action hooks increment wrap lap and companion chime quests', () => {
+    engine.recordChime();
+    let state = engine.getState();
+    expect(state.totalXp).toBe(15);
+    expect(state.tasks['companion_chimes_spatial_audio'].currentProgress).toBe(1);
+
+    engine.recordWrapLap();
+    state = engine.getState();
+    expect(state.totalXp).toBe(40); // 15 + 25
+    expect(state.tasks['multi_monitor_screen_wrapping'].currentProgress).toBe(1);
+  });
 });

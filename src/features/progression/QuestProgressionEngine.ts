@@ -91,6 +91,8 @@ export class QuestProgressionEngine {
       lyrics_hud_hinge_control: { max: 2, unit: 'toggles', xp: 140 },
       lucide_vector_iconography: { max: 1, unit: 'active', xp: 200 },
       audio_reactive_beat_dance: { max: 10, unit: 'beats', xp: 280 },
+      multi_monitor_screen_wrapping: { max: 5, unit: 'laps', xp: 250 },
+      companion_chimes_spatial_audio: { max: 10, unit: 'chimes', xp: 260 },
     };
 
     for (const [id, def] of Object.entries(defaults)) {
@@ -238,6 +240,22 @@ export class QuestProgressionEngine {
   public recordShield() {
     this.addXp(20);
     this.incrementTaskProgress('susanoo_chakra_defense', 1);
+  }
+
+  /**
+   * Action Hook: Companion sound cue / chime played
+   */
+  public recordChime() {
+    this.addXp(15);
+    this.incrementTaskProgress('companion_chimes_spatial_audio', 1);
+  }
+
+  /**
+   * Action Hook: Multi-monitor wrap / roaming lap completed
+   */
+  public recordWrapLap() {
+    this.addXp(25);
+    this.incrementTaskProgress('multi_monitor_screen_wrapping', 1);
   }
 
   /**

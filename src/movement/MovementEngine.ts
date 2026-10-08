@@ -3,6 +3,16 @@ import { NativeMonitorInfo } from '../types/pet';
 
 export type RunDirection = 'left' | 'right';
 export type RunMode = 'idle' | 'timed' | 'continuous' | 'walk_patrol' | 'walk_continuous';
+export type BoundaryPhysicsMode = 'bounce' | 'wrap' | 'roam_multi';
+
+export interface CompositeScreenBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  totalWidth: number;
+  totalHeight: number;
+}
 
 export interface MovementState {
   isRunning: boolean;
@@ -17,6 +27,7 @@ export interface MovementState {
   speedMultiplier: number;
   currentX?: number;
   currentY?: number;
+  boundaryPhysicsMode?: BoundaryPhysicsMode;
 }
 
 export interface MovementConfig {
@@ -43,7 +54,10 @@ export class MovementEngine {
   private timer: any = null;
   private timedRunTimer: any = null;
   private activeMonitor: NativeMonitorInfo | null = null;
+  private monitors: NativeMonitorInfo[] = [];
+  private boundaryPhysicsMode: BoundaryPhysicsMode = 'bounce';
   private onPositionUpdate?: (x: number, y: number, isMoving: boolean, direction: 'left' | 'right' | 'idle', isRunning?: boolean) => void;
+  private onWrap?: () => void;
 
   private baseConfig: MovementConfig = {
     walkSpeed: 3,
@@ -80,8 +94,120 @@ export class MovementEngine {
     this.onPositionUpdate = fn;
   }
 
+  public setOnWrap(fn: () => void) {
+    this.onWrap = fn;
+  }
+
   public setMonitor(m: NativeMonitorInfo) {
     this.activeMonitor = m;
+    if (this.monitors.length === 0) {
+      this.monitors = [m];
+    }
+  }
+
+  public setMonitors(monitors: NativeMonitorInfo[]) {
+    this.monitors = monitors;
+    if (!this.activeMonitor && monitors.length > 0) {
+      this.activeMonitor = monitors.find((m) => m.is_primary) || monitors[0];
+    }
+  }
+
+  public getMonitors(): NativeMonitorInfo[] {
+    return this.monitors;
+  }
+
+  public getActiveMonitor(): NativeMonitorInfo | null {
+    return this.activeMonitor;
+  }
+
+  public setBoundaryPhysicsMode(mode: BoundaryPhysicsMode) {
+    this.boundaryPhysicsMode = mode;
+  }
+
+  public getBoundaryPhysicsMode(): BoundaryPhysicsMode {
+    return this.boundaryPhysicsMode;
+  }
+
+  public getCompositeBounds(): CompositeScreenBounds {
+    if (this.monitors.length === 0) {
+      if (this.activeMonitor) {
+        return {
+          minX: this.activeMonitor.work_area_x,
+          maxX: this.activeMonitor.work_area_x + this.activeMonitor.work_area_width,
+          minY: this.activeMonitor.work_area_y,
+          maxY: this.activeMonitor.work_area_y + this.activeMonitor.work_area_height,
+          totalWidth: this.activeMonitor.work_area_width,
+          totalHeight: this.activeMonitor.work_area_height,
+        };
+      }
+      return { minX: 0, maxX: 1920, minY: 0, maxY: 1080, totalWidth: 1920, totalHeight: 1080 };
+    }
+
+    const minX = Math.min(...this.monitors.map((m) => m.work_area_x));
+    const maxX = Math.max(...this.monitors.map((m) => m.work_area_x + m.work_area_width));
+    const minY = Math.min(...this.monitors.map((m) => m.work_area_y));
+    const maxY = Math.max(...this.monitors.map((m) => m.work_area_y + m.work_area_height));
+
+    return {
+      minX,
+      maxX,
+      minY,
+      maxY,
+      totalWidth: Math.max(1920, maxX - minX),
+      totalHeight: Math.max(1080, maxY - minY),
+    };
+  }
+
+  public getEffectiveBounds(): { minX: number; maxX: number; minY: number; maxY: number } {
+    if (this.boundaryPhysicsMode === 'roam_multi' && this.monitors.length > 1) {
+      const comp = this.getCompositeBounds();
+      return {
+        minX: comp.minX + this.config.edgePadding,
+        maxX: comp.maxX - 290 - this.config.edgePadding,
+        minY: comp.minY + this.config.edgePadding,
+        maxY: comp.maxY - 350 - this.config.edgePadding,
+      };
+    }
+
+    if (this.activeMonitor) {
+      return {
+        minX: this.activeMonitor.work_area_x + this.config.edgePadding,
+        maxX: this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding,
+        minY: this.activeMonitor.work_area_y + this.config.edgePadding,
+        maxY: this.activeMonitor.work_area_y + this.activeMonitor.work_area_height - 350 - this.config.edgePadding,
+      };
+    }
+
+    return {
+      minX: 50,
+      maxX: 1580,
+      minY: 50,
+      maxY: 700,
+    };
+  }
+
+  public async jumpToMonitor(monitorName: string): Promise<boolean> {
+    const target = this.monitors.find((m) => m.name === monitorName);
+    if (!target) return false;
+
+    this.activeMonitor = target;
+    const targetX = target.work_area_x + Math.floor((target.work_area_width - 290) / 2);
+    const targetY = target.work_area_y + target.work_area_height - 350 - this.config.edgePadding;
+
+    this.currentX = targetX;
+    this.currentY = targetY;
+    this.targetX = targetX;
+    this.targetY = targetY;
+
+    try {
+      await invokeCommand('move_to_monitor', { name: monitorName });
+    } catch {
+      // Fallback in web/mock
+    }
+
+    await this.applyNativePosition(targetX, targetY);
+    this.onPositionUpdate?.(targetX, targetY, false, 'idle', false);
+    return true;
   }
 
   public async syncCurrentPosition() {
@@ -138,48 +264,28 @@ export class MovementEngine {
 
   public sprintLap(direction?: 'left' | 'right') {
     this.syncCurrentPosition().catch(() => {});
-    if (!this.activeMonitor) {
-      const delta = direction === 'left' ? -350 : 350;
-      this.runTo(this.currentX + delta, this.currentY);
-      return;
-    }
+    const bounds = this.getEffectiveBounds();
 
-    const minX = this.activeMonitor.work_area_x + this.config.edgePadding;
-    const maxX = this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding;
-
-    let targetX = direction === 'left' ? minX : maxX;
+    let targetX = direction === 'left' ? bounds.minX : bounds.maxX;
     if (!direction) {
       // If close to right edge, run left; otherwise run right
-      targetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
+      targetX = this.currentX > (bounds.minX + bounds.maxX) / 2 ? bounds.minX : bounds.maxX;
     }
 
-    const minY = this.activeMonitor.work_area_y + this.config.edgePadding;
-    const maxY = this.activeMonitor.work_area_y + this.activeMonitor.work_area_height - 350 - this.config.edgePadding;
-    const targetY = Math.max(minY, Math.min(maxY, this.currentY));
-
+    const targetY = Math.max(bounds.minY, Math.min(bounds.maxY, this.currentY));
     this.runTo(targetX, targetY);
   }
 
   public walkLap(direction?: 'left' | 'right') {
     this.syncCurrentPosition().catch(() => {});
-    if (!this.activeMonitor) {
-      const delta = direction === 'left' ? -260 : 260;
-      this.walkTo(this.currentX + delta, this.currentY);
-      return;
-    }
+    const bounds = this.getEffectiveBounds();
 
-    const minX = this.activeMonitor.work_area_x + this.config.edgePadding;
-    const maxX = this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding;
-
-    let targetX = direction === 'left' ? minX : maxX;
+    let targetX = direction === 'left' ? bounds.minX : bounds.maxX;
     if (!direction) {
-      targetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
+      targetX = this.currentX > (bounds.minX + bounds.maxX) / 2 ? bounds.minX : bounds.maxX;
     }
 
-    const minY = this.activeMonitor.work_area_y + this.config.edgePadding;
-    const maxY = this.activeMonitor.work_area_y + this.activeMonitor.work_area_height - 350 - this.config.edgePadding;
-    const targetY = Math.max(minY, Math.min(maxY, this.currentY));
-
+    const targetY = Math.max(bounds.minY, Math.min(bounds.maxY, this.currentY));
     this.walkTo(targetX, targetY);
   }
 
@@ -246,6 +352,7 @@ export class MovementEngine {
       speedMultiplier: this.speedMultiplier,
       currentX: this.currentX,
       currentY: this.currentY,
+      boundaryPhysicsMode: this.boundaryPhysicsMode,
     };
   }
 
@@ -331,18 +438,9 @@ export class MovementEngine {
   }
 
   private clampTarget(tx: number, ty: number) {
-    if (this.activeMonitor) {
-      const minX = this.activeMonitor.work_area_x + this.config.edgePadding;
-      const maxX = this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 240 - this.config.edgePadding;
-      const minY = this.activeMonitor.work_area_y + this.config.edgePadding;
-      const maxY = this.activeMonitor.work_area_y + this.activeMonitor.work_area_height - 300 - this.config.edgePadding;
-
-      this.targetX = Math.max(minX, Math.min(maxX, tx));
-      this.targetY = Math.max(minY, Math.min(maxY, ty));
-    } else {
-      this.targetX = tx;
-      this.targetY = ty;
-    }
+    const bounds = this.getEffectiveBounds();
+    this.targetX = Math.max(bounds.minX, Math.min(bounds.maxX, tx));
+    this.targetY = Math.max(bounds.minY, Math.min(bounds.maxY, ty));
   }
 
   private startMoveLoop(isRunning: boolean = false) {
@@ -366,21 +464,33 @@ export class MovementEngine {
         this.currentX = this.targetX;
         this.currentY = this.targetY;
 
-        if (this.isContinuousRunning || this.runMode === 'continuous' || this.runMode === 'timed') {
-          // Continuous boundary bounce physics
-          const minX = this.activeMonitor ? this.activeMonitor.work_area_x + this.config.edgePadding : 50;
-          const maxX = this.activeMonitor ? this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding : 1500;
-          const nextTargetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
-          this.targetX = nextTargetX;
-          this.runDirection = nextTargetX > this.currentX ? 'right' : 'left';
-          return;
-        }
+        if (
+          this.isContinuousRunning ||
+          this.runMode === 'continuous' ||
+          this.runMode === 'timed' ||
+          this.isContinuousWalking ||
+          this.runMode === 'walk_continuous' ||
+          this.runMode === 'walk_patrol'
+        ) {
+          const bounds = this.getEffectiveBounds();
 
-        if (this.isContinuousWalking || this.runMode === 'walk_continuous' || this.runMode === 'walk_patrol') {
-          // Continuous boundary bounce physics for walking (Walk Go & Back!)
-          const minX = this.activeMonitor ? this.activeMonitor.work_area_x + this.config.edgePadding : 50;
-          const maxX = this.activeMonitor ? this.activeMonitor.work_area_x + this.activeMonitor.work_area_width - 290 - this.config.edgePadding : 1500;
-          const nextTargetX = this.currentX > (minX + maxX) / 2 ? minX : maxX;
+          if (this.boundaryPhysicsMode === 'wrap') {
+            // Screen Wrapping: seamlessly warp across to opposite edge and continue dashing forward
+            if (this.runDirection === 'right') {
+              this.currentX = bounds.minX;
+              this.targetX = bounds.maxX;
+            } else {
+              this.currentX = bounds.maxX;
+              this.targetX = bounds.minX;
+            }
+            this.onWrap?.();
+            await this.applyNativePosition(Math.round(this.currentX), Math.round(this.currentY));
+            this.onPositionUpdate?.(Math.round(this.currentX), Math.round(this.currentY), true, this.runDirection, isRunning);
+            return;
+          }
+
+          // Boundary Bounce Physics (default or multi-monitor outer boundary)
+          const nextTargetX = this.currentX > (bounds.minX + bounds.maxX) / 2 ? bounds.minX : bounds.maxX;
           this.targetX = nextTargetX;
           this.runDirection = nextTargetX > this.currentX ? 'right' : 'left';
           return;

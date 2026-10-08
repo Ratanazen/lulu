@@ -53,6 +53,8 @@ pub fn run() {
             // Monitors Native Probes
             monitors::get_monitors,
             monitors::get_primary_monitor,
+            monitors::move_to_monitor,
+            monitors::move_to_workspace,
 
             // Pet Persistence & State
             pet_storage::get_pet_preferences,

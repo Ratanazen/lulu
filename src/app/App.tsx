@@ -45,6 +45,9 @@ import {
   Cpu,
   Armchair,
   ArrowUpDown,
+  Volume2,
+  VolumeX,
+  RotateCcw,
 } from 'lucide-react';
 import { spotifyLyricsService } from '../features/lyrics/spotifyLyricsService';
 import { ParsedLrc } from '../features/lyrics/lrcParser';
@@ -54,6 +57,8 @@ import { LULU_TASKS, LULU_FLAME_STYLES } from '../config/luluFlameConfig';
 import { audioReactiveEngine, AudioReactiveState } from '../features/audio/AudioReactiveEngine';
 import { AudioVisualizer } from '../components/audio/AudioVisualizer';
 import { questProgressionEngine } from '../features/progression/QuestProgressionEngine';
+import { BoundaryPhysicsMode } from '../movement/MovementEngine';
+import { soundFxEngine } from '../features/audio/SoundFxEngine';
 
 const renderProviderIcon = (iconType: string, size = 12) => {
   switch (iconType) {
@@ -107,6 +112,8 @@ export const App: React.FC = () => {
   const [showText, setShowText] = useState<boolean>(true);
   const [lyricsMode, setLyricsMode] = useState<'auto_lyrics' | 'normal_text'>('auto_lyrics');
   const [audioState, setAudioState] = useState<AudioReactiveState>(() => audioReactiveEngine.getState());
+  const [boundaryMode, setBoundaryMode] = useState<BoundaryPhysicsMode>('bounce');
+  const [isSoundMuted, setIsSoundMuted] = useState(soundFxEngine.isSoundMuted());
 
   // Subscribe to audio-reactive engine for beat detection & spectrum
   useEffect(() => {
@@ -118,6 +125,8 @@ export const App: React.FC = () => {
   // Listen to Shinobi Rank Up and Quest Completion events
   useEffect(() => {
     const unlistenRank = questProgressionEngine.onRankUp((newRank) => {
+      soundFxEngine.playRankUp();
+      questProgressionEngine.recordChime();
       messageManager.enqueue(`🎉 RANK UP! Promoted to ${newRank.title} (${newRank.badge})! 🏆✨`, 'high', 'interaction');
       setShowLoveHearts(true);
       setTimeout(() => setShowLoveHearts(false), 3000);
@@ -133,6 +142,16 @@ export const App: React.FC = () => {
       unlistenRank();
       unlistenTask();
     };
+  }, []);
+
+  // Subscribe to SoundFxEngine and MovementEngine onWrap
+  useEffect(() => {
+    movementRef.current.setOnWrap(() => {
+      questProgressionEngine.recordWrapLap();
+    });
+    return soundFxEngine.subscribe((cfg) => {
+      setIsSoundMuted(cfg.isMuted);
+    });
   }, []);
 
   // Auto-scroll active lyric line in All Lyrics scroll view
@@ -235,6 +254,7 @@ export const App: React.FC = () => {
         if (monitors && monitors.length > 0) {
           const primary = monitors.find((m) => m.is_primary) || monitors[0];
           movementRef.current.setMonitor(primary);
+          movementRef.current.setMonitors(monitors);
         }
 
         // Welcome speech line
@@ -715,6 +735,8 @@ export const App: React.FC = () => {
   const handleSendLove = () => {
     needSystemRef.current.petInteraction();
     needSystemRef.current.feedSnack();
+    soundFxEngine.playHeadpat();
+    questProgressionEngine.recordChime();
     setNeeds(needSystemRef.current.getNeeds());
     setAnimation('happy');
     setShowLoveHearts(true);
@@ -733,6 +755,8 @@ export const App: React.FC = () => {
   const handlePetLulu = () => {
     needSystemRef.current.petInteraction();
     questProgressionEngine.recordPet();
+    soundFxEngine.playHeadpat();
+    questProgressionEngine.recordChime();
     setNeeds(needSystemRef.current.getNeeds());
     setAnimation('happy');
     setShowLoveHearts(true);
@@ -758,6 +782,8 @@ export const App: React.FC = () => {
   const handleFeedSnack = () => {
     needSystemRef.current.feedSnack();
     questProgressionEngine.recordSnack();
+    soundFxEngine.playSnack();
+    questProgressionEngine.recordChime();
     setNeeds(needSystemRef.current.getNeeds());
     setAnimation('happy');
     messageManager.enqueue('Yummy! Delicious snack! 🧁', 'high', 'interaction');
@@ -776,6 +802,8 @@ export const App: React.FC = () => {
       setIsSleeping(true);
       isSleepingRef.current = true;
       questProgressionEngine.recordSleep();
+      soundFxEngine.playSleep();
+      questProgressionEngine.recordChime();
       setAnimation('sleep');
       if (isMusicPlaying) {
         messageManager.enqueue('🌙 Peaceful Lullaby Mode • Sleeping soundly to the melody... 😴🎵', 'normal', 'interaction');
@@ -801,6 +829,8 @@ export const App: React.FC = () => {
     const running = movementRef.current.toggleContinuousRun();
     setIsContinuousRunning(running);
     if (running) {
+      soundFxEngine.playSprintWhoosh();
+      questProgressionEngine.recordChime();
       setIsContinuousWalking(false);
       setIs40sRunActive(false);
       messageManager.enqueue('SHOW RUN active! Continuous sprint! ⚡🏃💨', 'normal', 'interaction');
@@ -829,6 +859,8 @@ export const App: React.FC = () => {
     setIsContinuousRunning(true);
     setIsContinuousWalking(false);
     questProgressionEngine.recordSprintLap();
+    soundFxEngine.playSprintWhoosh();
+    questProgressionEngine.recordChime();
     messageManager.enqueue('Flame Sprint active! ⚡🏃💨', 'high', 'interaction');
     movementRef.current.startTimedRun(40, () => {
       setIs40sRunActive(false);
@@ -1030,13 +1062,19 @@ export const App: React.FC = () => {
           isSleeping={isSleeping}
           onTriggerAnimation={(anim) => {
             if (anim === 'run-right' || anim === 'run') {
+              soundFxEngine.playSprintWhoosh();
+              questProgressionEngine.recordChime();
               questProgressionEngine.recordSprintLap();
               movementRef.current.sprintLap();
             } else if (anim === 'walk-right' || anim === 'walk') {
               questProgressionEngine.recordWalkLap();
               movementRef.current.walkLap();
             } else {
-              if (anim === 'protect') questProgressionEngine.recordShield();
+              if (anim === 'protect') {
+                soundFxEngine.playShield();
+                questProgressionEngine.recordChime();
+                questProgressionEngine.recordShield();
+              }
               setAnimation(anim as AnimationState);
             }
           }}
@@ -1090,6 +1128,14 @@ export const App: React.FC = () => {
           onToggleCollapseLyrics={() => setIsLyricsCollapsed((p) => !p)}
           lyricsPosition={lyricsPosition}
           onToggleLyricsPosition={() => setLyricsPosition((p) => (p === 'top' ? 'bottom' : 'top'))}
+          boundaryPhysicsMode={boundaryMode}
+          onSetBoundaryPhysicsMode={(m) => {
+            setBoundaryMode(m);
+            movementRef.current.setBoundaryPhysicsMode(m);
+          }}
+          onJumpToMonitor={async (name) => {
+            await movementRef.current.jumpToMonitor(name);
+          }}
         />
       </div>
     );
@@ -1788,6 +1834,36 @@ export const App: React.FC = () => {
             <ArrowUpDown size={13} className="text-indigo-400" />
             <span>{lyricsPosition === 'top' ? 'Hinge Lyrics: Bottom' : 'Hinge Lyrics: Top'}</span>
           </button>
+
+          {/* Boundary Physics Mode: Screen Wrap vs Edge Bounce */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              const nextMode = boundaryMode === 'wrap' ? 'bounce' : 'wrap';
+              setBoundaryMode(nextMode);
+              movementRef.current.setBoundaryPhysicsMode(nextMode);
+              messageManager.enqueue(nextMode === 'wrap' ? 'Screen Wrapping enabled! 🌀' : 'Edge Bounce physics enabled! 🛡️', 'normal', 'interaction');
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-purple-600 hover:text-white flex items-center gap-2 text-purple-300 font-medium"
+          >
+            {boundaryMode === 'wrap' ? <Zap size={13} className="text-amber-400" /> : <RotateCcw size={13} className="text-purple-400" />}
+            <span>{boundaryMode === 'wrap' ? 'Mode: Screen Wrap' : 'Mode: Edge Bounce'}</span>
+          </button>
+
+          {/* Sound FX Mute Toggle */}
+          <button
+            onClick={() => {
+              setShowContextMenu(false);
+              const muted = soundFxEngine.toggleMute();
+              messageManager.enqueue(muted ? 'Sound effects muted 🔇' : 'Sound effects unmuted 🔔', 'normal', 'interaction');
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-pink-600 hover:text-white flex items-center gap-2 text-pink-300 font-medium"
+          >
+            {isSoundMuted ? <VolumeX size={13} className="text-rose-400" /> : <Volume2 size={13} className="text-pink-400" />}
+            <span>{isSoundMuted ? 'Unmute Sound FX' : 'Mute Sound FX'}</span>
+          </button>
+
+          <div className="h-[1px] bg-[#313244] my-1" />
 
           {/* Control Center */}
           <button

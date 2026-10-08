@@ -58,6 +58,8 @@ import {
   VolumeX,
   PawPrint,
   Flame,
+  RotateCcw,
+  MonitorPlay,
 } from 'lucide-react';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
 import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
@@ -65,6 +67,8 @@ import { MediaSession, getProviderTheme } from '../../features/media/mediaSessio
 import { AudioVisualizer } from '../audio/AudioVisualizer';
 import { audioReactiveEngine, AudioReactiveMode } from '../../features/audio/AudioReactiveEngine';
 import { questProgressionEngine, ProgressionState, SHINOBI_RANKS } from '../../features/progression/QuestProgressionEngine';
+import { BoundaryPhysicsMode } from '../../movement/MovementEngine';
+import { soundFxEngine } from '../../features/audio/SoundFxEngine';
 import shinobiIdle from '../../assets/avatars/shinobi_idle.png';
 import shinobiRun from '../../assets/avatars/shinobi_run.png';
 import shinobiHappy from '../../assets/avatars/shinobi_happy.png';
@@ -211,6 +215,9 @@ interface ControlCenterModalProps {
   onToggleCollapseLyrics?: () => void;
   lyricsPosition?: 'top' | 'bottom';
   onToggleLyricsPosition?: () => void;
+  boundaryPhysicsMode?: BoundaryPhysicsMode;
+  onSetBoundaryPhysicsMode?: (mode: BoundaryPhysicsMode) => void;
+  onJumpToMonitor?: (monitorName: string) => void;
 }
 
 type TabType =
@@ -267,7 +274,15 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
   onToggleCollapseLyrics,
   lyricsPosition = 'top',
   onToggleLyricsPosition,
+  boundaryPhysicsMode = 'bounce',
+  onSetBoundaryPhysicsMode,
+  onJumpToMonitor,
 }) => {
+  const [soundConfig, setSoundConfig] = useState(soundFxEngine.getConfig());
+
+  useEffect(() => {
+    return soundFxEngine.subscribe((cfg) => setSoundConfig(cfg));
+  }, []);
   const [activeTab, setActiveTab] = useState<TabType>('show_all');
 
   // Diagnostics & Capabilities
@@ -3057,40 +3072,281 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   </div>
                 </div>
 
-                {/* Screen Map */}
+                {/* Boundary Physics & Screen Wrapping Mode (Phase 8) */}
+                <div className="bg-[#181825] border border-[#313244] p-3 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-200 text-xs">Boundary Physics & Screen Wrapping</p>
+                      <p className="text-[11px] text-gray-400">Controls how Lulu interacts with screen edges and multiple displays</p>
+                    </div>
+                    <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
+                      Phase 8
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        onSetBoundaryPhysicsMode?.('bounce');
+                        messageManager.enqueue('Boundary physics set to Edge Bounce 🛡️', 'normal', 'interaction');
+                      }}
+                      className={`p-2.5 rounded-lg border text-left transition flex flex-col gap-1 ${
+                        boundaryPhysicsMode === 'bounce'
+                          ? 'bg-purple-600/30 border-purple-500 text-white'
+                          : 'bg-black/30 border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <RotateCcw size={14} className={boundaryPhysicsMode === 'bounce' ? 'text-purple-400' : 'text-gray-400'} />
+                          Edge Bounce
+                        </span>
+                        {boundaryPhysicsMode === 'bounce' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.2 rounded">Active</span>}
+                      </div>
+                      <p className="text-[10px] text-gray-400">Reverses direction upon reaching display boundaries</p>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onSetBoundaryPhysicsMode?.('wrap');
+                        messageManager.enqueue('Boundary physics set to Screen Wrapping 🌀', 'normal', 'interaction');
+                      }}
+                      className={`p-2.5 rounded-lg border text-left transition flex flex-col gap-1 ${
+                        boundaryPhysicsMode === 'wrap'
+                          ? 'bg-purple-600/30 border-purple-500 text-white'
+                          : 'bg-black/30 border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <Zap size={14} className={boundaryPhysicsMode === 'wrap' ? 'text-amber-400' : 'text-gray-400'} />
+                          Screen Wrapping
+                        </span>
+                        {boundaryPhysicsMode === 'wrap' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.2 rounded">Active</span>}
+                      </div>
+                      <p className="text-[10px] text-gray-400">Exiting right wraps to left seamlessly in an infinite loop</p>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onSetBoundaryPhysicsMode?.('roam_multi');
+                        messageManager.enqueue('Boundary physics set to Multi-Monitor Roam 🖥️', 'normal', 'interaction');
+                      }}
+                      className={`p-2.5 rounded-lg border text-left transition flex flex-col gap-1 ${
+                        boundaryPhysicsMode === 'roam_multi'
+                          ? 'bg-purple-600/30 border-purple-500 text-white'
+                          : 'bg-black/30 border-white/5 text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <Monitor size={14} className={boundaryPhysicsMode === 'roam_multi' ? 'text-blue-400' : 'text-gray-400'} />
+                          Multi-Monitor Roam
+                        </span>
+                        {boundaryPhysicsMode === 'roam_multi' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.2 rounded">Active</span>}
+                      </div>
+                      <p className="text-[10px] text-gray-400">Spans the entire composite virtual desktop canvas</p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Screen Layout Map & Output Jump Controls */}
                 <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-3">
-                  <p className="font-semibold text-gray-300">Screen Layout Map</p>
-                  <div className="h-40 bg-black/50 border border-dashed border-white/20 rounded-xl p-3 flex items-center justify-center gap-4 relative">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-200">Sway / Wayland Display Topology</p>
+                      <p className="text-[11px] text-gray-400">Live output enumeration via swaymsg IPC</p>
+                    </div>
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
+                      {monitors.length} {monitors.length === 1 ? 'Display' : 'Displays'} Active
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {monitors.length === 0 ? (
-                      <div className="text-center text-gray-500 text-xs">
+                      <div className="col-span-full h-24 bg-black/40 border border-dashed border-white/10 rounded-xl flex items-center justify-center text-gray-500 text-xs">
                         Default Display (1920x1080)
                       </div>
                     ) : (
                       monitors.map((mon, idx) => (
                         <div
                           key={mon.name || idx}
-                          className="h-28 w-44 bg-blue-900/20 border border-blue-500/40 rounded-lg flex flex-col items-center justify-center p-2 relative shadow-lg"
+                          className="bg-[#11111b] border border-[#313244] hover:border-blue-500/50 p-3 rounded-xl flex flex-col justify-between gap-2 shadow transition"
                         >
-                          <span className="font-bold text-blue-300 text-xs truncate max-w-full">
-                            {mon.name || `Monitor ${idx + 1}`}
-                          </span>
-                          <span className="text-[10px] text-gray-400">
-                            {mon.width} x {mon.height}
-                          </span>
-                          {mon.is_primary && (
-                            <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded mt-1">
-                              Primary
-                            </span>
-                          )}
-                          {/* Lulu Marker on Primary Monitor */}
-                          {idx === 0 && (
-                            <div className="absolute bottom-2 right-2 bg-purple-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow animate-pulse">
-                              Lulu Here ⚔️
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <span className="font-bold text-blue-300 text-xs flex items-center gap-1.5">
+                                <Monitor size={13} className="text-blue-400" />
+                                {mon.name || `Output ${idx + 1}`}
+                              </span>
+                              <p className="text-[10px] text-gray-400">
+                                {mon.width} x {mon.height} • Scale {mon.scale_factor}x
+                              </p>
+                              <p className="text-[9px] text-gray-500">
+                                Offset: ({mon.x}, {mon.y})
+                              </p>
                             </div>
-                          )}
+                            {mon.is_primary && (
+                              <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30 font-medium">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              onJumpToMonitor?.(mon.name);
+                              messageManager.enqueue(`Lulu jumped to ${mon.name} 🚀`, 'normal', 'interaction');
+                              soundFxEngine.playSprintWhoosh();
+                            }}
+                            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-semibold transition"
+                          >
+                            <MonitorPlay size={12} />
+                            <span>Jump Lulu Here</span>
+                          </button>
                         </div>
                       ))
                     )}
+                  </div>
+                </div>
+
+                {/* Companion Chimes & Sound Effects Studio (Phase 10) */}
+                <div className="bg-[#181825] border border-[#313244] p-4 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-200 flex items-center gap-2">
+                        <Volume2 size={16} className="text-pink-400" /> Companion Chimes & Procedural Audio Studio
+                      </p>
+                      <p className="text-[11px] text-gray-400">Zero-asset Web Audio procedural synthesis for companion micro-interactions</p>
+                    </div>
+                    <span className="text-[10px] bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded-full border border-pink-500/30">
+                      Phase 10
+                    </span>
+                  </div>
+
+                  {/* Volume Slider & Mute Toggle */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#11111b] p-3 rounded-lg border border-[#313244]">
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-xs text-gray-300 font-medium whitespace-nowrap">Chime Volume:</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round(soundConfig.volume * 100)}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) / 100;
+                          soundFxEngine.setVolume(val);
+                        }}
+                        className="w-full accent-pink-500 cursor-pointer h-1.5 bg-gray-700 rounded-lg"
+                      />
+                      <span className="text-xs font-bold text-pink-300 min-w-9 text-right">
+                        {Math.round(soundConfig.volume * 100)}%
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const muted = soundFxEngine.toggleMute();
+                        messageManager.enqueue(muted ? 'Sound effects muted 🔇' : 'Sound effects unmuted 🔔', 'normal', 'interaction');
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                        soundConfig.isMuted
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'
+                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30'
+                      }`}
+                    >
+                      {soundConfig.isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                      <span>{soundConfig.isMuted ? 'Muted' : 'Audible'}</span>
+                    </button>
+                  </div>
+
+                  {/* Audition Test Sound Grid */}
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] font-semibold text-gray-400">Audition Synthesized Sound Cues:</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                      <button
+                        onClick={() => {
+                          soundFxEngine.playHeadpat();
+                          questProgressionEngine.recordChime();
+                        }}
+                        className="p-2 bg-black/40 hover:bg-white/5 border border-white/5 hover:border-pink-500/40 rounded-lg text-center transition flex flex-col items-center gap-1"
+                        title="Ascending C6 -> G6 harp ping"
+                      >
+                        <Heart size={14} className="text-pink-400" />
+                        <span className="text-[10px] font-medium text-gray-300">Headpat Harp</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          soundFxEngine.playSnack();
+                          questProgressionEngine.recordChime();
+                        }}
+                        className="p-2 bg-black/40 hover:bg-white/5 border border-white/5 hover:border-amber-500/40 rounded-lg text-center transition flex flex-col items-center gap-1"
+                        title="Playful crunchy snack bite drop"
+                      >
+                        <Coffee size={14} className="text-amber-400" />
+                        <span className="text-[10px] font-medium text-gray-300">Snack Munch</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          soundFxEngine.playSprintWhoosh();
+                          questProgressionEngine.recordChime();
+                        }}
+                        className="p-2 bg-black/40 hover:bg-white/5 border border-white/5 hover:border-cyan-500/40 rounded-lg text-center transition flex flex-col items-center gap-1"
+                        title="Aerodynamic wind whoosh sweep"
+                      >
+                        <Zap size={14} className="text-cyan-400" />
+                        <span className="text-[10px] font-medium text-gray-300">Sprint Whoosh</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          soundFxEngine.playShield();
+                          questProgressionEngine.recordChime();
+                        }}
+                        className="p-2 bg-black/40 hover:bg-white/5 border border-white/5 hover:border-indigo-500/40 rounded-lg text-center transition flex flex-col items-center gap-1"
+                        title="Resonant 110Hz chakra shield hum"
+                      >
+                        <Shield size={14} className="text-indigo-400" />
+                        <span className="text-[10px] font-medium text-gray-300">Susanoo Shield</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          soundFxEngine.playSleep();
+                          questProgressionEngine.recordChime();
+                        }}
+                        className="p-2 bg-black/40 hover:bg-white/5 border border-white/5 hover:border-purple-500/40 rounded-lg text-center transition flex flex-col items-center gap-1"
+                        title="Soothing E5 lullaby droplet"
+                      >
+                        <Moon size={14} className="text-purple-400" />
+                        <span className="text-[10px] font-medium text-gray-300">Zen Lullaby</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          soundFxEngine.playRankUp();
+                          questProgressionEngine.recordChime();
+                        }}
+                        className="p-2 bg-black/40 hover:bg-white/5 border border-white/5 hover:border-yellow-500/40 rounded-lg text-center transition flex flex-col items-center gap-1"
+                        title="Triumphant 4-note ascending fanfare"
+                      >
+                        <Sparkles size={14} className="text-yellow-400" />
+                        <span className="text-[10px] font-medium text-gray-300">Rank Fanfare</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          soundFxEngine.playClick();
+                        }}
+                        className="p-2 bg-black/40 hover:bg-white/5 border border-white/5 hover:border-emerald-500/40 rounded-lg text-center transition flex flex-col items-center gap-1"
+                        title="Crisp UI tick tap"
+                      >
+                        <Volume2 size={14} className="text-emerald-400" />
+                        <span className="text-[10px] font-medium text-gray-300">Tick Click</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
