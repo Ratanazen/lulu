@@ -1,3 +1,5 @@
+import { LuluTask, LULU_TASKS } from '../../config/luluFlameConfig';
+
 /**
  * QuestProgressionEngine: Interactive Shinobi Quests, XP & Rank System for Lulu
  * 
@@ -48,6 +50,19 @@ export interface ProgressionState {
   tasks: Record<string, QuestTaskState>;
   completedCount: number;
   totalTasks: number;
+  customTasks: LuluTask[];
+}
+
+export interface CustomTaskInput {
+  title: string;
+  description: string;
+  category?: string;
+  maxProgress?: number;
+  unit?: string;
+  xpReward?: number;
+  reward?: string;
+  actionId?: string;
+  imageKey?: 'idle' | 'run' | 'happy' | 'sleep' | 'sing' | 'sad' | 'protect' | 'sit';
 }
 
 export type ProgressionListener = (state: ProgressionState) => void;
@@ -59,6 +74,7 @@ const STORAGE_KEY = 'lulu_shinobi_progression_v1';
 export class QuestProgressionEngine {
   private totalXp: number = 0;
   private taskStates: Record<string, QuestTaskState> = {};
+  private customTasks: Record<string, LuluTask> = {};
   private listeners: Set<ProgressionListener> = new Set();
   private rankUpListeners: Set<RankUpListener> = new Set();
   private taskCompleteListeners: Set<TaskCompleteListener> = new Set();
@@ -266,6 +282,10 @@ export class QuestProgressionEngine {
       task.currentProgress = task.maxProgress;
       task.isCompleted = true;
     }
+    for (const task of Object.values(this.customTasks)) {
+      task.currentProgress = task.maxProgress;
+      task.isCompleted = true;
+    }
     // Boost XP to Rikudo Sage
     if (this.totalXp < 12000) {
       this.totalXp = 12000;
@@ -280,8 +300,199 @@ export class QuestProgressionEngine {
   public resetProgression() {
     this.totalXp = 0;
     this.initDefaultTasks();
+    for (const [id, ctask] of Object.entries(this.customTasks)) {
+      this.taskStates[id] = {
+        id,
+        currentProgress: 0,
+        maxProgress: ctask.maxProgress || 1,
+        unit: ctask.unit || 'pt',
+        xpReward: ctask.xpReward || 200,
+        isCompleted: false,
+      };
+      ctask.currentProgress = 0;
+      ctask.isCompleted = false;
+    }
     this.saveState();
     this.notify();
+  }
+
+  /**
+   * Add a new user-defined custom task
+   */
+  public addCustomTask(input: CustomTaskInput): LuluTask {
+    const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const maxProgress = Math.max(1, input.maxProgress || 1);
+    const xpReward = Math.max(10, input.xpReward || 200);
+    const unit = input.unit || 'times';
+
+    const task: LuluTask = {
+      id,
+      title: input.title.trim() || 'New Objective',
+      description: input.description.trim() || 'Custom user quest for Lulu',
+      category: input.category || 'Custom',
+      maxProgress,
+      currentProgress: 0,
+      unit,
+      xpReward,
+      reward: input.reward || 'Personal Achievement',
+      actionId: input.actionId || 'celebration_cheer',
+      imageKey: input.imageKey || 'happy',
+      isCompleted: false,
+      unlockedItems: [],
+      isCustom: true,
+    };
+
+    this.customTasks[id] = task;
+    this.taskStates[id] = {
+      id,
+      currentProgress: 0,
+      maxProgress,
+      unit,
+      xpReward,
+      isCompleted: false,
+    };
+
+    this.saveState();
+    this.notify();
+    return task;
+  }
+
+  /**
+   * Update an existing task (title, description, reward, category, progress, etc.)
+   */
+  public updateTask(taskId: string, updates: Partial<LuluTask>): boolean {
+    const customTask = this.customTasks[taskId];
+    if (customTask) {
+      if (updates.title !== undefined) customTask.title = updates.title.trim() || customTask.title;
+      if (updates.description !== undefined) customTask.description = updates.description.trim() || customTask.description;
+      if (updates.category !== undefined) customTask.category = updates.category;
+      if (updates.reward !== undefined) customTask.reward = updates.reward;
+      if (updates.actionId !== undefined) customTask.actionId = updates.actionId;
+      if (updates.imageKey !== undefined) customTask.imageKey = updates.imageKey;
+      if (updates.unit !== undefined) customTask.unit = updates.unit;
+      if (updates.xpReward !== undefined) customTask.xpReward = updates.xpReward;
+      if (updates.maxProgress !== undefined) {
+        customTask.maxProgress = Math.max(1, updates.maxProgress);
+      }
+    }
+
+    const state = this.taskStates[taskId];
+    if (state) {
+      if (updates.maxProgress !== undefined) {
+        state.maxProgress = Math.max(1, updates.maxProgress);
+      }
+      if (updates.unit !== undefined) state.unit = updates.unit;
+      if (updates.xpReward !== undefined) state.xpReward = updates.xpReward;
+      if (updates.currentProgress !== undefined) {
+        state.currentProgress = Math.max(0, Math.min(state.maxProgress, updates.currentProgress));
+        if (state.currentProgress >= state.maxProgress) {
+          state.isCompleted = true;
+        }
+      }
+      if (updates.isCompleted !== undefined) {
+        state.isCompleted = updates.isCompleted;
+        if (state.isCompleted) {
+          state.currentProgress = state.maxProgress;
+        }
+      }
+    }
+
+    this.saveState();
+    this.notify();
+    return true;
+  }
+
+  /**
+   * Delete a custom user-defined task
+   */
+  public deleteCustomTask(taskId: string): boolean {
+    if (!this.customTasks[taskId]) return false;
+    delete this.customTasks[taskId];
+    delete this.taskStates[taskId];
+    this.saveState();
+    this.notify();
+    return true;
+  }
+
+  /**
+   * Quick toggle task completion
+   */
+  public toggleTaskCompletion(taskId: string): boolean {
+    const task = this.taskStates[taskId];
+    if (!task) return false;
+
+    if (!task.isCompleted) {
+      task.currentProgress = task.maxProgress;
+      task.isCompleted = true;
+      if (this.customTasks[taskId]) {
+        this.customTasks[taskId].currentProgress = task.maxProgress;
+        this.customTasks[taskId].isCompleted = true;
+      }
+      this.addXp(task.xpReward);
+      for (const listener of this.taskCompleteListeners) {
+        try {
+          listener(taskId, task.xpReward);
+        } catch {}
+      }
+    } else {
+      task.isCompleted = false;
+      task.currentProgress = 0;
+      if (this.customTasks[taskId]) {
+        this.customTasks[taskId].currentProgress = 0;
+        this.customTasks[taskId].isCompleted = false;
+      }
+      this.saveState();
+      this.notify();
+    }
+    return true;
+  }
+
+  /**
+   * Set exact task progress
+   */
+  public setTaskProgress(taskId: string, progress: number) {
+    const task = this.taskStates[taskId];
+    if (!task) return;
+
+    const clamped = Math.max(0, Math.min(task.maxProgress, progress));
+    task.currentProgress = clamped;
+    if (this.customTasks[taskId]) {
+      this.customTasks[taskId].currentProgress = clamped;
+    }
+
+    if (task.currentProgress >= task.maxProgress && !task.isCompleted) {
+      task.isCompleted = true;
+      if (this.customTasks[taskId]) {
+        this.customTasks[taskId].isCompleted = true;
+      }
+      this.addXp(task.xpReward);
+      for (const listener of this.taskCompleteListeners) {
+        try {
+          listener(taskId, task.xpReward);
+        } catch {}
+      }
+    } else if (task.currentProgress < task.maxProgress && task.isCompleted) {
+      task.isCompleted = false;
+      if (this.customTasks[taskId]) {
+        this.customTasks[taskId].isCompleted = false;
+      }
+      this.saveState();
+      this.notify();
+    } else {
+      this.saveState();
+      this.notify();
+    }
+  }
+
+  /**
+   * Get all tasks combined (built-in + user custom)
+   */
+  public getAllTasks(): LuluTask[] {
+    return [...LULU_TASKS, ...Object.values(this.customTasks)];
+  }
+
+  public getCustomTasks(): LuluTask[] {
+    return Object.values(this.customTasks);
   }
 
   /**
@@ -312,6 +523,7 @@ export class QuestProgressionEngine {
       tasks: { ...this.taskStates },
       completedCount,
       totalTasks: tasksList.length,
+      customTasks: Object.values(this.customTasks),
     };
   }
 
@@ -352,6 +564,7 @@ export class QuestProgressionEngine {
         const serialized = JSON.stringify({
           totalXp: this.totalXp,
           tasks: this.taskStates,
+          customTasks: this.customTasks,
         });
         window.localStorage.setItem(STORAGE_KEY, serialized);
       }
@@ -366,6 +579,21 @@ export class QuestProgressionEngine {
           const parsed = JSON.parse(raw);
           if (typeof parsed.totalXp === 'number') {
             this.totalXp = parsed.totalXp;
+          }
+          if (parsed.customTasks && typeof parsed.customTasks === 'object') {
+            this.customTasks = parsed.customTasks;
+            for (const [id, ctask] of Object.entries(this.customTasks)) {
+              if (!this.taskStates[id]) {
+                this.taskStates[id] = {
+                  id,
+                  currentProgress: ctask.currentProgress || 0,
+                  maxProgress: ctask.maxProgress || 1,
+                  unit: ctask.unit || 'pt',
+                  xpReward: ctask.xpReward || 200,
+                  isCompleted: !!ctask.isCompleted,
+                };
+              }
+            }
           }
           if (parsed.tasks && typeof parsed.tasks === 'object') {
             for (const [id, state] of Object.entries(parsed.tasks)) {

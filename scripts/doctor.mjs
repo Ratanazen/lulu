@@ -80,7 +80,7 @@ if (fs.existsSync(tauriConfPath)) {
 }
 
 // 4. Check Frontend Dist & Source
-if (fs.existsSync(path.resolve('src/main.tsx')) && fs.existsSync(path.resolve('src/App.tsx'))) {
+if (fs.existsSync(path.resolve('src/main.tsx')) && (fs.existsSync(path.resolve('src/App.tsx')) || fs.existsSync(path.resolve('src/app/App.tsx')))) {
   checks.push({
     name: 'Frontend Core Engine',
     status: 'PASS',
@@ -146,19 +146,22 @@ if (fs.existsSync(capPath)) {
   });
 }
 
-// 8. Check Lulu Character Asset
+// 8. Check Lulu Character Asset (Vector SVG or raster fallback)
+const charVector = path.resolve('src/character/LuluSprite.tsx');
 const charAsset = path.resolve('src/assets/character/lulu/lulu-character.png');
-if (fs.existsSync(charAsset)) {
+if (fs.existsSync(charVector) || fs.existsSync(charAsset)) {
   checks.push({
     name: 'Character Asset Integrity',
     status: 'PASS',
-    message: 'Transparent character asset present and verified at src/assets/character/lulu/lulu-character.png',
+    message: fs.existsSync(charVector)
+      ? 'Procedural 100% SVG vector character engine verified (src/character/LuluSprite.tsx)'
+      : 'Character asset present and verified at src/assets/character/lulu/lulu-character.png',
   });
 } else {
   checks.push({
     name: 'Character Asset Integrity',
     status: 'FAIL',
-    message: 'src/assets/character/lulu/lulu-character.png missing',
+    message: 'Character engine/asset files missing',
   });
 }
 

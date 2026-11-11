@@ -6,8 +6,16 @@ import { spawn, execSync } from 'child_process';
 
 const home = os.homedir();
 const installedBin = path.join(home, '.local', 'bin', 'lulu');
-const localReleaseBin = path.resolve('src-tauri/target/release/lulu');
-const localDebugBin = path.resolve('src-tauri/target/debug/lulu');
+const localReleaseBinCandidates = [
+  path.resolve('src-tauri/target/release/lulu-desktop'),
+  path.resolve('src-tauri/target/release/lulu'),
+];
+const localDebugBinCandidates = [
+  path.resolve('src-tauri/target/debug/lulu-desktop'),
+  path.resolve('src-tauri/target/debug/lulu'),
+];
+const localReleaseBin = localReleaseBinCandidates.find((p) => fs.existsSync(p)) || localReleaseBinCandidates[0];
+const localDebugBin = localDebugBinCandidates.find((p) => fs.existsSync(p)) || localDebugBinCandidates[0];
 
 console.log('\n🐾 ========================================================');
 console.log('   LULU DESKTOP COMPANION — APPLICATION LAUNCHER');

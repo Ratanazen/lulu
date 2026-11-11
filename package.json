@@ -19,7 +19,9 @@
     "tauri:build": "npm run build && npx tauri build",
     "build:bin": "npm run build && npx tauri build --no-bundle && install -m 755 src-tauri/target/release/lulu-desktop ~/.local/bin/lulu",
     "install:bin": "install -m 755 src-tauri/target/release/lulu-desktop ~/.local/bin/lulu",
-    "run:bin": "~/.local/bin/lulu"
+    "run:bin": "~/.local/bin/lulu",
+    "update": "node scripts/update-app.mjs",
+    "doctor": "node scripts/doctor.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1",

@@ -72,9 +72,12 @@ import {
   Award,
   Layers,
   Terminal,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useSystemStore } from '../../stores/useSystemStore';
-import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS } from '../../config/luluFlameConfig';
+import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS, LuluTask } from '../../config/luluFlameConfig';
 import { spotifyLyricsService, LyricsSearchResult } from '../../features/lyrics/spotifyLyricsService';
 import { MediaSession, getProviderTheme } from '../../features/media/mediaSession';
 import { AudioVisualizer } from '../audio/AudioVisualizer';
@@ -416,6 +419,122 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
       setProgression(state);
     });
   }, []);
+
+  // Custom User Task & Quest Editor Modal State
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskFormData, setTaskFormData] = useState({
+    title: '',
+    description: '',
+    category: 'Custom',
+    maxProgress: 1,
+    unit: 'times',
+    xpReward: 200,
+    reward: 'Personal Goal Accomplished',
+    actionId: 'celebration_cheer',
+    imageKey: 'happy' as 'idle' | 'run' | 'happy' | 'sleep' | 'sing' | 'sad' | 'protect' | 'sit',
+  });
+
+  const handleOpenNewTaskModal = () => {
+    setEditingTaskId(null);
+    setTaskFormData({
+      title: '',
+      description: '',
+      category: 'Custom',
+      maxProgress: 1,
+      unit: 'times',
+      xpReward: 200,
+      reward: 'Personal Goal Accomplished',
+      actionId: 'celebration_cheer',
+      imageKey: 'happy',
+    });
+    setIsTaskModalOpen(true);
+  };
+
+  const handleOpenEditTaskModal = (task: LuluTask) => {
+    const qState = progression.tasks[task.id];
+    setEditingTaskId(task.id);
+    setTaskFormData({
+      title: task.title,
+      description: task.description,
+      category: task.category,
+      maxProgress: qState?.maxProgress || task.maxProgress || 1,
+      unit: qState?.unit || task.unit || 'times',
+      xpReward: qState?.xpReward || task.xpReward || 200,
+      reward: task.reward || 'Personal Achievement',
+      actionId: task.actionId || 'celebration_cheer',
+      imageKey: task.imageKey || 'happy',
+    });
+    setIsTaskModalOpen(true);
+  };
+
+  const handleSaveTaskForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskFormData.title.trim()) {
+      messageManager.enqueue('Please enter a task title.', 'normal', 'interaction');
+      return;
+    }
+
+    if (editingTaskId) {
+      questProgressionEngine.updateTask(editingTaskId, {
+        title: taskFormData.title,
+        description: taskFormData.description,
+        category: taskFormData.category,
+        maxProgress: Number(taskFormData.maxProgress) || 1,
+        unit: taskFormData.unit,
+        xpReward: Number(taskFormData.xpReward) || 200,
+        reward: taskFormData.reward,
+        actionId: taskFormData.actionId,
+        imageKey: taskFormData.imageKey,
+      });
+      messageManager.enqueue(`Updated Task: "${taskFormData.title}"!`, 'high', 'interaction');
+    } else {
+      const created = questProgressionEngine.addCustomTask({
+        title: taskFormData.title,
+        description: taskFormData.description,
+        category: taskFormData.category,
+        maxProgress: Number(taskFormData.maxProgress) || 1,
+        unit: taskFormData.unit,
+        xpReward: Number(taskFormData.xpReward) || 200,
+        reward: taskFormData.reward,
+        actionId: taskFormData.actionId,
+        imageKey: taskFormData.imageKey,
+      });
+      messageManager.enqueue(`Created New Task: "${created.title}" (+${created.xpReward} XP)!`, 'high', 'interaction');
+      soundFxEngine.playRankUp();
+    }
+    setIsTaskModalOpen(false);
+  };
+
+  const handleDeleteTask = (taskId: string, title: string) => {
+    const ok = questProgressionEngine.deleteCustomTask(taskId);
+    if (ok) {
+      messageManager.enqueue(`Deleted task: "${title}".`, 'normal', 'interaction');
+    }
+  };
+
+  const handleQuickAdvanceTask = (taskId: string, title: string) => {
+    questProgressionEngine.incrementTaskProgress(taskId, 1);
+    soundFxEngine.playSnack();
+    const task = progression.tasks[taskId];
+    const isNowDone = task && task.currentProgress + 1 >= task.maxProgress;
+    messageManager.enqueue(
+      isNowDone ? `Completed "${title}"! XP Claimed!` : `Advanced "${title}" (+1 progress)!`,
+      isNowDone ? 'high' : 'normal',
+      'interaction'
+    );
+  };
+
+  const handleToggleTask = (taskId: string, title: string) => {
+    const currentCompleted = progression.tasks[taskId]?.isCompleted;
+    questProgressionEngine.toggleTaskCompletion(taskId);
+    if (!currentCompleted) {
+      soundFxEngine.playRankUp();
+      messageManager.enqueue(`Completed "${title}"! Master XP Granted!`, 'high', 'interaction');
+    } else {
+      messageManager.enqueue(`Reopened quest: "${title}".`, 'normal', 'interaction');
+    }
+  };
 
   // Load capabilities & monitors when modal opens
   useEffect(() => {
@@ -1996,7 +2115,17 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       <span>{progression.nextRank ? `${progression.xpToNextRank} XP left` : 'Max Rank!'}</span>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <button
+                        type="button"
+                        onClick={handleOpenNewTaskModal}
+                        className="py-1 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold flex items-center gap-1.5 text-[10.5px] transition shadow-[0_0_12px_rgba(52,211,153,0.4)]"
+                        title="Add a new custom task, daily habit, or desktop objective"
+                      >
+                        <Plus size={13} strokeWidth={3} />
+                        <span>+ New Task</span>
+                      </button>
+
                       <button
                         onClick={() => {
                           questProgressionEngine.unlockAllTasks();
@@ -2054,8 +2183,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     {/* Category Filter Chips */}
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {['All', 'Movement', 'Audio', 'Vitals', 'Combat', 'Mood', 'Focus', 'System', 'Mastery'].map((cat) => {
-                        const count = cat === 'All' ? LULU_TASKS.length : LULU_TASKS.filter((t) => t.category.toLowerCase() === cat.toLowerCase()).length;
+                      {['All', 'Custom', 'Daily', 'Work', 'Health', 'Movement', 'Audio', 'Vitals', 'Combat', 'Mood', 'Focus', 'System', 'Mastery'].map((cat) => {
+                        const allTasksList = questProgressionEngine.getAllTasks();
+                        const count = cat === 'All' 
+                          ? allTasksList.length 
+                          : allTasksList.filter((t) => (cat === 'Custom' ? t.isCustom : t.category.toLowerCase() === cat.toLowerCase())).length;
+                        if (count === 0 && cat !== 'All' && cat !== 'Custom') return null;
                         const isSelected = taskCategoryFilter.toLowerCase() === cat.toLowerCase();
                         return (
                           <button
@@ -2120,13 +2253,13 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
                 {/* Tasks Cards Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {LULU_TASKS.filter((task) => {
+                  {questProgressionEngine.getAllTasks().filter((task) => {
                     const qState = progression.tasks[task.id];
                     const isCompleted = qState?.isCompleted ?? task.isCompleted;
 
                     const matchesCategory =
                       taskCategoryFilter === 'All' ||
-                      task.category.toLowerCase() === taskCategoryFilter.toLowerCase();
+                      (taskCategoryFilter === 'Custom' ? task.isCustom : task.category.toLowerCase() === taskCategoryFilter.toLowerCase());
                     const matchesStatus =
                       taskStatusFilter === 'All' ||
                       (taskStatusFilter === 'Completed' && isCompleted) ||
@@ -2142,14 +2275,22 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     const qState = progression.tasks[task.id];
                     const isCompleted = qState?.isCompleted ?? task.isCompleted;
                     const current = qState?.currentProgress ?? (isCompleted ? 1 : 0);
-                    const max = qState?.maxProgress ?? 1;
-                    const unit = qState?.unit ?? 'pt';
-                    const xp = qState?.xpReward ?? 200;
+                    const max = qState?.maxProgress ?? (task.maxProgress || 1);
+                    const unit = qState?.unit ?? (task.unit || 'pt');
+                    const xp = qState?.xpReward ?? (task.xpReward || 200);
                     const percent = Math.min(100, Math.round((current / max) * 100));
 
                     // Category badge colors
                     const getCategoryColor = (cat: string) => {
                       switch (cat.toLowerCase()) {
+                        case 'custom':
+                          return 'text-emerald-400 border-emerald-500/40 bg-emerald-950/60 shadow-[0_0_8px_rgba(52,211,153,0.2)]';
+                        case 'daily':
+                          return 'text-amber-400 border-amber-500/30 bg-amber-950/40';
+                        case 'work':
+                          return 'text-blue-400 border-blue-500/30 bg-blue-950/40';
+                        case 'health':
+                          return 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40';
                         case 'movement':
                           return 'text-cyan-400 border-cyan-500/30 bg-cyan-950/40';
                         case 'audio':
@@ -2203,15 +2344,40 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             >
                               {task.category}
                             </span>
-                            <span
-                              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
-                                isCompleted
-                                  ? 'text-emerald-300 bg-emerald-950/60 border-emerald-800/40'
-                                  : 'text-amber-300 bg-amber-950/60 border-amber-800/40'
-                              }`}
-                            >
-                              {isCompleted ? 'Complete' : 'In Progress'}
-                            </span>
+                            
+                            <div className="flex items-center gap-1">
+                              {/* Edit Task Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditTaskModal(task)}
+                                className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition"
+                                title="Edit / Update Task Details"
+                              >
+                                <Pencil size={11} />
+                              </button>
+
+                              {/* Delete Custom Task Button */}
+                              {task.isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTask(task.id, task.title)}
+                                  className="p-1 rounded hover:bg-red-950/60 text-red-400 hover:text-red-200 transition"
+                                  title="Delete Custom Task"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              )}
+
+                              <span
+                                className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                                  isCompleted
+                                    ? 'text-emerald-300 bg-emerald-950/60 border-emerald-800/40'
+                                    : 'text-amber-300 bg-amber-950/60 border-amber-800/40'
+                                }`}
+                              >
+                                {isCompleted ? 'Complete' : 'In Progress'}
+                              </span>
+                            </div>
                           </div>
 
                           <h4 className="text-xs font-bold text-white truncate mt-1">{task.title}</h4>
@@ -2245,11 +2411,36 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                               <span>{task.reward}</span>
                             </span>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="flex items-center gap-1 shrink-0">
                               <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-500/20">
                                 +{xp} XP
                               </span>
 
+                              {/* Quick +1 Progress Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleQuickAdvanceTask(task.id, task.title)}
+                                className="px-1.5 py-0.5 rounded bg-teal-600/30 hover:bg-teal-600/60 border border-teal-500/40 text-teal-200 text-[9px] font-bold transition"
+                                title="Quick +1 Progress"
+                              >
+                                +1
+                              </button>
+
+                              {/* Toggle Complete Checkmark Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleTask(task.id, task.title)}
+                                className={`p-1 rounded border transition ${
+                                  isCompleted
+                                    ? 'bg-emerald-500/30 border-emerald-400/60 text-emerald-300 hover:bg-emerald-500/50'
+                                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                                }`}
+                                title={isCompleted ? 'Mark Incomplete' : 'Complete Quest'}
+                              >
+                                <Check size={10} strokeWidth={3} />
+                              </button>
+
+                              {/* Execute Animation Button */}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -3720,6 +3911,197 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
             )}
           </div>
         </div>
+
+        {/* Task Creation & Edit Modal */}
+        {isTaskModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+            onClick={() => setIsTaskModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-lg bg-[#141824] border border-emerald-500/50 rounded-2xl p-5 shadow-2xl relative space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    {editingTaskId ? <Pencil size={16} /> : <Plus size={16} strokeWidth={2.5} />}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white">
+                      {editingTaskId ? 'Update Task & Objective' : 'Create New Desktop Task'}
+                    </h3>
+                    <p className="text-[10px] text-gray-400">
+                      {editingTaskId ? 'Edit task requirements, targets, and rewards' : 'Add custom goals, habits, and work quests for Lulu'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTaskModalOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSaveTaskForm} className="space-y-3.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Task Title <span className="text-emerald-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={taskFormData.title}
+                    onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+                    placeholder="e.g. Finish Sprint PR, Drink 2L Water, 30m Workout..."
+                    className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Description & Notes
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={taskFormData.description}
+                    onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
+                    placeholder="Details, focus criteria, and notes for completing this objective..."
+                    className="w-full px-3 py-2 bg-black/50 border border-white/10 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">Category</label>
+                    <select
+                      value={taskFormData.category}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, category: e.target.value })}
+                      className="w-full px-2.5 py-1.5 bg-black/50 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Custom">Custom</option>
+                      <option value="Daily">Daily</option>
+                      <option value="Work">Work</option>
+                      <option value="Health">Health</option>
+                      <option value="Movement">Movement</option>
+                      <option value="Audio">Audio</option>
+                      <option value="Focus">Focus</option>
+                      <option value="Vitals">Vitals</option>
+                      <option value="Combat">Combat</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">Avatar / Character Pose</label>
+                    <select
+                      value={taskFormData.imageKey}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, imageKey: e.target.value as any })}
+                      className="w-full px-2.5 py-1.5 bg-black/50 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="happy">Happy (Celebration)</option>
+                      <option value="run">Run (Sprint Stride)</option>
+                      <option value="idle">Idle (Patrol)</option>
+                      <option value="protect">Protect (Chakra Shield)</option>
+                      <option value="sleep">Sleep (Zen Rest)</option>
+                      <option value="sing">Sing (Melody Lip-Sync)</option>
+                      <option value="sad">Focus (Deep Concentration)</option>
+                      <option value="sit">Sit (Zen Posture)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">Target Goal</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={taskFormData.maxProgress}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, maxProgress: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                      className="w-full px-2.5 py-1.5 bg-black/50 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">Unit</label>
+                    <input
+                      type="text"
+                      value={taskFormData.unit}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, unit: e.target.value })}
+                      placeholder="times, hrs, laps..."
+                      className="w-full px-2.5 py-1.5 bg-black/50 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">XP Reward</label>
+                    <input
+                      type="number"
+                      min={10}
+                      step={50}
+                      value={taskFormData.xpReward}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, xpReward: Math.max(10, parseInt(e.target.value, 10) || 10) })}
+                      className="w-full px-2.5 py-1.5 bg-black/50 border border-white/10 rounded-xl text-xs text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">Reward Name</label>
+                    <input
+                      type="text"
+                      value={taskFormData.reward}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, reward: e.target.value })}
+                      placeholder="e.g. Master Champion Trophy"
+                      className="w-full px-2.5 py-1.5 bg-black/50 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">Lulu Animation on Action</label>
+                    <select
+                      value={taskFormData.actionId}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, actionId: e.target.value })}
+                      className="w-full px-2.5 py-1.5 bg-black/50 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="celebration_cheer">Joyful Celebration Cheer</option>
+                      <option value="sprint_dash">40s High-Speed Sprint</option>
+                      <option value="walk_go_and_back">Patrol Walk Go & Back</option>
+                      <option value="susanoo_defense">Susanoo Energy Shield</option>
+                      <option value="peaceful_rest">Deep Zen Sleep & Nap</option>
+                      <option value="spotify_sing">Lip-Sync Sing & Melody</option>
+                      <option value="deep_contemplate">Deep Focus Meditation</option>
+                      <option value="ninja_salute">Ninja Wave Salute</option>
+                      <option value="step_down_rest">Step Down Cross-Legged Sit</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsTaskModalOpen(false)}
+                    className="px-3 py-1.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 text-xs font-semibold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-extrabold text-xs transition shadow-md"
+                  >
+                    {editingTaskId ? 'Save Changes' : 'Create Task'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

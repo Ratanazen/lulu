@@ -137,6 +137,7 @@ export interface LuluTask {
   maxProgress?: number;
   unit?: string;
   xpReward?: number;
+  isCustom?: boolean;
 }
 
 export const LULU_TASKS: LuluTask[] = [

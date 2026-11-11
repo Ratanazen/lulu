@@ -8,6 +8,11 @@ console.log('   LULU DESKTOP COMPANION — APPLICATION UPDATE TASK');
 console.log('========================================================\n');
 
 const repoRoot = process.cwd();
+const cargoBin = path.join(process.env.HOME || '', '.cargo', 'bin');
+const execEnv = {
+  ...process.env,
+  PATH: `${cargoBin}:${process.env.PATH || ''}`,
+};
 
 // Step 1: Inspect Repository Status
 console.log('📦 [1/5] Inspecting repository and git state...');
@@ -35,15 +40,15 @@ try {
 
   // Step 3: Build frontend production assets
   console.log('⚡ [3/5] Building frontend assets...');
-  execSync('npm run build', { cwd: repoRoot, stdio: 'inherit' });
+  execSync('npm run build', { cwd: repoRoot, env: execEnv, stdio: 'inherit' });
 
   // Step 4: Compile embedded release binary
   console.log('🦀 [4/5] Compiling native release binary...');
-  execSync('npx tauri build --no-bundle', { cwd: repoRoot, stdio: 'inherit' });
+  execSync('npx tauri build --no-bundle', { cwd: repoRoot, env: execEnv, stdio: 'inherit' });
 
   // Step 5: Install desktop binary & launcher
   console.log('📥 [5/5] Re-installing binary and desktop entries...');
-  execSync('node scripts/install-desktop.mjs', { cwd: repoRoot, stdio: 'inherit' });
+  execSync('node scripts/install-desktop.mjs', { cwd: repoRoot, env: execEnv, stdio: 'inherit' });
 
   // Step 6: Restart running process if active
   const isRunning = execSync('pgrep -x lulu 2>/dev/null || true').toString().trim();

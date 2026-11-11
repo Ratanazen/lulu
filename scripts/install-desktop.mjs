@@ -21,7 +21,11 @@ const pixmapsDir = path.join(home, '.local', 'share', 'pixmaps');
 });
 
 // 1. Copy Binary
-const srcBinary = path.resolve('src-tauri/target/release/lulu');
+const candidatePaths = [
+  path.resolve('src-tauri/target/release/lulu-desktop'),
+  path.resolve('src-tauri/target/release/lulu'),
+];
+const srcBinary = candidatePaths.find((p) => fs.existsSync(p)) || candidatePaths[0];
 const targetBinary = path.join(binDir, 'lulu');
 
 if (!fs.existsSync(srcBinary)) {

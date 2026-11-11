@@ -133,4 +133,56 @@ describe('QuestProgressionEngine & Shinobi Rank Ladder', () => {
     expect(state.totalXp).toBe(40); // 15 + 25
     expect(state.tasks['multi_monitor_screen_wrapping'].currentProgress).toBe(1);
   });
+
+  it('9. supports creating, updating, completing, and deleting custom user tasks', () => {
+    // 1. Create a custom task
+    const newTask = engine.addCustomTask({
+      title: 'Finish Frontend PR',
+      description: 'Review code and submit pull request',
+      category: 'Work',
+      maxProgress: 3,
+      unit: 'reviews',
+      xpReward: 300,
+      reward: 'PR Champion Trophy',
+    });
+
+    expect(newTask.id).toMatch(/^custom_/);
+    expect(newTask.title).toBe('Finish Frontend PR');
+    expect(newTask.isCustom).toBe(true);
+
+    let state = engine.getState();
+    expect(state.tasks[newTask.id].maxProgress).toBe(3);
+    expect(state.tasks[newTask.id].currentProgress).toBe(0);
+    expect(state.tasks[newTask.id].isCompleted).toBe(false);
+    expect(state.customTasks.length).toBe(1);
+
+    // 2. Increment progress
+    engine.incrementTaskProgress(newTask.id, 2);
+    state = engine.getState();
+    expect(state.tasks[newTask.id].currentProgress).toBe(2);
+    expect(state.tasks[newTask.id].isCompleted).toBe(false);
+
+    // 3. Update task metadata
+    engine.updateTask(newTask.id, {
+      title: 'Finish High-Priority PR',
+      maxProgress: 4,
+    });
+    state = engine.getState();
+    expect(state.tasks[newTask.id].maxProgress).toBe(4);
+    expect(engine.getAllTasks().find((t) => t.id === newTask.id)?.title).toBe('Finish High-Priority PR');
+
+    // 4. Toggle completion
+    engine.toggleTaskCompletion(newTask.id);
+    state = engine.getState();
+    expect(state.tasks[newTask.id].isCompleted).toBe(true);
+    expect(state.tasks[newTask.id].currentProgress).toBe(4);
+    expect(state.totalXp).toBe(300);
+
+    // 5. Delete custom task
+    const deleted = engine.deleteCustomTask(newTask.id);
+    expect(deleted).toBe(true);
+    state = engine.getState();
+    expect(state.tasks[newTask.id]).toBeUndefined();
+    expect(state.customTasks.length).toBe(0);
+  });
 });
