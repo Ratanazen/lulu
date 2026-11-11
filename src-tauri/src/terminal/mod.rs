@@ -7,6 +7,7 @@ use std::time::Duration;
 
 static RUNNING: AtomicBool = AtomicBool::new(true);
 
+#[cfg(unix)]
 extern "C" fn handle_sigint(_: libc::c_int) {
     RUNNING.store(false, Ordering::SeqCst);
 }
@@ -163,7 +164,8 @@ pub fn format_duration(secs: f64) -> String {
 pub fn run_terminal_media_loop(filter_provider: Option<String>) {
     RUNNING.store(true, Ordering::SeqCst);
 
-    // Setup signal handler for graceful exit
+    // Setup signal handler for graceful exit on Unix
+    #[cfg(unix)]
     unsafe {
         libc::signal(libc::SIGINT, handle_sigint as *const () as libc::sighandler_t);
         libc::signal(libc::SIGTERM, handle_sigint as *const () as libc::sighandler_t);

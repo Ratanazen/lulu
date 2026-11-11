@@ -185,4 +185,44 @@ describe('QuestProgressionEngine & Shinobi Rank Ladder', () => {
     expect(state.tasks[newTask.id]).toBeUndefined();
     expect(state.customTasks.length).toBe(0);
   });
+
+  it('10. manages Task Configuration and custom task bulk cleanup', () => {
+    const initialConfig = engine.getConfig();
+    expect(initialConfig.soundEnabled).toBe(true);
+    expect(initialConfig.defaultXpReward).toBe(200);
+    expect(initialConfig.autoCelebrateAction).toBe('celebration_cheer');
+    expect(initialConfig.hideCompleted).toBe(false);
+
+    // Update config
+    engine.updateConfig({
+      soundEnabled: false,
+      defaultXpReward: 350,
+      hideCompleted: true,
+    });
+
+    const updated = engine.getConfig();
+    expect(updated.soundEnabled).toBe(false);
+    expect(updated.defaultXpReward).toBe(350);
+    expect(updated.hideCompleted).toBe(true);
+
+    // State reflects updated config
+    expect(engine.getState().config.defaultXpReward).toBe(350);
+
+    // Custom task created without explicit XP reward inherits defaultXpReward
+    const task = engine.addCustomTask({
+      title: 'Inherited XP Quest',
+      description: 'Testing configuration inheritance',
+    });
+    expect(task.xpReward).toBe(350);
+
+    // Add another task and test clearCustomTasks
+    engine.addCustomTask({
+      title: 'Second Task',
+      description: 'To be wiped',
+    });
+    expect(engine.getState().customTasks.length).toBe(2);
+
+    engine.clearCustomTasks();
+    expect(engine.getState().customTasks.length).toBe(0);
+  });
 });

@@ -134,7 +134,8 @@ pub fn get_capabilities() -> PlatformCapabilities {
 }
 
 fn which_exists(binary: &str) -> bool {
-    Command::new("which")
+    let cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
+    Command::new(cmd)
         .arg(binary)
         .output()
         .map(|o| o.status.success())
@@ -142,5 +143,12 @@ fn which_exists(binary: &str) -> bool {
 }
 
 fn nix_uid() -> u32 {
-    unsafe { libc::getuid() }
+    #[cfg(unix)]
+    {
+        unsafe { libc::getuid() }
+    }
+    #[cfg(not(unix))]
+    {
+        1000
+    }
 }

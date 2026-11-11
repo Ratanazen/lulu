@@ -41,6 +41,22 @@ export interface QuestTaskState {
   isCompleted: boolean;
 }
 
+export interface TaskConfig {
+  soundEnabled: boolean;
+  defaultXpReward: number;
+  autoCelebrateAction: string;
+  hideCompleted: boolean;
+  notifyOnRankUp: boolean;
+}
+
+export const DEFAULT_TASK_CONFIG: TaskConfig = {
+  soundEnabled: true,
+  defaultXpReward: 200,
+  autoCelebrateAction: 'celebration_cheer',
+  hideCompleted: false,
+  notifyOnRankUp: true,
+};
+
 export interface ProgressionState {
   totalXp: number;
   currentRank: ShinobiRank;
@@ -51,6 +67,7 @@ export interface ProgressionState {
   completedCount: number;
   totalTasks: number;
   customTasks: LuluTask[];
+  config: TaskConfig;
 }
 
 export interface CustomTaskInput {
@@ -75,6 +92,7 @@ export class QuestProgressionEngine {
   private totalXp: number = 0;
   private taskStates: Record<string, QuestTaskState> = {};
   private customTasks: Record<string, LuluTask> = {};
+  private config: TaskConfig = { ...DEFAULT_TASK_CONFIG };
   private listeners: Set<ProgressionListener> = new Set();
   private rankUpListeners: Set<RankUpListener> = new Set();
   private taskCompleteListeners: Set<TaskCompleteListener> = new Set();
@@ -322,7 +340,7 @@ export class QuestProgressionEngine {
   public addCustomTask(input: CustomTaskInput): LuluTask {
     const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const maxProgress = Math.max(1, input.maxProgress || 1);
-    const xpReward = Math.max(10, input.xpReward || 200);
+    const xpReward = Math.max(10, input.xpReward || this.config.defaultXpReward);
     const unit = input.unit || 'times';
 
     const task: LuluTask = {
@@ -335,7 +353,7 @@ export class QuestProgressionEngine {
       unit,
       xpReward,
       reward: input.reward || 'Personal Achievement',
-      actionId: input.actionId || 'celebration_cheer',
+      actionId: input.actionId || this.config.autoCelebrateAction,
       imageKey: input.imageKey || 'happy',
       isCompleted: false,
       unlockedItems: [],
@@ -355,6 +373,35 @@ export class QuestProgressionEngine {
     this.saveState();
     this.notify();
     return task;
+  }
+
+  /**
+   * Get current task configuration
+   */
+  public getConfig(): TaskConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * Update task configuration
+   */
+  public updateConfig(newConfig: Partial<TaskConfig>): TaskConfig {
+    this.config = { ...this.config, ...newConfig };
+    this.saveState();
+    this.notify();
+    return { ...this.config };
+  }
+
+  /**
+   * Clear all custom user-defined tasks
+   */
+  public clearCustomTasks() {
+    for (const id of Object.keys(this.customTasks)) {
+      delete this.taskStates[id];
+    }
+    this.customTasks = {};
+    this.saveState();
+    this.notify();
   }
 
   /**
@@ -524,6 +571,7 @@ export class QuestProgressionEngine {
       completedCount,
       totalTasks: tasksList.length,
       customTasks: Object.values(this.customTasks),
+      config: { ...this.config },
     };
   }
 
@@ -565,6 +613,7 @@ export class QuestProgressionEngine {
           totalXp: this.totalXp,
           tasks: this.taskStates,
           customTasks: this.customTasks,
+          config: this.config,
         });
         window.localStorage.setItem(STORAGE_KEY, serialized);
       }
@@ -579,6 +628,9 @@ export class QuestProgressionEngine {
           const parsed = JSON.parse(raw);
           if (typeof parsed.totalXp === 'number') {
             this.totalXp = parsed.totalXp;
+          }
+          if (parsed.config && typeof parsed.config === 'object') {
+            this.config = { ...DEFAULT_TASK_CONFIG, ...parsed.config };
           }
           if (parsed.customTasks && typeof parsed.customTasks === 'object') {
             this.customTasks = parsed.customTasks;

@@ -55,10 +55,35 @@ pub fn get_performance_config() -> PerformanceSummary {
 
 #[tauri::command]
 pub fn copy_to_clipboard(text: String) -> Result<(), String> {
-    // Try wl-copy or xclip
+    use std::io::Write;
+
+    // 1. Windows clip
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(mut child) = Command::new("clip").stdin(std::process::Stdio::piped()).spawn() {
+            if let Some(mut stdin) = child.stdin.take() {
+                let _ = stdin.write_all(text.as_bytes());
+            }
+            let _ = child.wait();
+            return Ok(());
+        }
+    }
+
+    // 2. macOS pbcopy
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(mut child) = Command::new("pbcopy").stdin(std::process::Stdio::piped()).spawn() {
+            if let Some(mut stdin) = child.stdin.take() {
+                let _ = stdin.write_all(text.as_bytes());
+            }
+            let _ = child.wait();
+            return Ok(());
+        }
+    }
+
+    // 3. Linux Wayland / X11
     if let Ok(mut child) = Command::new("wl-copy").stdin(std::process::Stdio::piped()).spawn() {
         if let Some(mut stdin) = child.stdin.take() {
-            use std::io::Write;
             let _ = stdin.write_all(text.as_bytes());
         }
         let _ = child.wait();
@@ -67,7 +92,6 @@ pub fn copy_to_clipboard(text: String) -> Result<(), String> {
 
     if let Ok(mut child) = Command::new("xclip").args(["-selection", "clipboard"]).stdin(std::process::Stdio::piped()).spawn() {
         if let Some(mut stdin) = child.stdin.take() {
-            use std::io::Write;
             let _ = stdin.write_all(text.as_bytes());
         }
         let _ = child.wait();

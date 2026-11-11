@@ -75,6 +75,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Settings,
 } from 'lucide-react';
 import { useSystemStore } from '../../stores/useSystemStore';
 import { LULU_FLAME_STYLES, LULU_TASKS, FLAME_SPEED_PRESETS, LuluTask } from '../../config/luluFlameConfig';
@@ -422,6 +423,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
   // Custom User Task & Quest Editor Modal State
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [showTaskConfig, setShowTaskConfig] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskFormData, setTaskFormData] = useState({
     title: '',
@@ -443,9 +445,9 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
       category: 'Custom',
       maxProgress: 1,
       unit: 'times',
-      xpReward: 200,
+      xpReward: progression.config?.defaultXpReward || 200,
       reward: 'Personal Goal Accomplished',
-      actionId: 'celebration_cheer',
+      actionId: progression.config?.autoCelebrateAction || 'celebration_cheer',
       imageKey: 'happy',
     });
     setIsTaskModalOpen(true);
@@ -515,9 +517,14 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
   const handleQuickAdvanceTask = (taskId: string, title: string) => {
     questProgressionEngine.incrementTaskProgress(taskId, 1);
-    soundFxEngine.playSnack();
+    if (progression.config?.soundEnabled !== false) {
+      soundFxEngine.playSnack();
+    }
     const task = progression.tasks[taskId];
-    const isNowDone = task && task.currentProgress + 1 >= task.maxProgress;
+    const isNowDone = task && task.currentProgress >= task.maxProgress;
+    if (isNowDone && progression.config?.autoCelebrateAction) {
+      onTriggerAnimation?.(progression.config.autoCelebrateAction);
+    }
     messageManager.enqueue(
       isNowDone ? `Completed "${title}"! XP Claimed!` : `Advanced "${title}" (+1 progress)!`,
       isNowDone ? 'high' : 'normal',
@@ -529,7 +536,12 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     const currentCompleted = progression.tasks[taskId]?.isCompleted;
     questProgressionEngine.toggleTaskCompletion(taskId);
     if (!currentCompleted) {
-      soundFxEngine.playRankUp();
+      if (progression.config?.soundEnabled !== false) {
+        soundFxEngine.playRankUp();
+      }
+      if (progression.config?.autoCelebrateAction) {
+        onTriggerAnimation?.(progression.config.autoCelebrateAction);
+      }
       messageManager.enqueue(`Completed "${title}"! Master XP Granted!`, 'high', 'interaction');
     } else {
       messageManager.enqueue(`Reopened quest: "${title}".`, 'normal', 'interaction');
@@ -1127,7 +1139,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <span className="text-[11px] font-bold text-white mt-1.5 truncate max-w-full">
                           {sprite.name}
                         </span>
-                        <span className="text-[8px] text-purple-300 font-medium px-1.5 py-0.2 rounded bg-purple-950/60 border border-purple-800/40 mt-0.5 truncate max-w-full">
+                        <span className="text-[8px] text-purple-300 font-medium px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-800/40 mt-0.5 truncate max-w-full">
                           {sprite.badge}
                         </span>
                         <p className="text-[9px] text-gray-400 mt-1 line-clamp-2 leading-tight">
@@ -1157,71 +1169,84 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                       <CheckSquare size={14} className="text-emerald-400" />
-                      <span>All {LULU_TASKS.length} Master Tasks & Progression</span>
+                      <span>All {questProgressionEngine.getAllTasks().length} Master & Custom Quests</span>
                     </h4>
                     <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800/40">
-                      {LULU_TASKS.length} / {LULU_TASKS.length} Unlocked (100%)
+                      {progression.completedCount} / {progression.totalTasks} Completed ({progression.totalTasks > 0 ? Math.round((progression.completedCount / progression.totalTasks) * 100) : 0}%)
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                    {LULU_TASKS.map((task) => (
-                      <div
-                        key={task.id}
-                        className="bg-[#181825] border border-[#313244] hover:border-emerald-500/40 p-2.5 rounded-xl transition flex gap-2.5 items-start group"
-                      >
-                        <div className="relative flex-shrink-0">
-                          <img
-                            src={getTaskImage(task.imageKey)}
-                            alt={task.title}
-                            className="w-12 h-12 object-contain rounded-xl bg-black/40 p-1 border border-white/10 filter drop-shadow-md group-hover:scale-105 transition"
-                          />
-                          <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
-                            <CheckCircle2 size={10} className="text-black fill-emerald-400" />
-                          </div>
-                        </div>
+                    {questProgressionEngine.getAllTasks().map((task) => {
+                      const qState = progression.tasks[task.id];
+                      const isCompleted = qState?.isCompleted ?? task.isCompleted;
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 truncate">
-                              {task.category}
-                            </span>
-                            <span className="text-[8px] text-emerald-300 font-semibold bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-800/40 flex-shrink-0">
-                              Unlocked
-                            </span>
+                      return (
+                        <div
+                          key={task.id}
+                          className="bg-[#181825] border border-[#313244] hover:border-emerald-500/40 p-2.5 rounded-xl transition flex gap-2.5 items-start group"
+                        >
+                          <div className="relative flex-shrink-0">
+                            <img
+                              src={getTaskImage(task.imageKey)}
+                              alt={task.title}
+                              className="w-12 h-12 object-contain rounded-xl bg-black/40 p-1 border border-white/10 filter drop-shadow-md group-hover:scale-105 transition"
+                            />
+                            {isCompleted && (
+                              <div className="absolute -top-1 -right-1 bg-emerald-500 text-black rounded-full p-0.5 shadow">
+                                <CheckCircle2 size={10} className="text-black fill-emerald-400" />
+                              </div>
+                            )}
                           </div>
-                          <h5 className="text-[11px] font-bold text-white truncate mt-0.5">{task.title}</h5>
-                          <p className="text-[9px] text-gray-400 line-clamp-2 mt-0.5 leading-snug">
-                            {task.description}
-                          </p>
-                          <div className="mt-1.5 flex items-center justify-between">
-                            <span className="text-[8px] text-amber-300 font-medium truncate max-w-[100px] flex items-center gap-1">
-                              <Award size={10} className="text-amber-400 shrink-0" />
-                              <span>{task.reward}</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (task.actionId === 'sprint_dash') {
-                                  onStart40sRun?.();
-                                } else if (task.actionId === 'walk_go_and_back') {
-                                  onWalkGoAndBack?.();
-                                } else if (task.actionId === 'all') {
-                                  onUnlockAll?.();
-                                } else {
-                                  onTriggerAnimation?.(task.actionId);
-                                }
-                                messageManager.enqueue(`Triggering task: ${task.title}!`, 'normal', 'interaction');
-                              }}
-                              className="px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-[9px] font-bold transition flex items-center gap-1"
-                            >
-                              <Zap size={9} className="text-yellow-400" />
-                              <span>Trigger</span>
-                            </button>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-purple-400 truncate">
+                                {task.category}
+                              </span>
+                              <span
+                                className={`text-[8px] font-semibold px-1 py-0.5 rounded border flex-shrink-0 ${
+                                  isCompleted
+                                    ? 'text-emerald-300 bg-emerald-950/60 border-emerald-800/40'
+                                    : 'text-amber-300 bg-amber-950/60 border-amber-800/40'
+                                }`}
+                              >
+                                {isCompleted ? 'Completed' : 'In Progress'}
+                              </span>
+                            </div>
+                            <h5 className="text-[11px] font-bold text-white truncate mt-0.5">{task.title}</h5>
+                            <p className="text-[9px] text-gray-400 line-clamp-2 mt-0.5 leading-snug">
+                              {task.description}
+                            </p>
+                            <div className="mt-1.5 flex items-center justify-between">
+                              <span className="text-[8px] text-amber-300 font-medium truncate max-w-[100px] flex items-center gap-1">
+                                <Award size={10} className="text-amber-400 shrink-0" />
+                                <span>{task.reward}</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (task.actionId === 'sprint_dash') {
+                                    onStart40sRun?.();
+                                  } else if (task.actionId === 'walk_go_and_back') {
+                                    onWalkGoAndBack?.();
+                                  } else if (task.actionId === 'all') {
+                                    onUnlockAll?.();
+                                  } else {
+                                    onTriggerAnimation?.(task.actionId);
+                                  }
+                                  messageManager.enqueue(`Triggering task: ${task.title}!`, 'normal', 'interaction');
+                                }}
+                                className="px-2 py-0.5 rounded bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-[9px] font-bold transition flex items-center gap-1"
+                              >
+                                <Zap size={9} className="text-yellow-400" />
+                                <span>Trigger</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1580,7 +1605,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <div className="bg-black/40 border border-white/5 p-3 rounded-xl space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-gray-400">
                         <span className="flex items-center gap-1 font-medium"><Layers size={12} className="text-amber-400" /> GPU Graphics</span>
-                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                           systemTelemetry?.gpuIsDiscrete
                             ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                             : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
@@ -1838,7 +1863,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             <span className="p-1 rounded-lg bg-black/40 border border-white/5 flex items-center justify-center">
                               {renderBehaviorIcon(m.id, 16)}
                             </span>
-                            <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${
+                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
                               preferences.behavior_mode === m.id ? 'bg-purple-500 text-white' : 'bg-white/5 text-gray-400'
                             }`}>
                               {m.badge}
@@ -2150,6 +2175,20 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <RefreshCw size={10} />
                         <span>Reset</span>
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowTaskConfig(!showTaskConfig)}
+                        className={`py-1 px-2.5 rounded-xl border flex items-center gap-1.5 text-[10px] font-bold transition shadow-sm ${
+                          showTaskConfig
+                            ? 'bg-purple-600 border-purple-400 text-white shadow-purple-500/30'
+                            : 'bg-black/40 border-white/10 text-gray-300 hover:text-white hover:bg-white/5'
+                        }`}
+                        title="Configure quest preferences, XP defaults, auto-celebration, and cleanup"
+                      >
+                        <Settings size={11} className={showTaskConfig ? 'text-white' : 'text-purple-300'} />
+                        <span>Config</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2177,6 +2216,176 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Task Configuration Settings Drawer */}
+                {showTaskConfig && (
+                  <div className="bg-[#1e1e2e] border border-purple-500/40 p-4 rounded-xl space-y-4 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <Settings size={15} className="text-purple-400" />
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                          Task & Shinobi Quest Preferences
+                        </h4>
+                      </div>
+                      <button
+                        onClick={() => setShowTaskConfig(false)}
+                        className="text-gray-400 hover:text-white transition p-1 rounded-lg hover:bg-white/10"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* 1. Completion Sound */}
+                      <div className="bg-black/40 border border-white/5 p-3 rounded-lg flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            <Volume2 size={13} className="text-emerald-400" />
+                            <span>Quest Audio Chimes</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Play sound cues on task progress and completion
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const next = !(progression.config?.soundEnabled ?? true);
+                            questProgressionEngine.updateConfig({ soundEnabled: next });
+                            messageManager.enqueue(`Task sound chimes ${next ? 'enabled' : 'muted'}`, 'normal', 'interaction');
+                          }}
+                          className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition ${
+                            progression.config?.soundEnabled ?? true
+                              ? 'bg-emerald-600/40 border-emerald-400 text-emerald-200'
+                              : 'bg-black/40 border-white/10 text-gray-400'
+                          }`}
+                        >
+                          {progression.config?.soundEnabled ?? true ? 'Enabled' : 'Muted'}
+                        </button>
+                      </div>
+
+                      {/* 2. Hide Completed */}
+                      <div className="bg-black/40 border border-white/5 p-3 rounded-lg flex items-center justify-between">
+                        <div>
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            <CheckSquare size={13} className="text-cyan-400" />
+                            <span>Hide Completed Quests</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Filter out finished quests from the default list
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const next = !progression.config?.hideCompleted;
+                            questProgressionEngine.updateConfig({ hideCompleted: next });
+                            messageManager.enqueue(next ? 'Hiding completed quests' : 'Showing all quests', 'normal', 'interaction');
+                          }}
+                          className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition ${
+                            progression.config?.hideCompleted
+                              ? 'bg-purple-600/40 border-purple-400 text-purple-200'
+                              : 'bg-black/40 border-white/10 text-gray-400'
+                          }`}
+                        >
+                          {progression.config?.hideCompleted ? 'Hidden' : 'Visible'}
+                        </button>
+                      </div>
+
+                      {/* 3. Default XP Reward */}
+                      <div className="bg-black/40 border border-white/5 p-3 rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white flex items-center gap-1.5">
+                            <Award size={13} className="text-amber-400" />
+                            <span>Default Quest XP</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-amber-300 font-bold">
+                            {progression.config?.defaultXpReward ?? 200} XP
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {[50, 100, 200, 350, 500].map((xp) => {
+                            const isSel = (progression.config?.defaultXpReward ?? 200) === xp;
+                            return (
+                              <button
+                                key={xp}
+                                onClick={() => {
+                                  questProgressionEngine.updateConfig({ defaultXpReward: xp });
+                                  messageManager.enqueue(`Default quest reward set to ${xp} XP`, 'normal', 'interaction');
+                                }}
+                                className={`flex-1 py-1 rounded text-[10px] font-bold border transition ${
+                                  isSel
+                                    ? 'bg-amber-500 text-black border-amber-300 shadow-sm'
+                                    : 'bg-black/30 border-white/10 text-gray-400 hover:text-white'
+                                }`}
+                              >
+                                {xp}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 4. Auto-Celebrate Action */}
+                      <div className="bg-black/40 border border-white/5 p-3 rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white flex items-center gap-1.5">
+                            <Sparkles size={13} className="text-pink-400" />
+                            <span>Celebration Action</span>
+                          </span>
+                          <span className="text-[10px] text-pink-300 font-bold truncate max-w-[110px]">
+                            {progression.config?.autoCelebrateAction ?? 'celebration_cheer'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          {[
+                            { id: 'celebration_cheer', label: 'Cheer' },
+                            { id: 'happy', label: 'Happy Hop' },
+                            { id: 'sing', label: 'Sing' },
+                          ].map((act) => {
+                            const isSel = (progression.config?.autoCelebrateAction ?? 'celebration_cheer') === act.id;
+                            return (
+                              <button
+                                key={act.id}
+                                onClick={() => {
+                                  questProgressionEngine.updateConfig({ autoCelebrateAction: act.id });
+                                  onTriggerAnimation?.(act.id);
+                                  messageManager.enqueue(`Auto-celebration set to ${act.label}!`, 'normal', 'interaction');
+                                }}
+                                className={`py-1 rounded text-[10px] font-bold border transition truncate ${
+                                  isSel
+                                    ? 'bg-pink-600 text-white border-pink-400 shadow-sm'
+                                    : 'bg-black/30 border-white/10 text-gray-400 hover:text-white'
+                                }`}
+                              >
+                                {act.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Bulk Actions */}
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
+                      <span className="text-gray-400">
+                        Custom User Quests: <strong className="text-white">{progression.customTasks.length}</strong> active
+                      </span>
+                      {progression.customTasks.length > 0 && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to delete all custom quests?')) {
+                              questProgressionEngine.clearCustomTasks();
+                              messageManager.enqueue('All custom user quests cleared.', 'normal', 'interaction');
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/60 border border-red-800/40 text-red-300 text-[10px] font-bold flex items-center gap-1 transition"
+                        >
+                          <Trash2 size={11} />
+                          <span>Clear Custom Quests</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Filter Chips & Search Bar */}
                 <div className="space-y-2">
@@ -2261,9 +2470,10 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                       taskCategoryFilter === 'All' ||
                       (taskCategoryFilter === 'Custom' ? task.isCustom : task.category.toLowerCase() === taskCategoryFilter.toLowerCase());
                     const matchesStatus =
-                      taskStatusFilter === 'All' ||
-                      (taskStatusFilter === 'Completed' && isCompleted) ||
-                      (taskStatusFilter === 'Active' && !isCompleted);
+                      taskStatusFilter === 'All'
+                        ? (progression.config?.hideCompleted ? !isCompleted : true)
+                        : (taskStatusFilter === 'Completed' && isCompleted) ||
+                          (taskStatusFilter === 'Active' && !isCompleted);
                     const matchesSearch =
                       !taskSearchQuery.trim() ||
                       task.title.toLowerCase().includes(taskSearchQuery.toLowerCase()) ||
@@ -2338,7 +2548,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <span
-                              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border ${getCategoryColor(
+                              className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${getCategoryColor(
                                 task.category
                               )}`}
                             >
@@ -3501,7 +3711,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           <RotateCcw size={14} className={boundaryPhysicsMode === 'bounce' ? 'text-purple-400' : 'text-gray-400'} />
                           Edge Bounce
                         </span>
-                        {boundaryPhysicsMode === 'bounce' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.2 rounded">Active</span>}
+                        {boundaryPhysicsMode === 'bounce' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.5 rounded">Active</span>}
                       </div>
                       <p className="text-[10px] text-gray-400">Reverses direction upon reaching display boundaries</p>
                     </button>
@@ -3522,7 +3732,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           <Zap size={14} className={boundaryPhysicsMode === 'wrap' ? 'text-amber-400' : 'text-gray-400'} />
                           Screen Wrapping
                         </span>
-                        {boundaryPhysicsMode === 'wrap' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.2 rounded">Active</span>}
+                        {boundaryPhysicsMode === 'wrap' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.5 rounded">Active</span>}
                       </div>
                       <p className="text-[10px] text-gray-400">Exiting right wraps to left seamlessly in an infinite loop</p>
                     </button>
@@ -3543,7 +3753,7 @@ export const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                           <Monitor size={14} className={boundaryPhysicsMode === 'roam_multi' ? 'text-blue-400' : 'text-gray-400'} />
                           Multi-Monitor Roam
                         </span>
-                        {boundaryPhysicsMode === 'roam_multi' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.2 rounded">Active</span>}
+                        {boundaryPhysicsMode === 'roam_multi' && <span className="text-[9px] bg-purple-500/40 px-1.5 py-0.5 rounded">Active</span>}
                       </div>
                       <p className="text-[10px] text-gray-400">Spans the entire composite virtual desktop canvas</p>
                     </button>

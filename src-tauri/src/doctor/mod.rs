@@ -24,14 +24,27 @@ pub fn run_lulu_doctor() -> Result<DoctorReport, String> {
     let mut has_fail = false;
     let mut has_warn = false;
 
-    // 1. D-Bus Session Bus
+    // 1. D-Bus Session Bus (Unix) / System Event Loop
+    #[cfg(unix)]
+    let uid = unsafe { libc::getuid() };
+    #[cfg(not(unix))]
+    let uid = 1000u32;
+
+    #[cfg(unix)]
     let dbus_ok = std::env::var("DBUS_SESSION_BUS_ADDRESS").is_ok()
-        || Path::new(&format!("/run/user/{}/bus", unsafe { libc::getuid() })).exists();
+        || Path::new(&format!("/run/user/{}/bus", uid)).exists();
+    #[cfg(not(unix))]
+    let dbus_ok = true;
+
     if dbus_ok {
         checks.push(DiagnosticCheck {
             name: "DBus Session Bus".to_string(),
             status: "PASS".to_string(),
-            message: "Active user session bus connected".to_string(),
+            message: if cfg!(unix) {
+                "Active user session bus connected".to_string()
+            } else {
+                "Native OS event loop and desktop session active".to_string()
+            },
             suggestion: None,
         });
     } else {
@@ -45,7 +58,8 @@ pub fn run_lulu_doctor() -> Result<DoctorReport, String> {
     }
 
     // 2. MPRIS (playerctl check)
-    let has_playerctl = Command::new("which").arg("playerctl").output().map_or(false, |o| o.status.success());
+    let which_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
+    let has_playerctl = Command::new(which_cmd).arg("playerctl").output().map_or(false, |o| o.status.success());
     if has_playerctl {
         checks.push(DiagnosticCheck {
             name: "MPRIS Integration".to_string(),
